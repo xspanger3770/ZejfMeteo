@@ -38,7 +38,7 @@ void run_reader(int port_fd)
     
     char msg[64];
 
-    snprintf(msg, 64, "bat\nsettime\n%ld\n", seconds());
+    snprintf(msg, 64, "bat\nsettime\n%ld\n", current_seconds());
     
     if(write(port_fd, msg, strlen(msg)) == -1){
         perror("write");

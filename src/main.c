@@ -49,8 +49,5 @@ int main(int argc, char *argv[]){
     settings.tcp_port = port;
     settings.serial = serial;
 
-    char buff[128];
-    zejf_day_path(buff, 213);
-    printf("Zejf day path: [%s]\n", buff);
-    //meteo_start(&settings);
+    meteo_start(&settings);
 }

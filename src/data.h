@@ -25,6 +25,7 @@ typedef struct zejfdata_log_t {
 
 typedef struct zejfdata_day_t{
     uint32_t day_number;
+    bool modified;
     ZejfLog logs[LOGS_PER_DAY];
 } ZejfDay;
 
@@ -39,8 +40,8 @@ void zejf_day_destroy(ZejfDay* zejf_day);
 
 ZejfDay* zejf_day_get(uint32_t day_number, bool load, bool create_new);
 
-void data_init();
+void data_init(void);
 
-void data_destroy();
+void data_destroy(void);
 
 #endif
