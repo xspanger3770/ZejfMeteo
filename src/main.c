@@ -5,6 +5,7 @@
 
 #include "serial.h"
 #include "zejf_meteo.h"
+#include "data.h"
 
 void print_usage(void)
 {
@@ -48,5 +49,8 @@ int main(int argc, char *argv[]){
     settings.tcp_port = port;
     settings.serial = serial;
 
-    meteo_start(&settings);
+    char buff[128];
+    zejf_day_path(buff, 213);
+    printf("Zejf day path: [%s]\n", buff);
+    //meteo_start(&settings);
 }

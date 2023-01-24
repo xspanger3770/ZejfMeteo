@@ -6,8 +6,8 @@ file(GLOB SOURCES "src/*.c")
 set(VERSION "0.0.0")
 set(EXECUTABLE zejfmeteo_${VERSION})
 
-#set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra -Werror")
-set(ALL_FLAGS "-O2 -s -std=gnu99 -Wall -Wextra")
+set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra")
+#set(ALL_FLAGS "-O2 -s -std=gnu99 -Wall -Wextra")
 
 # Executable
 add_executable(${EXECUTABLE} ${SOURCES})
