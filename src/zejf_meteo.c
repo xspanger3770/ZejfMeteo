@@ -7,7 +7,7 @@
 
 #include "serial.h"
 #include "zejf_meteo.h"
-#include "data.h"
+#include "dynamic_data.h"
 
 pthread_t serial_thread;
 
@@ -41,18 +41,6 @@ void command_line()
     }
 }
 
-void debug() {
-    char buff[128];
-    zejf_day_path(buff, 213);
-    printf("Zejf day path: [%s]\n", buff);
-
-    ZejfDay* day = zejf_day_get(123456, false, true);
-
-    printf("day num %d\n", day->day_number);
-
-    zejf_day_destroy(day);
-}
-
 void meteo_stop(){
     pthread_cancel(serial_thread);
     pthread_join(serial_thread, NULL);
@@ -62,7 +50,6 @@ void meteo_stop(){
 
 void meteo_start(Settings* settings){
     data_init();
-    debug();
 
     pthread_create(&serial_thread, NULL, (void*)run_serial, settings->serial);
     

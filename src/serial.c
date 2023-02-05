@@ -25,37 +25,58 @@
 #include "time_utils.h"
 
 #define BUFFER_SIZE 1024
-#define LINE_BUFFER_SIZE 64
+#define LINE_BUFFER_SIZE 128
+
+pthread_t time_check_thread;
+
+bool time_check(int port_fd){
+    char msg[64];
+
+    printf("c %ld\n", current_seconds());
+    snprintf(msg, 64, "time %ld\n", current_seconds());
+    
+    if(write(port_fd, msg, strlen(msg)) == -1){
+        perror("write");
+        return false;
+    }
+
+    return true;
+}
+
+void time_check_start(int *fd){
+    printf("time check start fd %d\n", *fd);
+    while(true){
+        time_check(*fd);
+        sleep(120);
+    }
+}
 
 bool decode(char* buffer){
     return false;
 }
 
-void run_reader(int port_fd)
+void run_reader(int port_fd, char* serial)
 {
     printf("waiting for serial device\n");
     sleep(2);
     
-    char msg[64];
+    pthread_create(&time_check_thread, NULL, (void*)time_check_start, &port_fd);
 
-    snprintf(msg, 64, "bat\nsettime\n%ld\n", current_seconds());
-    
-    if(write(port_fd, msg, strlen(msg)) == -1){
-        perror("write");
-        goto end;
-    }
-
-    printf("serial port running\n");
+    printf("serial port running fd %d\n", port_fd);
 
     char buffer[BUFFER_SIZE];
     char line_buffer[LINE_BUFFER_SIZE];
     int line_buffer_ptr = 0;
+
+    struct stat stats;
     
     while(true){
         ssize_t count = read(port_fd, buffer, BUFFER_SIZE);
-        if(count < 0){
-            printf("Serial reader end, count <= 0\n");
-            break;
+        if(count <= 0){
+            if(stat(serial, &stats) == -1){
+                printf("Serial reader end, count %ld\n", count);
+                break;
+            }
         }
         for(ssize_t i = 0; i < count; i++){
             line_buffer[line_buffer_ptr] = buffer[i];
@@ -77,9 +98,10 @@ void run_reader(int port_fd)
         
     }
 
-    end:
-
     close(port_fd);
+    
+    pthread_cancel(time_check_thread);
+    pthread_join(time_check_thread, NULL);
     printf("serial reader thread finish\n");
 }
 
@@ -146,7 +168,7 @@ void open_serial(char* serial){
         return;
     }
 
-    run_reader(port_fd);
+    run_reader(port_fd, serial);
 }
 
 void run_serial(char* serial){

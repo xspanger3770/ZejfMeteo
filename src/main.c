@@ -5,7 +5,6 @@
 
 #include "serial.h"
 #include "zejf_meteo.h"
-#include "data.h"
 
 void print_usage(void)
 {

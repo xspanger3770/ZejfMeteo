@@ -3,10 +3,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "data.h"
 #include "time_utils.h"
-
-
 
 int64_t current_micros(void)
 {
@@ -19,12 +16,12 @@ int64_t current_micros(void)
 
 int64_t current_millis(void)
 {
-    return current_micros() / 1000000l;
+    return current_micros() / 1000l;
 }
 
 int64_t current_seconds(void)
 {
-    return current_millis() / 1000;
+    return current_millis() / 1000l;
 }
 
 int32_t current_hours(void)

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 # Project configuration
-project(zejfmeteo)
+project(zejfmeteo C CXX ASM)
 file(GLOB SOURCES "src/*.c")
 set(VERSION "0.0.0")
 set(EXECUTABLE zejfmeteo_${VERSION})
