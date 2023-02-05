@@ -6,6 +6,8 @@
 #include <sys/types.h>
 
 #define PACKET_MAX_LENGTH 64
+#define MAX_TTL 8
+#define BROADCAST 0xFFFF
 
 enum commands{
     PING = 0x01,
@@ -13,7 +15,8 @@ enum commands{
     DATA_REQUEST = 0x03,
     DATA_LOG = 0x04,
     MESSAGE = 0x05,
-    TIME_CHECK = 0x06
+    TIME_CHECK = 0x06,
+    RIP = 0x07
 };
 
 typedef struct packet_t{
