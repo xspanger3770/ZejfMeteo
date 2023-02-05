@@ -1,3 +1,0 @@
-/home/jakublinux/Desktop/All/CProjects/ZejfMeteo/CMakeFiles/zejfmeteo_0.0.0.dir
-/home/jakublinux/Desktop/All/CProjects/ZejfMeteo/CMakeFiles/edit_cache.dir
-/home/jakublinux/Desktop/All/CProjects/ZejfMeteo/CMakeFiles/rebuild_cache.dir

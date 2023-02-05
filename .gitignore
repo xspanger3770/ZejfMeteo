@@ -58,3 +58,6 @@ dkms.conf
 build/
 experiments/
 old.txt
+CMakeFiles/
+old/
+test/

@@ -1,1 +1,0 @@
-/usr/bin/cc  -O2 -s -std=gnu99 -Wall -Wextra -Werror -rdynamic CMakeFiles/zejfmeteo_0.0.0.dir/src/main.c.o -o zejfmeteo_0.0.0 
