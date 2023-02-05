@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
 
 # Project configuration
-project(zejfmeteo C CXX ASM)
+project(zejfmeteo)
 file(GLOB SOURCES "src/*.c")
 set(VERSION "0.0.0")
 set(EXECUTABLE zejfmeteo_${VERSION})
 
-set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra")
-#set(ALL_FLAGS "-O2 -s -std=gnu99 -Wall -Wextra")
+set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra -Wpedantic")
+#set(ALL_FLAGS "-O2 -s -std=gnu99 -Wall -Wextra -Wpedantic")
 
 # Executable
 add_executable(${EXECUTABLE} ${SOURCES})

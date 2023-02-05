@@ -48,10 +48,22 @@ void meteo_stop(){
     data_destroy();
 }
 
+void data_test(){
+    Variable temp ={
+        .id = 1,
+        .samples_per_day = 50
+    };
+    if(!data_log(temp, 10, 10, 420.69)){
+        printf("LOG FAILED\n");
+    }
+    data_save();
+}
+
 void meteo_start(Settings* settings){
     data_init();
+    data_test();
 
-    pthread_create(&serial_thread, NULL, (void*)run_serial, settings->serial);
+    pthread_create(&serial_thread, NULL, &run_serial, settings->serial);
     
     command_line();
 

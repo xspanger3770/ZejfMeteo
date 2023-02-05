@@ -1,5 +1,5 @@
-#ifndef ZEJF_METEO_T
-#define ZEJF_METEO_T
+#ifndef _ZEJF_METEO_T
+#define _ZEJF_METEO_T
 
 typedef struct settings_t{
     char* ip;

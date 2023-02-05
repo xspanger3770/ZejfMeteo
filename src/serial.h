@@ -1,6 +1,6 @@
-#ifndef SERIAL_H
-#define SERIAL_H
+#ifndef _SERIAL_H
+#define _SERIAL_H
 
-void run_serial(char* serial_port);
+void* run_serial(void* serial);
 
 #endif

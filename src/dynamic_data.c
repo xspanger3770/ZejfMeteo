@@ -75,6 +75,7 @@ Day** day_get(uint32_t day_number, bool load, bool create){
         size_t loaded_size = day_load(&result, day_number, DAY_MAX_SIZE);
         if(result != NULL){
             result->total_size = loaded_size;
+            result->modified = false;
             calculate_offsets(result);
         }
         add = true;
@@ -131,9 +132,8 @@ bool day_add_variable(Day** day, Variable new_variable){
 
     // alloc new day
     
-    Day* new_day = malloc(new_size);
+    Day* new_day = calloc(1, new_size);
     if(new_day == NULL){
-        printf("NULLLL %ld\n", new_size);
         return false;
     }
 
@@ -215,10 +215,14 @@ float* data_pointer(uint32_t day_number, Variable target_variable){
 void data_save(void){
     for(int16_t i = 0; i <= data_days_top; i++){
         Day* day = data_days[i];
-        if(day->modified){
-            day_save(day);
-            day->modified = false;
+        if(!day->modified){
+            continue;
         }
+        if(!day_save(day)){
+            continue;
+        }
+        day->modified = false;
+        
     }
 }
 
@@ -227,5 +231,8 @@ void day_destroy(Day* day){
 }
 
 void data_destroy(void){
-    // todo
+    for(int16_t i = 0; i <= data_days_top; i++){
+        day_destroy(data_days[i]);
+        data_days[i] = NULL;
+    }
 }

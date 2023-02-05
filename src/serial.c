@@ -23,6 +23,7 @@
 
 #include "serial.h"
 #include "time_utils.h"
+#include "zejf_protocol.h"
 
 #define BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 128
@@ -43,16 +44,24 @@ bool time_check(int port_fd){
     return true;
 }
 
-void time_check_start(int *fd){
-    printf("time check start fd %d\n", *fd);
+void* time_check_start(void *fd){
+    printf("time check start fd %d\n", *(int*)fd);
     while(true){
-        time_check(*fd);
+        time_check(*(int*)fd);
         sleep(120);
     }
 }
 
-bool decode(char* buffer){
-    return false;
+void process_packet(Packet* pack){
+    switch(pack->command){
+        case MESSAGE:
+            printf("Message from uC: [%s]\n", pack->message);
+            break;
+        default:
+            printf("Weird packet, command=%d\n", pack->command);
+    }
+
+    free(pack->message);
 }
 
 void run_reader(int port_fd, char* serial)
@@ -60,15 +69,17 @@ void run_reader(int port_fd, char* serial)
     printf("waiting for serial device\n");
     sleep(2);
     
-    pthread_create(&time_check_thread, NULL, (void*)time_check_start, &port_fd);
+    pthread_create(&time_check_thread, NULL, &time_check_start, &port_fd);
 
     printf("serial port running fd %d\n", port_fd);
 
-    char buffer[BUFFER_SIZE];
-    char line_buffer[LINE_BUFFER_SIZE];
+    char buffer[BUFFER_SIZE] = {0};
+    char line_buffer[LINE_BUFFER_SIZE] = {0};
     int line_buffer_ptr = 0;
 
     struct stat stats;
+
+    Packet pack[1];
     
     while(true){
         ssize_t count = read(port_fd, buffer, BUFFER_SIZE);
@@ -80,16 +91,18 @@ void run_reader(int port_fd, char* serial)
         }
         for(ssize_t i = 0; i < count; i++){
             line_buffer[line_buffer_ptr] = buffer[i];
-            line_buffer_ptr++;
             if(buffer[i] == '\n'){
                 line_buffer[line_buffer_ptr-1] = '\0';
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-                if(!decode(line_buffer)){
-                    printf("Arduino: %s\n", line_buffer);
+                if(packet_from_string(pack, line_buffer, line_buffer_ptr-1)){
+                    process_packet(pack);
                 }
                 pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
                 line_buffer_ptr = 0;
+                continue;
             }
+            
+            line_buffer_ptr++;
             if(line_buffer_ptr == LINE_BUFFER_SIZE - 1){
                 printf("ERR SERIAL READER BUFF OVERFLOW\n");
                 line_buffer_ptr = 0;
@@ -171,9 +184,9 @@ void open_serial(char* serial){
     run_reader(port_fd, serial);
 }
 
-void run_serial(char* serial){
+void* run_serial(void* serial){
     while(true){
-        open_serial(serial);
+        open_serial((char*)serial);
         printf("Next attempt in 5s\n");
         sleep(5);
     }

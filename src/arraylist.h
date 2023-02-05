@@ -1,5 +1,5 @@
-#ifndef ARRAYLIST_H
-#define ARRAYLIST_H
+#ifndef _ARRAYLIST_H
+#define _ARRAYLIST_H
 
 #include <stdbool.h>
 #include <stddef.h>
