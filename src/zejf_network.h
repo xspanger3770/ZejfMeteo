@@ -38,7 +38,7 @@ bool network_accept(char* msg, int length, enum interface interface);
 
 bool network_push_packet(Packet* packet);
 
-void network_send_all();
+void network_send_all(time_t time);
 
 void network_process_packet(Packet* packet); // USER
 

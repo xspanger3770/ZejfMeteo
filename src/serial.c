@@ -24,11 +24,20 @@
 #include "serial.h"
 #include "time_utils.h"
 #include "zejf_protocol.h"
+#include "zejf_network.h"
 
 #define BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 128
 
 pthread_t time_check_thread;
+
+void network_process_packet(Packet* packet){
+    
+}
+
+void network_send_via(char* msg, int length, enum interface interface){
+
+}
 
 bool time_check(int port_fd){
     char msg[64];

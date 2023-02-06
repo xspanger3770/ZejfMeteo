@@ -150,7 +150,12 @@ bool network_accept(char* msg, int length, enum interface interface){
     packet->source_interface = interface;
     packet->ttl++;
 
-    return network_push_packet(packet);
+    if(!network_push_packet(packet)){
+        packet_destroy(packet);
+        return false;
+    }
+
+    return true;
 }
 
 bool network_push_packet(Packet* packet){
@@ -161,6 +166,8 @@ bool network_push_packet(Packet* packet){
     packet_queue[queue_head] = packet;
     queue_head += 1;
     queue_head %= PACKET_QUEUE_SIZE;
+
+    printf("1 packet added to the queue\n");
 
     return true;
 }
@@ -226,20 +233,7 @@ bool parse_rip(char* msg, uint8_t* variable_count, uint16_t** variables){
     return true;
 }
 
-void process_rip_packet(Packet* packet, time_t now){
-    uint8_t variable_count = 0;
-    uint16_t* variables = NULL;
-
-    if(!parse_rip(packet->message, &variable_count, &variables)){
-        return;
-    }
-
-    routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables);
-
-    free(variables);
-}
-
-void process_broadcast_packet(Packet* packet){
+void process_broadcast_packet(Packet* packet, bool self){
     char buff[PACKET_MAX_LENGTH];
     for(int i = 0; i < routing_table_top; i++){
         RoutingEntry* entry = routing_table[i];
@@ -249,26 +243,46 @@ void process_broadcast_packet(Packet* packet){
         }
         network_send_via(buff, strlen(buff), entry->interface);
     }
+
+    if(self){
+        network_process_packet(packet);
+    }
+}
+
+void process_rip_packet(Packet* packet, time_t now){
+    uint8_t variable_count = 0;
+    uint16_t* variables = NULL;
+
+    if(!parse_rip(packet->message, &variable_count, &variables)){
+        return;
+    }
+
+    if(routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables) == UPDATE_SUCCESS){
+        process_broadcast_packet(packet, false);
+    }
+
+    free(variables);
 }
 
 void network_send_all(time_t time){
-    while(queue_tail != queue_head){
+    while(queue_tail != queue_head) {
+        printf("Processing queue\n");
         Packet* packet = packet_queue[queue_tail];
         if(packet->ttl >= MAX_TTL){
             goto finish;
         }
 
-        if(packet->to == DEVICE_ID){
+        if(packet->to == BROADCAST){
             if(packet->command == RIP){
                 process_rip_packet(packet, time);
                 goto finish;
             }
-             
-            network_process_packet(packet);
+            process_broadcast_packet(packet, true);
             goto finish;
         }
-        if(packet->to == BROADCAST){
-            process_broadcast_packet(packet);
+
+        if(packet->to == DEVICE_ID){ 
+            network_process_packet(packet);
             goto finish;
         }
 
@@ -282,6 +296,7 @@ void network_send_all(time_t time){
             goto finish;
         }
         
+        // pošli to dál
         network_send_via(buff, strlen(buff), iface);
         
         finish:
@@ -293,11 +308,15 @@ void network_send_all(time_t time){
     }
 }
 
-void network_send_via(char* msg, int length, enum interface interface);
-
 void network_destroy(void){
     for(int i = 0; i < routing_table_top; i++){
         routing_entry_destroy(routing_table[i]);
+    }
+
+    while(queue_tail != queue_head){
+        packet_destroy(packet_queue[queue_tail]);
+        queue_tail ++;
+        queue_tail %= PACKET_QUEUE_SIZE;
     }
 }
 
@@ -316,17 +335,27 @@ void print_table(){
 
 int main(){
     network_init();
-    print_table();
-    uint16_t vars[1] = {42};
-    routing_table_update(5, 42, 3, 0, 1, vars);
-    print_table();
-    routing_table_update(5, 41, 2, 0, 1, vars);
-    print_table();
-    routing_table_update(5, 43, 4, 0, 1, vars);
-    print_table();
-    routing_table_update(4, USB, 2, 0, 1, vars);
+
+    char msg[] = "5,4";
     
+    Packet* initial_packet = packet_create();
+    initial_packet->command = RIP;
+    initial_packet->from = 42;
+    initial_packet->to = BROADCAST;
+    initial_packet->ttl = 0;
+    initial_packet->message_size = strlen(msg);
+    initial_packet->message = msg;
+    
+    char buff[PACKET_MAX_LENGTH];
+    packet_to_string(initial_packet, buff, PACKET_MAX_LENGTH);
+
+    printf("%s\n", buff);
+
+    network_accept(buff, strlen(buff), USB);
+    network_send_all(0);
     print_table();
+
+    free(initial_packet);
 
     network_destroy();
     return 0;

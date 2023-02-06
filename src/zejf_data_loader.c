@@ -137,18 +137,24 @@ size_t day_load(Day** day, uint32_t day_number, size_t max_size){
     FILE *file = fopen(path_buff, "rb");
     if (file == NULL) {
         perror("fopen");
-        return false;
+        return 0;
     }
 
     fseek(file, 0, SEEK_END);
-    long fsize = ftell(file);
+    size_t fsize = ftell(file);
     fseek(file, 0, SEEK_SET); 
+
+    if(fsize > max_size){
+        fsize = 0;
+        goto close;
+    }
 
     printf("%ld bytes will be loaded from [%s]\n", fsize, path_buff);
 
     (*day) = malloc(fsize);
     if((*day) == NULL){
         perror("malloc");
+        fsize = 0;
         goto close;
     }
 
@@ -156,6 +162,7 @@ size_t day_load(Day** day, uint32_t day_number, size_t max_size){
         perror("fread");
         free(*day);
         (*day) = NULL;
+        fsize = 0;
         goto close;
     }
 

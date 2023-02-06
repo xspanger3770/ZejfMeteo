@@ -49,4 +49,6 @@ int main2(int argc, char *argv[]){
     settings.serial = serial;
 
     meteo_start(&settings);
+
+    return 0;
 }
