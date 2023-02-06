@@ -3,6 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <errno.h>
+#include <limits.h>
 
 Packet* packet_queue[PACKET_QUEUE_SIZE];
 uint8_t queue_head;
@@ -143,6 +147,9 @@ bool network_accept(char* msg, int length, enum interface interface){
         return false;
     }
 
+    packet->source_interface = interface;
+    packet->ttl++;
+
     return network_push_packet(packet);
 }
 
@@ -169,36 +176,115 @@ bool find_interface(enum interface* iface, uint16_t to){
     return false;
 }
 
-void process_rip_packet(Packet* packet){
+bool parseNumber(const char *str, long *val, long min, long max)
+{
+    char *temp;
+    bool rc = true;
+    errno = 0;
+    *val = strtol(str, &temp, 0);
 
+    if (temp == str || *temp != '\0' ||
+        ((*val == LONG_MIN || *val == LONG_MAX) && errno == ERANGE))
+        rc = false;
+
+    if(*val > max || *val < min){
+        rc = false;
+    }
+
+    return rc;
+}
+
+bool parse_rip(char* msg, uint8_t* variable_count, uint16_t** variables){
+    char *token;
+    token = strtok(msg, ",");
+   
+    *variable_count = 0;
+
+    while( token != NULL ) {
+        (*variable_count)++;
+
+        long variable;
+
+        if(!parseNumber(token, &variable, 0, UINT16_MAX)){
+            free(*variables);
+            return false;
+        }
+
+        uint16_t* ptr = realloc(*variables, *variable_count * sizeof(uint16_t));
+
+        if(ptr == NULL){
+            free(*variables);
+            return false;
+        }
+
+        *variables = ptr;
+        (*variables)[*variable_count-1] = (uint16_t)variable;
+
+        token = strtok(NULL, ",");
+    }
+
+    return true;
+}
+
+void process_rip_packet(Packet* packet, time_t now){
+    uint8_t variable_count = 0;
+    uint16_t* variables = NULL;
+
+    if(!parse_rip(packet->message, &variable_count, &variables)){
+        return;
+    }
+
+    routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables);
+
+    free(variables);
 }
 
 void process_broadcast_packet(Packet* packet){
-    
+    char buff[PACKET_MAX_LENGTH];
+    for(int i = 0; i < routing_table_top; i++){
+        RoutingEntry* entry = routing_table[i];
+
+        if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
+            continue;
+        }
+        network_send_via(buff, strlen(buff), entry->interface);
+    }
 }
 
-void network_send_all(){
+void network_send_all(time_t time){
     while(queue_tail != queue_head){
         Packet* packet = packet_queue[queue_tail];
-        if(packet->to == DEVICE_ID){
-            if(packet->command == RIP){
-                process_rip_packet(packet);
-            } else {
-                network_process_packet(packet);
-            }
-        } else {
-            if(packet->to == BROADCAST){
-                process_broadcast_packet(packet);
-            }else{
-                enum interface iface;
-                if(find_interface(&iface, packet->to)){
-                    char buff[PACKET_MAX_LENGTH];
-                    packet_to_string(packet, buff, PACKET_MAX_LENGTH);
-                    network_send_via(buff, strlen(buff), iface);
-                }
-            }
+        if(packet->ttl >= MAX_TTL){
+            goto finish;
         }
 
+        if(packet->to == DEVICE_ID){
+            if(packet->command == RIP){
+                process_rip_packet(packet, time);
+                goto finish;
+            }
+             
+            network_process_packet(packet);
+            goto finish;
+        }
+        if(packet->to == BROADCAST){
+            process_broadcast_packet(packet);
+            goto finish;
+        }
+
+        enum interface iface;
+        if(!find_interface(&iface, packet->to)){
+            goto finish;
+        }
+
+        char buff[PACKET_MAX_LENGTH];
+        if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
+            goto finish;
+        }
+        
+        network_send_via(buff, strlen(buff), iface);
+        
+        finish:
         packet_destroy(packet);
         packet_queue[queue_tail] = NULL;
 

@@ -14,10 +14,6 @@
 #define UPDATE_FAIL 1
 #define UPDATE_NO_CHANGE 2
 
-enum interface {
-    USB = 0
-};
-
 typedef struct routing_table_entry_t {
     uint16_t device_id;
     uint8_t interface;

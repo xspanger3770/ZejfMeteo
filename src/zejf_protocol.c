@@ -25,19 +25,6 @@ void packet_destroy(Packet* pack){
     free(pack);
 }
 
-bool parse_num_range(char* str, long* num, long min, long max){
-    errno = 0;
-    char *endptr = NULL;
-    long num2 = strtol(str, &endptr, 10);
-    if(errno != 0 || *endptr || !str || num2 < min || num2 > max){
-        return false;
-    }
-
-    *num = num2;
-
-    return true;
-}
-
 int32_t checksum(void* ptr, size_t size){
     int32_t result = 5381;
     for(size_t i = 0; i < size; i++){
@@ -46,6 +33,7 @@ int32_t checksum(void* ptr, size_t size){
     return result;
 }
 
+// note that checksum itself and source interface not included
 int32_t packet_checksum(Packet* packet){
     int32_t result = checksum(&packet->command, sizeof(packet->command));
     result+=checksum(&packet->message_size, sizeof(packet->message_size));

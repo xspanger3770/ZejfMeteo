@@ -19,7 +19,12 @@ enum commands{
     RIP = 0x07
 };
 
+enum interface {
+    USB = 0
+};
+
 typedef struct packet_t{
+    enum interface source_interface;
     uint16_t from;
     uint16_t to;
     uint8_t ttl;
