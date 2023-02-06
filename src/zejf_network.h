@@ -2,7 +2,7 @@
 #define _ZEJF_NETWORK_H
 
 #define PACKET_QUEUE_SIZE 32
-#define ROUTING_TABLE_SIZE 1
+#define ROUTING_TABLE_SIZE 16
 #define DEVICE_ID 0x0001
 
 #include "zejf_protocol.h"
@@ -38,8 +38,14 @@ void routing_entry_destroy(RoutingEntry* entry);
 int routing_table_update(uint16_t device_id, uint8_t interface, uint8_t distance, time_t time, 
     uint8_t variable_count, uint16_t* variables);
 
-void network_send_packet(Packet* packet, uint16_t to);
+bool network_accept(char* msg, int length, enum interface interface);
 
-void network_accept(char* msg, enum interface interface);
+bool network_push_packet(Packet* packet);
+
+void network_send_all();
+
+void network_process_packet(Packet* packet); // USER
+
+void network_send_via(char* msg, int length, enum interface interface); // USER
 
 #endif

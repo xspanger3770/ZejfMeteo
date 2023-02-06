@@ -15,6 +15,14 @@ void network_init(void){
     queue_head = 0;
     queue_tail = 0;
     routing_table_top = 0;
+
+    for(int i = 0; i < PACKET_QUEUE_SIZE; i++){
+        packet_queue[i] = NULL;
+    }
+
+    for(int i = 0; i < ROUTING_TABLE_SIZE; i++){
+        routing_table[i] = NULL;
+    }
 }
 
 RoutingEntry* routing_entry_create(uint8_t variable_count, uint16_t* variables){
@@ -124,13 +132,82 @@ int routing_table_update(uint16_t device_id, uint8_t interface, uint8_t distance
     return result;
 }
 
-void network_send_packet(Packet* packet, uint16_t to){
+bool network_accept(char* msg, int length, enum interface interface){
+    Packet* packet = packet_create();
+    if(packet == NULL){
+        return false;
+    }
+
+    if(packet_from_string(packet, msg, length) != 0){
+        packet_destroy(packet);
+        return false;
+    }
+
+    return network_push_packet(packet);
+}
+
+bool network_push_packet(Packet* packet){
+    if((queue_head + 1) % PACKET_QUEUE_SIZE == queue_tail){
+        return false; // queue full
+    }
+
+    packet_queue[queue_head] = packet;
+    queue_head += 1;
+    queue_head %= PACKET_QUEUE_SIZE;
+
+    return true;
+}
+
+bool find_interface(enum interface* iface, uint16_t to){
+    for(int i = 0; i < routing_table_top; i++){
+        RoutingEntry* entry = routing_table[i];
+        if(entry->device_id == to){
+            *iface = entry->interface;
+            return true;
+        }
+    }
+    return false;
+}
+
+void process_rip_packet(Packet* packet){
 
 }
 
-void network_accept(char* msg, enum interface interface){
-
+void process_broadcast_packet(Packet* packet){
+    
 }
+
+void network_send_all(){
+    while(queue_tail != queue_head){
+        Packet* packet = packet_queue[queue_tail];
+        if(packet->to == DEVICE_ID){
+            if(packet->command == RIP){
+                process_rip_packet(packet);
+            } else {
+                network_process_packet(packet);
+            }
+        } else {
+            if(packet->to == BROADCAST){
+                process_broadcast_packet(packet);
+            }else{
+                enum interface iface;
+                if(find_interface(&iface, packet->to)){
+                    char buff[PACKET_MAX_LENGTH];
+                    packet_to_string(packet, buff, PACKET_MAX_LENGTH);
+                    network_send_via(buff, strlen(buff), iface);
+                }
+            }
+        }
+
+        packet_destroy(packet);
+        packet_queue[queue_tail] = NULL;
+
+        queue_tail+=1;
+        queue_tail %= PACKET_QUEUE_SIZE;
+    }
+}
+
+void network_send_via(char* msg, int length, enum interface interface);
 
 void network_destroy(void){
     for(int i = 0; i < routing_table_top; i++){
@@ -152,6 +229,7 @@ void print_table(){
 }
 
 int main(){
+    network_init();
     print_table();
     uint16_t vars[1] = {42};
     routing_table_update(5, 42, 3, 0, 1, vars);

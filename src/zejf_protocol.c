@@ -56,6 +56,7 @@ int32_t packet_checksum(Packet* packet){
     return result;
 }
 
+// fill in packet from string, malloc the message, length is the length from { to }, rv 0 is succes
 int packet_from_string(Packet* packet, char* data, int length){
     if(data[0] != '{' || data[length - 1] != '}'){
         return 1;
