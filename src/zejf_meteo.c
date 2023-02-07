@@ -8,8 +8,9 @@
 #include "serial.h"
 #include "zejf_meteo.h"
 #include "dynamic_data.h"
+#include "zejf_network.h"
 
-pthread_t serial_thread;
+pthread_mutex_t zejf_lock;
 
 bool process_command(char *line)
 {
@@ -42,16 +43,20 @@ void command_line()
 }
 
 void meteo_stop(){
-    pthread_cancel(serial_thread);
-    pthread_join(serial_thread, NULL);
+    stop_serial();
+
+    network_destroy();
 
     data_destroy();
+    pthread_mutex_destroy(&zejf_lock);
 }
 
 void meteo_start(Settings* settings){
+    pthread_mutex_init(&zejf_lock, NULL);
+
     data_init();
 
-    pthread_create(&serial_thread, NULL, &run_serial, settings->serial);
+    run_serial(settings);
     
     command_line();
 

@@ -1,6 +1,10 @@
 #ifndef _SERIAL_H
 #define _SERIAL_H
 
-void* run_serial(void* serial);
+#include "zejf_meteo.h"
+
+void run_serial(Settings* settings);
+
+void stop_serial();
 
 #endif

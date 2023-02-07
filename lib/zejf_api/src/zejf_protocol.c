@@ -107,7 +107,7 @@ int packet_from_string(Packet* packet, char* data, int length){
 bool packet_to_string(Packet* pack, char* buff, size_t max_length){
     pack->message_size = strlen(pack->message);
     int32_t checksum = packet_checksum(pack);
-    return snprintf(buff, max_length, "{%hu;%hu;%hhu;%hhu;%"SCNd32";%hu;%s}", pack->from, pack->to, pack->ttl,
+    return snprintf(buff, max_length, "{%hu;%hu;%hhu;%hhu;%"SCNd32";%hu;%s}\n", pack->from, pack->to, pack->ttl,
         pack->command, checksum, pack->message_size, pack->message) > 0;
 }
 

@@ -34,7 +34,9 @@ void network_send_all(time_t time);
 
 void routing_table_check(time_t time);
 
-bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* variables) ;
+bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* variables);
+
+bool create_packet(char* buff, uint16_t to, uint8_t command, char* msg);
 
 void network_process_packet(Packet* packet); // USER
 

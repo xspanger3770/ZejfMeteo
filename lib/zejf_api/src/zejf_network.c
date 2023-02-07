@@ -156,7 +156,6 @@ bool network_accept(char* msg, int length, enum interface interface){
 
     if(rv != 0){
         packet_destroy(packet);
-        printf("fail %d\n", rv);
         return false;
     }
 
@@ -387,7 +386,7 @@ bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* va
 
     for(int i = 0; i < variable_count; i++){
         VariableInfo var = variables[i];
-        index += snprintf(&msg[index], PACKET_MAX_LENGTH - index, "%"SCNu16",%"SCNu16",", var.id, var.samples_per_day);
+        index += snprintf(&msg[index], PACKET_MAX_LENGTH - index, "%"SCNu16",%"SCNu32",", var.id, var.samples_per_day);
     }
 
     if(variable_count > 0){
@@ -407,6 +406,18 @@ bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* va
     return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
 }
 
+bool create_packet(char* buff, uint16_t to, uint8_t command, char* msg){
+    Packet packet[1];
+    packet->command = command;
+    packet->from = DEVICE_ID;
+    packet->to = to;
+    packet->ttl = 0;
+    packet->message_size = strlen(msg);
+    packet->message = msg;
+    
+    return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
+}
+
 void print_table(){
     printf("Printing rounting table size %d\n", routing_table_top);
     for(int i = 0; i < routing_table_top; i++){
@@ -417,6 +428,12 @@ void print_table(){
         printf("        interfa=%d\n", entry->interface);
         printf("        lastseen=%lld\n", entry->last_seen);
         printf("        var_count=%d\n", entry->variable_count);
+        for(int i = 0; i < entry->variable_count; i++){
+            VariableInfo var = entry->variables[i];
+            printf("        var #%d\n", i);
+            printf("            id=%d\n", var.id);
+            printf("            sr=%d\n", var.samples_per_day);
+        }
     }
 }
 
@@ -428,13 +445,28 @@ int network_test(void){
     VariableInfo vars[] = {T2M};
 
     char buff[PACKET_MAX_LENGTH];
-    create_routing_message(buff, 0, vars);
+    create_routing_message(buff, 1, vars);
 
     printf("%s\n", buff);
 
     int rv = network_accept(buff, strlen(buff), USB);
     printf("RV %d\n", rv);
     network_send_all(0);
+
+    char msg[] = "0";
+
+    Packet* pack1 = packet_create();
+    pack1->from = DEVICE_ID;
+    pack1->to = 2;
+    pack1->command = TIME_CHECK;
+    pack1->message_size = strlen(msg);
+    pack1->message = msg;
+
+    packet_to_string(pack1, buff, PACKET_MAX_LENGTH);
+
+    printf("%s\n", buff);
+
+    free(pack1);
 
     network_destroy();
     return 0;

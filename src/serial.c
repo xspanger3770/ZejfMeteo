@@ -20,45 +20,60 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include "serial.h"
 #include "time_utils.h"
 #include "zejf_protocol.h"
 #include "zejf_network.h"
+#include "zejf_meteo.h"
 
 #define BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 128
 
 pthread_t time_check_thread;
+pthread_t rip_thread;
+pthread_t serial_thread;
+
+volatile bool serial_running = false;
+volatile bool time_threads_running = false;
+
 
 void network_process_packet(Packet* packet){
     
 }
 
 void network_send_via(char* msg, int length, enum interface interface){
-
+    switch(interface){
+        case USB:
+            puts(msg);
+            break;
+        default:
+            printf("Unknown interaface: %d\n", interface);
+    }
 }
 
 bool time_check(int port_fd){
-    char msg[64];
+    char msg[PACKET_MAX_LENGTH];
 
-    printf("c %ld\n", current_seconds());
-    snprintf(msg, 64, "time %ld\n", current_seconds());
-    
-    if(write(port_fd, msg, strlen(msg)) == -1){
+    int64_t seconds = current_seconds();
+    if(snprintf(msg, 32, "%"SCNd64, seconds) < 0){
+        return false;
+    }
+
+    char buffer[PACKET_MAX_LENGTH];
+    if(!create_packet(buffer, BROADCAST, TIME_CHECK, msg)){
+        return false;
+    }
+
+    printf("sending %s\n", buffer);
+
+    if(write(port_fd, buffer, strlen(buffer)) == -1){
         perror("write");
         return false;
     }
 
     return true;
-}
-
-void* time_check_start(void *fd){
-    printf("time check start fd %d\n", *(int*)fd);
-    while(true){
-        time_check(*(int*)fd);
-        sleep(120);
-    }
 }
 
 void process_packet(Packet* pack){
@@ -73,12 +88,41 @@ void process_packet(Packet* pack){
     free(pack->message);
 }
 
+void* time_check_start(void *fd){
+    printf("time check start fd %d\n", *(int*)fd);
+    sleep(3);
+    while(true){
+        if(!time_check(*(int*)fd)){
+            printf("time check fail\n");
+        }
+        sleep(120);
+    }
+}
+
+char rip[64];
+int rip_len;
+
+void* rip_thread_start(void* fd){
+    int port_fd = *((int*)fd);
+    int rip_len = strlen(rip);
+    while(true){
+        printf("sending %s\n", rip);
+        if(write(port_fd, rip, rip_len) == -1){
+            perror("write");
+        }
+        sleep(60);
+    }
+}
+
 void run_reader(int port_fd, char* serial)
 {
     printf("waiting for serial device\n");
     sleep(2);
-    
+
+    create_routing_message(rip, 0, NULL);
+    time_threads_running = true;
     pthread_create(&time_check_thread, NULL, &time_check_start, &port_fd);
+    pthread_create(&rip_thread, NULL, &rip_thread_start, &port_fd);
 
     printf("serial port running fd %d\n", port_fd);
 
@@ -87,8 +131,6 @@ void run_reader(int port_fd, char* serial)
     int line_buffer_ptr = 0;
 
     struct stat stats;
-
-    Packet pack[1];
     
     while(true){
         ssize_t count = read(port_fd, buffer, BUFFER_SIZE);
@@ -102,10 +144,12 @@ void run_reader(int port_fd, char* serial)
             line_buffer[line_buffer_ptr] = buffer[i];
             if(buffer[i] == '\n'){
                 line_buffer[line_buffer_ptr-1] = '\0';
+                printf("            %s\n", line_buffer);
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-                if(packet_from_string(pack, line_buffer, line_buffer_ptr-1)){
-                    process_packet(pack);
-                }
+                pthread_mutex_lock(&zejf_lock);
+                network_accept(line_buffer, line_buffer_ptr - 1, USB);
+                network_send_all(0);
+                pthread_mutex_unlock(&zejf_lock);
                 pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
                 line_buffer_ptr = 0;
                 continue;
@@ -122,8 +166,11 @@ void run_reader(int port_fd, char* serial)
 
     close(port_fd);
     
+    time_threads_running = false;
     pthread_cancel(time_check_thread);
     pthread_join(time_check_thread, NULL);
+    pthread_cancel(rip_thread);
+    pthread_join(rip_thread, NULL);
     printf("serial reader thread finish\n");
 }
 
@@ -193,10 +240,26 @@ void open_serial(char* serial){
     run_reader(port_fd, serial);
 }
 
-void* run_serial(void* serial){
+void *start_serial(void* arg){
     while(true){
-        open_serial((char*)serial);
+        open_serial((char*)arg);
         printf("Next attempt in 5s\n");
         sleep(5);
+    }
+}
+
+void run_serial(Settings* settings){
+    pthread_create(&serial_thread, NULL, &start_serial, settings->serial);
+}
+
+void stop_serial() {
+    pthread_cancel(serial_thread);
+    pthread_join(serial_thread, NULL);
+    if(time_threads_running){
+        pthread_cancel(time_check_thread);
+        pthread_join(time_check_thread, NULL);
+        pthread_cancel(rip_thread);
+        pthread_join(rip_thread, NULL);
+        time_threads_running = false;
     }
 }
