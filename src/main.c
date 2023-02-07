@@ -4,11 +4,17 @@
 #include <stdlib.h>
 
 #include "serial.h"
+
 #include "zejf_meteo.h"
+#include "zejf_network.h"
 
 void print_usage(void)
 {
     printf("Usage: -s <serial port> -i <ip address> -p <port number>\n");
+}
+
+int main(){
+    network_test();
 }
 
 int main2(int argc, char *argv[]){

@@ -5,8 +5,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#define PACKET_MAX_LENGTH 64
-#define MAX_TTL 8
+#include "zejf_settings.h"
+
 #define BROADCAST 0xFFFF
 
 enum commands{
@@ -17,10 +17,6 @@ enum commands{
     MESSAGE = 0x05,
     TIME_CHECK = 0x06,
     RIP = 0x07
-};
-
-enum interface {
-    USB = 0
 };
 
 typedef struct packet_t{

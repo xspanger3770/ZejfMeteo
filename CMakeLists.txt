@@ -1,28 +1,25 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.13)
 
-# Project configuration
-project(zejfmeteo)
-file(GLOB SOURCES "src/*.c")
-set(VERSION "0.0.0")
-set(EXECUTABLE zejfmeteo_${VERSION})
+set(CMAKE_C_STANDARD 11)
+
 
 set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra -Wpedantic")
 #set(ALL_FLAGS "-O2 -s -std=gnu99 -Wall -Wextra -Wpedantic")
 
-# Executable
-add_executable(${EXECUTABLE} ${SOURCES})
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_FLAGS}")
 
-# Configure compiler warnings
-if (CMAKE_C_COMPILER_ID MATCHES Clang OR ${CMAKE_C_COMPILER_ID} STREQUAL GNU)
-  # using regular Clang, AppleClang or GCC
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_FLAGS}")
-elseif (${CMAKE_C_COMPILER_ID} STREQUAL MSVC)
-  # using Visual Studio C++
-  target_compile_definitions(${EXECUTABLE} PRIVATE _CRT_SECURE_NO_DEPRECATE)
-  set(CMAKE_CXX_FLAGS "/permissive- /W4 /EHsc")
-endif()
+set(EXECUTABLE zejfmeteo_0.0.0)
 
-if(MINGW)
-    target_compile_definitions(${EXECUTABLE} PRIVATE __USE_MINGW_ANSI_STDIO=1)
-endif()
+# Project configuration
+project(zejfmeteo)
+
+include_directories(lib/zejf_api/inc)
+
+add_subdirectory(src)
+add_subdirectory(lib)
+
+target_include_directories(zejf_api PUBLIC src)
+
+target_link_libraries(zejfmeteo zejf_api)
+
 

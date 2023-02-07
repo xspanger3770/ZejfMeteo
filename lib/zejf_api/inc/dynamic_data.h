@@ -5,16 +5,19 @@
 
 #define ONE_PER_MINUTE (60 * 24)
 
-#define DAY_BUFFER_SIZE (128)
-#define DAY_MAX_SIZE (1 * 1024 * 1024)
+#include "zejf_settings.h"
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef struct variable_t{
+typedef struct variable_info_t{
     uint16_t id;
-    size_t samples_per_day;
+    uint32_t samples_per_day;
+} VariableInfo;
+
+typedef struct variable_t{
+    VariableInfo info;
     float* _start;
 } Variable;
 
@@ -29,9 +32,9 @@ typedef struct dynamic_day_t{
 
 void data_init(void);
 
-float* data_pointer(uint32_t day_number, Variable target_variable);
+float* data_pointer(uint32_t day_number, VariableInfo target_variable);
 
-bool data_log(Variable target_variable, uint32_t day_number, size_t sample_num, float val);
+bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val);
 
 size_t day_load(Day** day, uint32_t day_number, size_t day_max_size);
 

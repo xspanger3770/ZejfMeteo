@@ -1,0 +1,40 @@
+#ifndef _ZEJF_SETTINGS_H
+#define _ZEJF_SETTINGS_H
+
+
+// NETWORK
+#define DEVICE_ID 0x0001
+
+// PACKETS
+#define PACKET_MAX_LENGTH 64
+#define PACKET_MAX_TTL 8
+#define PACKET_QUEUE_SIZE 32
+
+// ROUTING
+#define ROUTING_TABLE_SIZE 16
+#define ROUTING_ENTRY_TIMEOUT 120 // s
+
+// DATA
+#define DAY_BUFFER_SIZE 128
+#define DAY_MAX_SIZE (1 * 1024 * 1024)
+
+enum interface {
+    USB = 0
+};
+
+/*  ===== USAGE ====  
+
+    determine values above
+
+    define void network_process_packet(Packet* packet);
+    define void network_send_via(char* msg, int length, enum interface interface);
+
+    call network_init
+    
+    call network_accept for every received string
+    call network_send_all to send all packets
+
+    periodically call routing_table_check
+*/
+
+#endif

@@ -1,6 +1,7 @@
 #include "dynamic_data.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 Day* data_days[DAY_BUFFER_SIZE];
 int16_t data_days_top;
@@ -58,7 +59,7 @@ void calculate_offsets(Day* day){
     for(uint16_t i = 0; i < day->variable_count; i++){
         Variable *var = &day->variables[i];
         var->_start = (float*)&day->data[day->variable_count * sizeof(Variable) + temp * sizeof(float)];
-        temp += var->samples_per_day;
+        temp += var->info.samples_per_day;
     }
 }
 
@@ -83,7 +84,6 @@ Day** day_get(uint32_t day_number, bool load, bool create){
 
     if(result == NULL && create){
         result = day_create(day_number);
-        printf("created day size %ld\n", result->total_size);
         add = true;
     }
 
@@ -114,19 +114,19 @@ Variable* get_variable(Day* day, uint16_t variable_id)
 {
     for(int i = 0; i < day->variable_count; i++){
         Variable* var = &day->variables[i];
-        if(var->id == variable_id){
+        if(var->info.id == variable_id){
             return &day->variables[i];
         }
     }
     return NULL;
 }
 
-bool day_add_variable(Day** day, Variable new_variable){
+bool day_add_variable(Day** day, VariableInfo new_variable){
     // calculate new size
     size_t new_size = sizeof(Day);
     new_size += ((*day)->variable_count + 1) * sizeof(Variable);
     for(uint16_t i = 0; i < (*day)->variable_count; i++){
-        new_size += (*day)->variables[i].samples_per_day * sizeof(float);
+        new_size += (*day)->variables[i].info.samples_per_day * sizeof(float);
     }
     new_size += new_variable.samples_per_day * sizeof(float);
 
@@ -150,7 +150,7 @@ bool day_add_variable(Day** day, Variable new_variable){
     }
 
     // add new variable
-    new_day->variables[new_day->variable_count - 1] = new_variable;
+    new_day->variables[new_day->variable_count - 1].info = new_variable;
     
     calculate_offsets(new_day);
     
@@ -158,7 +158,7 @@ bool day_add_variable(Day** day, Variable new_variable){
     for(uint16_t i = 0; i < (*day)->variable_count; i++){
         Variable old_var = (*day)->variables[i];
         Variable new_var = new_day->variables[i];
-        for(size_t j = 0; j < old_var.samples_per_day; j++){
+        for(uint32_t j = 0; j < old_var.info.samples_per_day; j++){
             new_var._start[j] = old_var._start[j];
         }
     }
@@ -166,7 +166,7 @@ bool day_add_variable(Day** day, Variable new_variable){
 
     // set all to -99
     Variable new_var = new_day->variables[new_day->variable_count - 1];
-    for(size_t j = 0; j < new_variable.samples_per_day; j++){
+    for(uint32_t j = 0; j < new_variable.samples_per_day; j++){
         new_var._start[j] = ERROR;
     }
 
@@ -175,7 +175,7 @@ bool day_add_variable(Day** day, Variable new_variable){
     return true;
 }
 
-bool data_log(Variable target_variable, uint32_t day_number, size_t sample_num, float val){
+bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val){
     Day** day = day_get(day_number, true, true);
     if(day == NULL){
         return false;
@@ -187,10 +187,10 @@ bool data_log(Variable target_variable, uint32_t day_number, size_t sample_num, 
         }
         existing_variable = get_variable(*day, target_variable.id);
     }
-    if(existing_variable->samples_per_day != target_variable.samples_per_day){
+    if(existing_variable->info.samples_per_day != target_variable.samples_per_day){
         return false;
     }
-    if(sample_num >= existing_variable->samples_per_day){
+    if(sample_num >= existing_variable->info.samples_per_day){
         return false;
     }
     existing_variable->_start[sample_num] = val;
@@ -198,7 +198,7 @@ bool data_log(Variable target_variable, uint32_t day_number, size_t sample_num, 
     return true;
 }
 
-float* data_pointer(uint32_t day_number, Variable target_variable){
+float* data_pointer(uint32_t day_number, VariableInfo target_variable){
     Day** day = day_get(day_number, true, true);
     if(day == NULL){
         return NULL;

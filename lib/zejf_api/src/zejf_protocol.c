@@ -1,8 +1,10 @@
 #include "zejf_protocol.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <inttypes.h>
 
 Packet* packet_create(void){
     Packet* pack = calloc(1, sizeof(Packet));
@@ -50,17 +52,19 @@ int packet_from_string(Packet* packet, char* data, int length){
         return 1;
     }
 
-    data[length - 1] = '\0';
-
     uint16_t from = 0;
     uint16_t to = 0;
-    uint8_t ttl = 0;
-    uint8_t command = 0;
+    uint16_t ttl = 0;
+    uint16_t command = 0;
     int32_t checksum = 0;
     uint16_t message_size = 0;
+
     char message[length];
 
-    int rv = sscanf(data, "{%hu;%hu;%hhu;%hhu;%d;%hu;%s", &from, &to, &ttl, &command, &checksum, &message_size, message);
+    printf("scanning [%s]\n", data);
+
+    int rv = sscanf(data, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu16";%"SCNd32";%"SCNu16";%s", 
+                            &from, &to, &ttl, &command, &checksum, &message_size, message);
 
     if(rv != 7){
         return 2;
@@ -69,7 +73,13 @@ int packet_from_string(Packet* packet, char* data, int length){
     if(message == NULL){
         return 3;
     }
+
     size_t len = strlen(message);
+    printf("original message [%s]\n", message);
+    message[len-1] = '\0';
+    printf("new message [%s]\n", message);
+    len--;
+
     if(len != message_size){
         return 4;
     }
@@ -82,8 +92,9 @@ int packet_from_string(Packet* packet, char* data, int length){
     packet->message_size=message_size;
     packet->message = message;
 
-    printf("message [%s] cs %d/%d\n", message, checksum, packet_checksum(packet));
+    printf("message [%s] cs %"SCNd32"/%"SCNd32"\n", message, checksum, packet_checksum(packet));
     if(checksum != packet_checksum(packet)){
+        packet->message = NULL;
         return 5;
     }
 
@@ -96,7 +107,7 @@ int packet_from_string(Packet* packet, char* data, int length){
 bool packet_to_string(Packet* pack, char* buff, size_t max_length){
     pack->message_size = strlen(pack->message);
     int32_t checksum = packet_checksum(pack);
-    return snprintf(buff, max_length, "{%hu;%hu;%hhu;%hhu;%d;%hu;%s}", pack->from, pack->to, pack->ttl,
+    return snprintf(buff, max_length, "{%hu;%hu;%hhu;%hhu;%"SCNd32";%hu;%s}", pack->from, pack->to, pack->ttl,
         pack->command, checksum, pack->message_size, pack->message) > 0;
 }
 
