@@ -1,14 +1,14 @@
 #ifndef _ZEJF_SETTINGS_H
 #define _ZEJF_SETTINGS_H
 
-
 // NETWORK
 #define DEVICE_ID 0x0001
 
 // PACKETS
-#define PACKET_MAX_LENGTH 64
+#define PACKET_MAX_LENGTH 128
 #define PACKET_MAX_TTL 8
-#define PACKET_QUEUE_SIZE 32
+#define PACKET_QUEUE_SIZE 512
+#define PACKET_TIMEOUT 5000
 
 // ROUTING
 #define ROUTING_TABLE_SIZE 16
@@ -16,12 +16,11 @@
 
 // DATA
 #define DAY_BUFFER_SIZE 128
-#define DAY_MAX_SIZE (1 * 1024 * 1024)
+#define DAY_MAX_SIZE (16 * 1024 * 1024)
 
-enum interface {
-    USB = 0
+enum interface_type_t{
+    USB = 1
 };
-
 /*  ===== USAGE ====  
 
     determine values above

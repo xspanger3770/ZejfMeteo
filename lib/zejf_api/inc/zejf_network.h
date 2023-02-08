@@ -5,41 +5,61 @@
 #include "dynamic_data.h"
 
 #include <stdint.h>
-#include <sys/time.h>
 
 #define UPDATE_SUCCESS 0
 #define UPDATE_FAIL 1
 #define UPDATE_NO_CHANGE 2
 
 typedef struct routing_table_entry_t {
+    uint32_t rx_id;
+    uint32_t tx_id;
+    TIME_TYPE last_seen;
     uint16_t device_id;
-    uint8_t interface;
+    Interface* interface;
     uint8_t distance;
-    time_t last_seen;
     uint8_t variable_count;
     VariableInfo variables[];
 } RoutingEntry;
 
+// Initialise buffers etc..
 void network_init(void);
 
+// Free all resources
 void network_destroy(void);
 
+// tst
 int network_test(void);
 
-bool network_accept(char* msg, int length, enum interface interface);
+// Packet received
+bool network_accept(char* msg, int length, Interface* interface, TIME_TYPE time);
 
-bool network_push_packet(Packet* packet);
+// Sending packet - adds to the queue
+bool network_send_packet(Packet* packet, TIME_TYPE time);
 
-void network_send_all(time_t time);
+// Iterate the queue
+void network_send_all(TIME_TYPE time);
 
-void routing_table_check(time_t time);
+// check for inactive members of routing table
+void routing_table_check(TIME_TYPE time);
 
-bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* variables);
+// send routing info to all available devices
+bool network_send_routing_info(uint8_t variable_count, VariableInfo* variables);
 
-bool create_packet(char* buff, uint16_t to, uint8_t command, char* msg);
+// create Packet handle that can be send using network_send_packet
+Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg);
 
-void network_process_packet(Packet* packet); // USER
+// handle packed meant for this device
+// target platform defines this
+void network_process_packet(Packet* packet);
 
-void network_send_via(char* msg, int length, enum interface interface); // USER
+// send package as message using given interface
+// target platform defines this
+void network_send_via(char* msg, int length, Interface* interface);
+
+// send packet using every interface
+// no ack control
+// used for RIP
+// target platform defines this
+void network_send_everywhere(char* msg, int length);
 
 #endif

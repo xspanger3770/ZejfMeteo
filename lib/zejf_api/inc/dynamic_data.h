@@ -23,12 +23,22 @@ typedef struct variable_t{
 
 typedef struct dynamic_day_t{
     size_t total_size;
-    uint32_t day_number;
+    uint32_t day_number; // todo checksum?
     int16_t variable_count;
     bool modified;
     Variable* variables;
     uint8_t data[];
 } Day;
+
+typedef struct data_request_t{
+    VariableInfo variable;
+    uint32_t start_day;
+    uint32_t end_day;
+    uint32_t start_log;
+    uint32_t end_log;
+    uint32_t current_day;
+    uint32_t current_log;
+} DataRequest;
 
 void data_init(void);
 

@@ -10,8 +10,7 @@
 #include <inttypes.h>
 
 Packet* packet_queue[PACKET_QUEUE_SIZE];
-uint8_t queue_head;
-uint8_t queue_tail;
+uint8_t packet_queue_top;
 
 RoutingEntry* routing_table[ROUTING_TABLE_SIZE];
 uint8_t routing_table_top;
@@ -20,14 +19,19 @@ RoutingEntry* routing_entry_create(uint8_t variable_count, VariableInfo* variabl
 
 void routing_entry_destroy(RoutingEntry* entry);
 
-int routing_table_update(uint16_t device_id, uint8_t interface, uint8_t distance, time_t time, 
+int routing_table_update(uint16_t device_id, Interface* interface, uint8_t distance, TIME_TYPE time, 
     uint8_t variable_count, VariableInfo* variables);
 
 void print_table();
 
+bool find_entry(RoutingEntry** ptr, uint16_t to);
+
+void packet_queue_remove(int index);
+
+bool network_push_packet(Packet* packet);
+
 void network_init(void){
-    queue_head = 0;
-    queue_tail = 0;
+    packet_queue_top = 0;
     routing_table_top = 0;
 
     for(int i = 0; i < PACKET_QUEUE_SIZE; i++){
@@ -46,7 +50,10 @@ RoutingEntry* routing_entry_create(uint8_t variable_count, VariableInfo* variabl
         return NULL;
     }
 
+    entry->tx_id = 0;
+    entry->rx_id = 0;
     entry->variable_count = variable_count;
+
     for(int i = 0; i < variable_count; i++){
         entry->variables[i] = variables[i];
     }
@@ -88,7 +95,7 @@ RoutingEntry** routing_entry_find(uint16_t device_id){
     return NULL;
 }
 
-int routing_table_insert(uint16_t device_id, uint8_t interface, uint8_t distance, time_t time, 
+int routing_table_insert(uint16_t device_id, Interface* interface, uint8_t distance, TIME_TYPE time, 
     uint8_t variable_count, VariableInfo* variables)
 {
     if(routing_table_top >= ROUTING_TABLE_SIZE){
@@ -119,9 +126,13 @@ bool check_variables(RoutingEntry** entry, uint8_t variable_count, VariableInfo*
     return true;
 }
 
-int routing_table_update(uint16_t device_id, uint8_t interface, uint8_t distance, time_t time, 
+int routing_table_update(uint16_t device_id, Interface* interface, uint8_t distance, TIME_TYPE time, 
     uint8_t variable_count, VariableInfo* variables)
 {
+    if(device_id == DEVICE_ID){
+        return UPDATE_FAIL; // cannot add itself
+    }
+
     RoutingEntry** existing_entry = routing_entry_find(device_id);
     if(existing_entry == NULL){
         return routing_table_insert(device_id, interface, distance, time, variable_count, variables);
@@ -146,7 +157,8 @@ int routing_table_update(uint16_t device_id, uint8_t interface, uint8_t distance
     return result;
 }
 
-bool network_accept(char* msg, int length, enum interface interface){
+// ALL PACKETS FROM OUTSIDE MUST PASS THIS FUNCTION
+bool network_accept(char* msg, int length, Interface* interface, TIME_TYPE time){
     Packet* packet = packet_create();
     if(packet == NULL){
         return false;
@@ -162,33 +174,100 @@ bool network_accept(char* msg, int length, enum interface interface){
     packet->source_interface = interface;
     packet->ttl++;
 
-    if(!network_push_packet(packet)){
+    if(packet->ttl >= PACKET_MAX_TTL){
         packet_destroy(packet);
         return false;
+    }
+
+    return network_send_packet(packet, time);
+}
+
+bool prepare_ack_message(char* buff, uint16_t to, uint32_t tx_id){
+    Packet packet[1];
+    packet->command = ACK;
+    packet->from = DEVICE_ID;
+    packet->to = to;
+    packet->ttl = 0;
+    packet->tx_id = tx_id;
+    packet->message_size = 0;
+    packet->message = NULL;
+    
+    return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
+}
+
+void ack_packet(Interface* interface, uint32_t id){
+    for(int i = 0; i < packet_queue_top; i++){
+        Packet* packet = packet_queue[i];
+        if(packet->destination_interface->uid == interface->uid && packet->tx_id == id){
+            packet_queue_remove(i);
+            return;
+        }
+    }
+}
+
+// EVERY PACKET THAT ENDS UP IN THE QUEUE MUST PASS THIS FUNCTION
+bool network_send_packet(Packet* packet, TIME_TYPE time){
+
+    if(packet->from != DEVICE_ID && packet->command == ACK){
+        ack_packet(packet->source_interface, packet->tx_id);
+
+        return true;
+    }
+
+
+    if(packet_queue_top == PACKET_MAX_LENGTH){
+        return false;
+    }
+        
+    if(packet->from != DEVICE_ID){
+        RoutingEntry* entry = NULL;
+        if(!find_entry(&entry, packet->from)){
+            return false;
+        }
+
+        if(entry->rx_id != packet->tx_id){
+            return false; // something went wrong
+        }
+
+        entry->rx_id++;
+    }
+
+    packet->timestamp = time;
+    packet->tx_id = 0; // not determined yet
+
+    network_push_packet(packet);
+
+    // SEND ACK HERE
+    if(packet->from != DEVICE_ID){ // if it came from outside it will have source_interface set
+        char buff[PACKET_MAX_LENGTH];
+        if(!prepare_ack_message(buff, packet->from, packet->tx_id)){
+            return false;
+        }
+
+        network_send_via(buff, strlen(buff), packet->source_interface);
     }
 
     return true;
 }
 
 bool network_push_packet(Packet* packet){
-    if((queue_head + 1) % PACKET_QUEUE_SIZE == queue_tail){
+    if(packet_queue_top == PACKET_MAX_LENGTH){
         return false; // queue full
     }
 
-    packet_queue[queue_head] = packet;
-    queue_head += 1;
-    queue_head %= PACKET_QUEUE_SIZE;
+    packet_queue[packet_queue_top] = packet;
+    packet_queue_top += 1;
 
     printf("1 packet added to the queue\n");
 
     return true;
 }
 
-bool find_interface(enum interface* iface, uint16_t to){
+bool find_entry(RoutingEntry** ptr, uint16_t to){
     for(int i = 0; i < routing_table_top; i++){
         RoutingEntry* entry = routing_table[i];
         if(entry->device_id == to){
-            *iface = entry->interface;
+            *ptr = entry;
             return true;
         }
     }
@@ -266,27 +345,39 @@ bool parse_rip(char* msg, uint8_t* variable_count, VariableInfo** variables){
     return true;
 }
 
-void process_broadcast_packet(Packet* packet, bool self){
+bool prepare_and_send(Packet* packet, RoutingEntry* entry){
     char buff[PACKET_MAX_LENGTH];
-    for(int i = 0; i < routing_table_top; i++){
-        RoutingEntry* entry = routing_table[i];
-
-        if(entry->device_id == packet->from){
-            continue; // dont send back
-        }
-
-        if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
-            continue;
-        }
-        network_send_via(buff, strlen(buff), entry->interface);
+    if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
+        return false;
     }
 
-    if(self){
-        network_process_packet(packet);
+    if(packet->tx_id == 0){
+        packet->tx_id = entry->tx_id++;
     }
+
+    packet->destination_interface = entry->interface;
+
+    network_send_via(buff, strlen(buff), entry->interface);
+    return true;
 }
 
-void process_rip_packet(Packet* packet, time_t now){
+
+bool process_broadcast_packet(Packet* packet){
+    int size = routing_table_top; // how many packets will be created
+    int free_space = PACKET_QUEUE_SIZE - packet_queue_top;
+
+    if(size <= free_space){
+        for(int i = 0; i < routing_table_top; i++){
+            RoutingEntry* entry = routing_table[i];
+            Packet* new_packet = network_prepare_packet(entry->device_id, packet->command, packet->message);
+            network_send_packet(new_packet, packet->timestamp);
+        }
+    }
+    
+    return false;
+}
+
+void process_rip_packet(Packet* packet, TIME_TYPE now){
     uint8_t variable_count = 0;
     VariableInfo* variables = NULL;
 
@@ -295,8 +386,12 @@ void process_rip_packet(Packet* packet, time_t now){
         return;
     }
 
-    if(routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables) == UPDATE_SUCCESS){
-        process_broadcast_packet(packet, false);
+    if(packet->from == DEVICE_ID || routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables) == UPDATE_SUCCESS){
+        char buff[PACKET_MAX_LENGTH];
+        if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
+            return;
+        }
+        network_send_everywhere(buff, strlen(buff));
     }
 
     print_table();
@@ -304,47 +399,54 @@ void process_rip_packet(Packet* packet, time_t now){
     free(variables);
 }
 
-void network_send_all(time_t time){
-    while(queue_tail != queue_head) {
+void packet_queue_remove(int index){
+    packet_destroy(packet_queue[index]);
+    packet_queue[index] = packet_queue[packet_queue_top - 1];
+    packet_queue[packet_queue_top - 1] = NULL;
+    packet_queue_top--;
+}
+
+void network_send_all(TIME_TYPE time){
+    for(int i = 0; i < packet_queue_top; i++){
         printf("Processing queue\n");
-        Packet* packet = packet_queue[queue_tail];
-        if(packet->ttl >= PACKET_MAX_TTL){
-            goto finish;
+        Packet* packet = packet_queue[i];
+
+        if(packet == NULL){
+            printf("FATAL BUG PACKET NULL\n");
+            break;
+        }
+
+        if(time - packet->timestamp >= PACKET_TIMEOUT){
+            goto remove;
         }
 
         if(packet->to == BROADCAST){
-            if(packet->command == RIP){
-                process_rip_packet(packet, time);
-                goto finish;
+            if(!process_broadcast_packet(packet)){
+                continue;
             }
-            process_broadcast_packet(packet, true);
-            goto finish;
+            goto remove;
         }
 
         if(packet->to == DEVICE_ID){ 
+            if(packet->command == RIP){
+                process_rip_packet(packet, time);
+                goto remove;
+            }
+
             network_process_packet(packet);
-            goto finish;
+            goto remove;
         }
 
-        enum interface iface;
-        if(!find_interface(&iface, packet->to)){
-            goto finish;
+        RoutingEntry* entry = NULL;
+        if(!find_entry(&entry, packet->to)){
+            goto remove;
         }
 
-        char buff[PACKET_MAX_LENGTH];
-        if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
-            goto finish;
-        }
+        prepare_and_send(packet, entry);
+        continue;
         
-        // pošli to dál
-        network_send_via(buff, strlen(buff), iface);
-        
-        finish:
-        packet_destroy(packet);
-        packet_queue[queue_tail] = NULL;
-
-        queue_tail+=1;
-        queue_tail %= PACKET_QUEUE_SIZE;
+        remove:
+        packet_queue_remove(i);
     }
 }
 
@@ -357,7 +459,7 @@ void routing_entry_remove(int index){
     routing_table[routing_table_top] = NULL;
 }
 
-void routing_table_check(time_t time){
+void routing_table_check(TIME_TYPE time){
     int i = 0;
     while(i < routing_table_top){
         RoutingEntry* entry = routing_table[i];
@@ -373,14 +475,12 @@ void network_destroy(void){
         routing_entry_destroy(routing_table[i]);
     }
 
-    while(queue_tail != queue_head){
-        packet_destroy(packet_queue[queue_tail]);
-        queue_tail ++;
-        queue_tail %= PACKET_QUEUE_SIZE;
+    for(int i = 0; i < packet_queue_top; i++){
+        packet_destroy(packet_queue[i]);
     }
 }
 
-bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* variables) {
+bool network_send_routing_info(uint8_t variable_count, VariableInfo* variables) {
     char msg[PACKET_MAX_LENGTH];
     size_t index = 0;
 
@@ -402,20 +502,30 @@ bool create_routing_message(char* buff, uint8_t variable_count, VariableInfo* va
     packet->ttl = 0;
     packet->message_size = strlen(msg);
     packet->message = msg;
+
+    char buff[PACKET_MAX_LENGTH];
     
-    return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
+    if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
+        return false;
+    }
+
+    network_send_everywhere(buff, strlen(buff));
+
+    return true;
 }
 
-bool create_packet(char* buff, uint16_t to, uint8_t command, char* msg){
-    Packet packet[1];
+Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg){
+    Packet* packet = packet_create();
     packet->command = command;
     packet->from = DEVICE_ID;
     packet->to = to;
     packet->ttl = 0;
     packet->message_size = strlen(msg);
-    packet->message = msg;
-    
-    return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
+
+    packet->message=malloc(packet->message_size+1);
+    memcpy(packet->message, msg, packet->message_size + 1);
+
+    return packet;
 }
 
 void print_table(){
@@ -425,8 +535,8 @@ void print_table(){
         printf("    Entry #%d\n", i);
         printf("        device=%d\n", entry->device_id);
         printf("        distanc=%d\n", entry->distance);
-        printf("        interfa=%d\n", entry->interface);
-        printf("        lastseen=%lld\n", entry->last_seen);
+        printf("        interfa=%d\n", entry->interface->uid);
+        printf("        lastseen=%"SCNu32"\n", entry->last_seen);
         printf("        var_count=%d\n", entry->variable_count);
         for(int i = 0; i < entry->variable_count; i++){
             VariableInfo var = entry->variables[i];
@@ -440,33 +550,7 @@ void print_table(){
 int network_test(void){
     network_init();
 
-    VariableInfo T2M = {.id=1, .samples_per_day = 1440};
-
-    VariableInfo vars[] = {T2M};
-
-    char buff[PACKET_MAX_LENGTH];
-    create_routing_message(buff, 1, vars);
-
-    printf("%s\n", buff);
-
-    int rv = network_accept(buff, strlen(buff), USB);
-    printf("RV %d\n", rv);
-    network_send_all(0);
-
-    char msg[] = "0";
-
-    Packet* pack1 = packet_create();
-    pack1->from = DEVICE_ID;
-    pack1->to = 2;
-    pack1->command = TIME_CHECK;
-    pack1->message_size = strlen(msg);
-    pack1->message = msg;
-
-    packet_to_string(pack1, buff, PACKET_MAX_LENGTH);
-
-    printf("%s\n", buff);
-
-    free(pack1);
+    // there is no test
 
     network_destroy();
     return 0;

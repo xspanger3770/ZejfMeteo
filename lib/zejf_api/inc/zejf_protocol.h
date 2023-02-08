@@ -8,6 +8,7 @@
 #include "zejf_settings.h"
 
 #define BROADCAST 0xFFFF
+#define TIME_TYPE uint32_t
 
 enum commands{
     PING = 0x01,
@@ -16,17 +17,27 @@ enum commands{
     DATA_LOG = 0x04,
     MESSAGE = 0x05,
     TIME_CHECK = 0x06,
-    RIP = 0x07
+    RIP = 0x07,
+    ACK = 0x08
 };
 
+typedef struct interface_t{
+    int uid;
+    enum interface_type_t type;
+    int handle;
+} Interface;
+
 typedef struct packet_t{
-    enum interface source_interface;
+    Interface* source_interface;
+    Interface* destination_interface;
+    uint32_t timestamp;
+    uint32_t tx_id;
+    int32_t checksum;
     uint16_t from;
     uint16_t to;
+    uint16_t message_size;
     uint8_t ttl;
     uint8_t command;
-    int32_t checksum;
-    uint16_t message_size;
     char* message;
 } Packet;
 

@@ -38,18 +38,30 @@ pthread_t serial_thread;
 volatile bool serial_running = false;
 volatile bool time_threads_running = false;
 
+Interface usb_interface_1 = {
+    .uid = 1,
+    .handle = 0
+};
 
 void network_process_packet(Packet* packet){
     
 }
 
-void network_send_via(char* msg, int length, enum interface interface){
-    switch(interface){
+void network_send_via(char* msg, int length, Interface* interface){
+    switch(interface->type){
         case USB:
-            puts(msg);
+            if(!write(interface->handle, msg, length)){
+                perror("write");
+            }
             break;
         default:
-            printf("Unknown interaface: %d\n", interface);
+            printf("Unknown interaface: %d\n", interface->type);
+    }
+}
+
+void network_send_everywhere(char* msg, int length){
+    if(!write(usb_interface_1.handle, msg, length)){
+        perror("write");
     }
 }
 
@@ -61,15 +73,12 @@ bool time_check(int port_fd){
         return false;
     }
 
-    char buffer[PACKET_MAX_LENGTH];
-    if(!create_packet(buffer, BROADCAST, TIME_CHECK, msg)){
+    Packet* packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
+    if(packet == NULL){
         return false;
     }
 
-    printf("sending %s\n", buffer);
-
-    if(write(port_fd, buffer, strlen(buffer)) == -1){
-        perror("write");
+    if(!network_send_packet(packet, 0)){
         return false;
     }
 
@@ -99,27 +108,19 @@ void* time_check_start(void *fd){
     }
 }
 
-char rip[64];
-int rip_len;
-
 void* rip_thread_start(void* fd){
-    int port_fd = *((int*)fd);
-    int rip_len = strlen(rip);
     while(true){
-        printf("sending %s\n", rip);
-        if(write(port_fd, rip, rip_len) == -1){
-            perror("write");
-        }
+        network_send_routing_info(0, NULL);
         sleep(60);
     }
 }
 
 void run_reader(int port_fd, char* serial)
 {
+    usb_interface_1.handle = port_fd;
     printf("waiting for serial device\n");
     sleep(2);
 
-    create_routing_message(rip, 0, NULL);
     time_threads_running = true;
     pthread_create(&time_check_thread, NULL, &time_check_start, &port_fd);
     pthread_create(&rip_thread, NULL, &rip_thread_start, &port_fd);
@@ -147,7 +148,7 @@ void run_reader(int port_fd, char* serial)
                 printf("            %s\n", line_buffer);
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
                 pthread_mutex_lock(&zejf_lock);
-                network_accept(line_buffer, line_buffer_ptr - 1, USB);
+                network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, 0);
                 network_send_all(0);
                 pthread_mutex_unlock(&zejf_lock);
                 pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
