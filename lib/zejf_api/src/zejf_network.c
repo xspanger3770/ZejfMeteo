@@ -30,6 +30,8 @@ void packet_queue_remove(int index);
 
 bool network_push_packet(Packet* packet);
 
+void process_rip_packet(Packet* packet, TIME_TYPE now);
+
 void network_init(void){
     packet_queue_top = 0;
     routing_table_top = 0;
@@ -179,7 +181,12 @@ bool network_accept(char* msg, int length, Interface* interface, TIME_TYPE time)
         return false;
     }
 
-    return network_send_packet(packet, time);
+    bool result = network_send_packet(packet, time);
+    if(!result){
+        packet_destroy(packet);
+    }
+
+    return result;
 }
 
 bool prepare_ack_message(char* buff, uint16_t to, uint32_t tx_id){
@@ -206,12 +213,22 @@ void ack_packet(Interface* interface, uint32_t id){
 }
 
 // EVERY PACKET THAT ENDS UP IN THE QUEUE MUST PASS THIS FUNCTION
+// return false means request to free the packet    !!!!!!! TODO MAKE THIS DIFFERRENNNTTT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 bool network_send_packet(Packet* packet, TIME_TYPE time){
+    // HANDLE SPECIAL PACKETS
 
     if(packet->from != DEVICE_ID && packet->command == ACK){
+        printf("Received ACK for packet %d\n", packet->tx_id);
         ack_packet(packet->source_interface, packet->tx_id);
 
-        return true;
+        return false;
+    }
+
+    printf("now going thru command %d and its from %d and message %s\n", packet->command, packet->from, packet->message);
+
+    if(packet->command == RIP){ // always from outside
+        process_rip_packet(packet, time);
+        return false;
     }
 
 
@@ -219,7 +236,7 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
         return false;
     }
         
-    if(packet->from != DEVICE_ID){
+    if(packet->from != DEVICE_ID && packet->command != RIP){
         RoutingEntry* entry = NULL;
         if(!find_entry(&entry, packet->from)){
             return false;
@@ -241,8 +258,10 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
     if(packet->from != DEVICE_ID){ // if it came from outside it will have source_interface set
         char buff[PACKET_MAX_LENGTH];
         if(!prepare_ack_message(buff, packet->from, packet->tx_id)){
-            return false;
+            return true;
         }
+
+        printf("sending ACK: %s", buff);
 
         network_send_via(buff, strlen(buff), packet->source_interface);
     }
@@ -257,8 +276,6 @@ bool network_push_packet(Packet* packet){
 
     packet_queue[packet_queue_top] = packet;
     packet_queue_top += 1;
-
-    printf("1 packet added to the queue\n");
 
     return true;
 }
@@ -292,9 +309,12 @@ bool parseUNumber(const char *str,unsigned long *val, uint32_t max)
     return rc;
 }
 
-bool parse_rip(char* msg, uint8_t* variable_count, VariableInfo** variables){
+bool parse_rip(char* msg, int length, uint8_t* variable_count, VariableInfo** variables){
+    char msg_copy[length+1];
+    strncpy(msg_copy, msg, length+1);
     char *token;
-    token = strtok(msg, ",");
+
+    token = strtok(msg_copy, ",");
    
     *variable_count = 0;
 
@@ -302,7 +322,7 @@ bool parse_rip(char* msg, uint8_t* variable_count, VariableInfo** variables){
     unsigned long variable_id;
     unsigned long samples_per_day;
 
-    VariableInfo info={
+    VariableInfo tmp={
         .id=0,
         .samples_per_day=0
     };
@@ -312,31 +332,28 @@ bool parse_rip(char* msg, uint8_t* variable_count, VariableInfo** variables){
         if(i % 2 == 0) {
             if(!parseUNumber(token, &variable_id, UINT16_MAX)){
                 free(*variables);
-                printf("err 1\n");
                 return false;
             }
 
-            info.id=(uint16_t)variable_id;
+            tmp.id=(uint16_t)variable_id;
         } else {
             if(!parseUNumber(token, &samples_per_day, UINT32_MAX)){
                 free(*variables);
-                printf("err 2\n");
                 return false;
             }
 
-            info.samples_per_day = samples_per_day;
+            tmp.samples_per_day = samples_per_day;
 
             (*variable_count)++;
             VariableInfo* ptr = realloc(*variables, *variable_count * sizeof(VariableInfo));
 
             if(ptr == NULL){
                 free(*variables);
-                printf("err 3\n");
                 return false;
             }
 
             *variables = ptr;
-            (*variables)[*variable_count-1] = info;
+            (*variables)[*variable_count-1] = tmp;
         }
         token = strtok(NULL, ",");
         i++;
@@ -370,28 +387,47 @@ bool process_broadcast_packet(Packet* packet){
         for(int i = 0; i < routing_table_top; i++){
             RoutingEntry* entry = routing_table[i];
             Packet* new_packet = network_prepare_packet(entry->device_id, packet->command, packet->message);
-            network_send_packet(new_packet, packet->timestamp);
+
+            if(!network_send_packet(new_packet, packet->timestamp)){
+                printf("CHOP FAILED!!!\n");
+            }   
         }
+
+        return true;
     }
     
     return false;
+}
+
+void network_send_everywhere(Packet* packet){
+    char buff[PACKET_MAX_LENGTH];
+    if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
+        return;
+    }
+    Interface** interfaces = NULL;
+    int count = 0;
+
+    get_all_interfaces(&interfaces, &count);
+
+    printf("Going throuh %d inrfdf\n", count);
+    for(int i = 0; i < count; i++){
+        Interface* interface = interfaces[i];
+        if(packet->source_interface == NULL || interface->uid != packet->source_interface->uid){
+            network_send_via(buff, strlen(buff), interface);
+        }
+    }
 }
 
 void process_rip_packet(Packet* packet, TIME_TYPE now){
     uint8_t variable_count = 0;
     VariableInfo* variables = NULL;
 
-    printf("RIP is [%s]\n", packet->message);
-    if(!parse_rip(packet->message, &variable_count, &variables)){
+    if(!parse_rip(packet->message, packet->message_size, &variable_count, &variables)){
         return;
     }
 
-    if(packet->from == DEVICE_ID || routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables) == UPDATE_SUCCESS){
-        char buff[PACKET_MAX_LENGTH];
-        if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
-            return;
-        }
-        network_send_everywhere(buff, strlen(buff));
+    if(routing_table_update(packet->from, packet->source_interface, packet->ttl, now, variable_count, variables) == UPDATE_SUCCESS){
+        network_send_everywhere(packet);
     }
 
     print_table();
@@ -407,12 +443,13 @@ void packet_queue_remove(int index){
 }
 
 void network_send_all(TIME_TYPE time){
+    //printf("Processing queue, length %d\n", packet_queue_top);
     for(int i = 0; i < packet_queue_top; i++){
-        printf("Processing queue\n");
         Packet* packet = packet_queue[i];
 
+        printf("command %d to %d\n", packet->command, packet->to);
+
         if(packet == NULL){
-            printf("FATAL BUG PACKET NULL\n");
             break;
         }
 
@@ -422,17 +459,13 @@ void network_send_all(TIME_TYPE time){
 
         if(packet->to == BROADCAST){
             if(!process_broadcast_packet(packet)){
+                printf("Process broadcast failed\n");
                 continue;
             }
             goto remove;
         }
 
         if(packet->to == DEVICE_ID){ 
-            if(packet->command == RIP){
-                process_rip_packet(packet, time);
-                goto remove;
-            }
-
             network_process_packet(packet);
             goto remove;
         }
@@ -498,18 +531,15 @@ bool network_send_routing_info(uint8_t variable_count, VariableInfo* variables) 
     Packet packet[1];
     packet->command = RIP;
     packet->from = DEVICE_ID;
-    packet->to = BROADCAST;
+    packet->to = 0; // RIP is special
     packet->ttl = 0;
+    packet->tx_id = 0; // doesnt matter in rip packets
     packet->message_size = strlen(msg);
     packet->message = msg;
+    packet->source_interface = NULL;
+    packet->destination_interface = NULL;
 
-    char buff[PACKET_MAX_LENGTH];
-    
-    if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
-        return false;
-    }
-
-    network_send_everywhere(buff, strlen(buff));
+    network_send_everywhere(packet);
 
     return true;
 }
@@ -542,16 +572,11 @@ void print_table(){
             VariableInfo var = entry->variables[i];
             printf("        var #%d\n", i);
             printf("            id=%d\n", var.id);
-            printf("            sr=%d\n", var.samples_per_day);
+            printf("            sr=%"SCNu32"\n", var.samples_per_day);
         }
     }
 }
 
 int network_test(void){
-    network_init();
-
-    // there is no test
-
-    network_destroy();
     return 0;
 }

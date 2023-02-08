@@ -39,7 +39,9 @@ int32_t checksum(void* ptr, size_t size){
 int32_t packet_checksum(Packet* packet){
     int32_t result = checksum(&packet->command, sizeof(packet->command));
     result+=checksum(&packet->message_size, sizeof(packet->message_size));
-    result+=checksum(packet->message, packet->message_size);
+    if(packet->message_size > 0){
+        result+=checksum(packet->message, packet->message_size);
+    }
     result+=checksum(&packet->from, sizeof(packet->from));
     result+=checksum(&packet->to, sizeof(packet->to));
     result+=checksum(&packet->ttl, sizeof(packet->ttl));
@@ -63,8 +65,6 @@ int packet_from_string(Packet* packet, char* data, int length){
 
     char message[length];
 
-    printf("scanning [%s]\n", data);
-
     int rv = sscanf(data, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";%s", 
                             &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
 
@@ -77,9 +77,7 @@ int packet_from_string(Packet* packet, char* data, int length){
     }
 
     size_t len = strlen(message);
-    printf("original message [%s]\n", message);
     message[len-1] = '\0';
-    printf("new message [%s]\n", message);
     len--;
 
     if(len != message_size){
@@ -95,8 +93,8 @@ int packet_from_string(Packet* packet, char* data, int length){
     packet->message_size=message_size;
     packet->message = message;
 
-    printf("message [%s] cs %"SCNd32"/%"SCNd32"\n", message, checksum, packet_checksum(packet));
     if(checksum != packet_checksum(packet)){
+        printf("CHECKSUM FAIL\n");
         packet->message = NULL;
         return 5;
     }
@@ -107,24 +105,37 @@ int packet_from_string(Packet* packet, char* data, int length){
     return 0;
 }
 
+// WITH NEWLINE
 bool packet_to_string(Packet* pack, char* buff, size_t max_length){
-    pack->message_size = strlen(pack->message);
+    if(pack->message == NULL) {
+        pack->message_size = 0;
+    } else {
+        pack->message_size = strlen(pack->message);
+    }
     int32_t checksum = packet_checksum(pack);
-    return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";%s\n", pack->from, pack->to, pack->ttl, pack->tx_id,
-        pack->command, checksum, pack->message_size, pack->message) > 0;
+    
+    if(pack->message != NULL){
+        return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";%s}", pack->from, pack->to, pack->ttl, pack->tx_id,
+            pack->command, checksum, pack->message_size, pack->message) > 0;
+    }
+
+     return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";}", pack->from, pack->to, pack->ttl, pack->tx_id,
+            pack->command, checksum, pack->message_size) > 0;
 }
 
-int main3(){
+int main44(){
     char buff[128];
     Packet* pack = packet_create();
-    pack->message = "a";
+    char msg[] = {'\0'};
+    pack->message = msg;
     packet_to_string(pack, buff, 128);
 
     printf("[%s]\n", buff);
 
-    Packet* pack2 =packet_create();
+    Packet* pack2 = packet_create();
     int rv = packet_from_string(pack2, buff, strlen(buff));
     printf("rv %d\n", rv);
+    printf("%d [%s]\n", pack2->message_size, pack2->message);
 
     free(pack);
     packet_destroy(pack2);

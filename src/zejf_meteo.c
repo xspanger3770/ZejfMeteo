@@ -56,6 +56,9 @@ void meteo_start(Settings* settings){
 
     data_init();
 
+    network_init();
+    network_test();
+
     run_serial(settings);
     
     command_line();

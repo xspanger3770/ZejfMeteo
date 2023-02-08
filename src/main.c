@@ -14,7 +14,7 @@ void print_usage(void)
     printf("Usage: -s <serial port> -i <ip address> -p <port number>\n");
 }
 
-int main(){
+int main2(){
     uint32_t val = UINT32_MAX;
     printf("%"SCNu32"\n", val);
     uint32_t val2 = val+10;
@@ -24,7 +24,7 @@ int main(){
     printf("routing=%ldb\n", sizeof(RoutingEntry));
 }
 
-int main2(int argc, char *argv[]){
+int main(int argc, char *argv[]){
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
     int port = 1955;

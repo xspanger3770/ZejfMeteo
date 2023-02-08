@@ -56,10 +56,6 @@ void network_process_packet(Packet* packet);
 // target platform defines this
 void network_send_via(char* msg, int length, Interface* interface);
 
-// send packet using every interface
-// no ack control
-// used for RIP
-// target platform defines this
-void network_send_everywhere(char* msg, int length);
+void get_all_interfaces(Interface*** interfaces, int* length);
 
 #endif

@@ -40,28 +40,32 @@ volatile bool time_threads_running = false;
 
 Interface usb_interface_1 = {
     .uid = 1,
-    .handle = 0
+    .handle = 0,
+    .type = USB
 };
+
+Interface* all_interfaces[] = {&usb_interface_1};
 
 void network_process_packet(Packet* packet){
     
 }
 
+void get_all_interfaces(Interface*** interfaces, int* length){
+    *interfaces = all_interfaces;
+    *length = 1;
+}
+
 void network_send_via(char* msg, int length, Interface* interface){
     switch(interface->type){
         case USB:
-            if(!write(interface->handle, msg, length)){
+            if(!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)){
                 perror("write");
+            }else{
+                printf("sent this: %s", msg);
             }
             break;
         default:
             printf("Unknown interaface: %d\n", interface->type);
-    }
-}
-
-void network_send_everywhere(char* msg, int length){
-    if(!write(usb_interface_1.handle, msg, length)){
-        perror("write");
     }
 }
 
@@ -100,11 +104,13 @@ void process_packet(Packet* pack){
 void* time_check_start(void *fd){
     printf("time check start fd %d\n", *(int*)fd);
     sleep(3);
-    while(true){
+    while(false){
         if(!time_check(*(int*)fd)){
             printf("time check fail\n");
+        }else{
+            printf("SENT TIME ==========================\n");
         }
-        sleep(120);
+        sleep(30);
     }
 }
 
