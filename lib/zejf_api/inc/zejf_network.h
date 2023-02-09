@@ -58,4 +58,6 @@ void network_send_via(char* msg, int length, Interface* interface);
 
 void get_all_interfaces(Interface*** interfaces, int* length);
 
+bool queue_full();
+
 #endif

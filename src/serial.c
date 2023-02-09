@@ -33,7 +33,8 @@
 
 pthread_t time_check_thread;
 pthread_t rip_thread;
-pthread_t serial_thread;
+pthread_t serial_reader_thread;
+pthread_t packet_sender_thread;
 
 volatile bool serial_running = false;
 volatile bool time_threads_running = false;
@@ -61,7 +62,7 @@ void network_send_via(char* msg, int length, Interface* interface){
             if(!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)){
                 perror("write");
             }else{
-                printf("sent this: %s", msg);
+                printf("%s\n", msg);
             }
             break;
         default:
@@ -77,14 +78,26 @@ bool time_check(int port_fd){
         return false;
     }
 
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    pthread_mutex_lock(&zejf_lock);
+    
     Packet* packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
     if(packet == NULL){
+        pthread_mutex_unlock(&zejf_lock);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         return false;
     }
 
-    if(!network_send_packet(packet, 0)){
+    
+    if(!network_send_packet(packet, current_millis())){
+        pthread_mutex_unlock(&zejf_lock);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         return false;
     }
+    
+    pthread_mutex_unlock(&zejf_lock);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+
 
     return true;
 }
@@ -101,23 +114,44 @@ void process_packet(Packet* pack){
     free(pack->message);
 }
 
-void* time_check_start(void *fd){
-    printf("time check start fd %d\n", *(int*)fd);
+void* time_check_start(void *ptr){
+    int fd = *((int*)ptr);
     sleep(3);
-    while(false){
-        if(!time_check(*(int*)fd)){
+    while(true){
+        if(!time_check(fd)){
             printf("time check fail\n");
-        }else{
-            printf("SENT TIME ==========================\n");
         }
-        sleep(30);
+        usleep(1000 * 1000 * 10);
     }
 }
 
 void* rip_thread_start(void* fd){
     while(true){
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+        pthread_mutex_lock(&zejf_lock);
+        
         network_send_routing_info(0, NULL);
-        sleep(60);
+        routing_table_check(current_millis());
+        
+        pthread_mutex_unlock(&zejf_lock);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+        sleep(10);
+    }
+}
+
+
+void* packet_sender_start(void *fd){
+    sleep(1);
+    while(true){
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+        pthread_mutex_lock(&zejf_lock);
+        
+        network_send_all(current_millis());
+        
+        pthread_mutex_unlock(&zejf_lock);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+        
+        usleep(1000 * 5);
     }
 }
 
@@ -130,6 +164,7 @@ void run_reader(int port_fd, char* serial)
     time_threads_running = true;
     pthread_create(&time_check_thread, NULL, &time_check_start, &port_fd);
     pthread_create(&rip_thread, NULL, &rip_thread_start, &port_fd);
+    pthread_create(&packet_sender_thread, NULL, &packet_sender_start, &port_fd);
 
     printf("serial port running fd %d\n", port_fd);
 
@@ -152,12 +187,13 @@ void run_reader(int port_fd, char* serial)
             if(buffer[i] == '\n'){
                 line_buffer[line_buffer_ptr-1] = '\0';
                 printf("            %s\n", line_buffer);
-                pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-                pthread_mutex_lock(&zejf_lock);
-                network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, 0);
-                network_send_all(0);
-                pthread_mutex_unlock(&zejf_lock);
-                pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+                if(line_buffer[0] == '{'){
+                    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+                    pthread_mutex_lock(&zejf_lock);
+                    network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, current_millis());
+                    pthread_mutex_unlock(&zejf_lock);
+                    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+                }
                 line_buffer_ptr = 0;
                 continue;
             }
@@ -178,6 +214,8 @@ void run_reader(int port_fd, char* serial)
     pthread_join(time_check_thread, NULL);
     pthread_cancel(rip_thread);
     pthread_join(rip_thread, NULL);
+    pthread_cancel(packet_sender_thread);
+    pthread_join(packet_sender_thread, NULL);
     printf("serial reader thread finish\n");
 }
 
@@ -256,17 +294,19 @@ void *start_serial(void* arg){
 }
 
 void run_serial(Settings* settings){
-    pthread_create(&serial_thread, NULL, &start_serial, settings->serial);
+    pthread_create(&serial_reader_thread, NULL, &start_serial, settings->serial);
 }
 
 void stop_serial() {
-    pthread_cancel(serial_thread);
-    pthread_join(serial_thread, NULL);
+    pthread_cancel(serial_reader_thread);
+    pthread_join(serial_reader_thread, NULL);
     if(time_threads_running){
         pthread_cancel(time_check_thread);
         pthread_join(time_check_thread, NULL);
         pthread_cancel(rip_thread);
         pthread_join(rip_thread, NULL);
+        pthread_cancel(packet_sender_thread);
+        pthread_join(packet_sender_thread, NULL);
         time_threads_running = false;
     }
 }

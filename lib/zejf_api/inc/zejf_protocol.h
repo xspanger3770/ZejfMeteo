@@ -11,14 +11,13 @@
 #define TIME_TYPE uint32_t
 
 enum commands{
-    PING = 0x01,
-    PONG = 0x02,
-    DATA_REQUEST = 0x03,
-    DATA_LOG = 0x04,
-    MESSAGE = 0x05,
-    TIME_CHECK = 0x06,
-    RIP = 0x07,
-    ACK = 0x08
+    RIP = 0x01,
+    ACK = 0x02,
+    ID_SYNC = 0x03,
+    TIME_CHECK = 0x04,
+    DATA_REQUEST = 0x05,
+    DATA_LOG = 0x06,
+    MESSAGE = 0x07,
 };
 
 typedef struct interface_t{
@@ -30,7 +29,8 @@ typedef struct interface_t{
 typedef struct packet_t{
     Interface* source_interface;
     Interface* destination_interface;
-    uint32_t timestamp;
+    uint32_t time_received;
+    uint32_t time_sent;
     uint32_t tx_id;
     int32_t checksum;
     uint16_t from;

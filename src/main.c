@@ -22,6 +22,16 @@ int main2(){
     printf("%"SCNu32"\n", (val2-val));
     printf("packet=%ldb\n", sizeof(Packet));
     printf("routing=%ldb\n", sizeof(RoutingEntry));
+
+    int i = 0;
+    int A = 2 << 0;
+    int B = 2 << 1;
+
+    i |= B;
+
+    printf("%d\n", i);
+    printf("%d\n", (i | B));
+    printf("%d\n", (i | A));
 }
 
 int main(int argc, char *argv[]){
