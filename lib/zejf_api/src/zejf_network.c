@@ -417,7 +417,7 @@ bool process_broadcast_packet(Packet* packet){
             RoutingEntry* entry = routing_table[i];
             Packet* new_packet = network_prepare_packet(entry->device_id, packet->command, packet->message);
 
-            bool rv = network_send_packet(new_packet, packet->time_received);
+            network_send_packet(new_packet, packet->time_received);
         }
 
         return true;

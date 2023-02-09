@@ -121,7 +121,7 @@ void* time_check_start(void *ptr){
         if(!time_check(fd)){
             printf("time check fail\n");
         }
-        usleep(1000 * 1000 * 10);
+        sleep(120);
     }
 }
 
