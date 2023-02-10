@@ -7,8 +7,7 @@
 
 #include "serial.h"
 #include "zejf_meteo.h"
-#include "dynamic_data.h"
-#include "zejf_network.h"
+#include "zejf_api.h"
 
 pthread_mutex_t zejf_lock;
 
@@ -45,19 +44,15 @@ void command_line()
 void meteo_stop(){
     stop_serial();
 
-    network_destroy();
+    zejf_destroy();
 
-    data_destroy();
     pthread_mutex_destroy(&zejf_lock);
 }
 
 void meteo_start(Settings* settings){
     pthread_mutex_init(&zejf_lock, NULL);
 
-    data_init();
-
-    network_init();
-    network_test();
+    zejf_init();
 
     run_serial(settings);
     

@@ -1,7 +1,12 @@
-#include "dynamic_data.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+
+#include "zejf_api.h"
+#include "zejf_data.h"
+#include "zejf_routing.h"
+#include "zejf_network.h"
+#include "zejf_protocol.h"
 
 Day* data_days[DAY_BUFFER_SIZE];
 int16_t data_days_top;

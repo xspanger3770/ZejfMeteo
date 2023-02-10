@@ -22,10 +22,10 @@
 #include <time.h>
 #include <inttypes.h>
 
+#include "zejf_api.h"
+
 #include "serial.h"
 #include "time_utils.h"
-#include "zejf_protocol.h"
-#include "zejf_network.h"
 #include "zejf_meteo.h"
 
 #define BUFFER_SIZE 1024
@@ -130,7 +130,7 @@ void* rip_thread_start(void* fd){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
         
-        network_send_routing_info(0, NULL);
+        network_send_routing_info();
         routing_table_check(current_millis());
         
         pthread_mutex_unlock(&zejf_lock);

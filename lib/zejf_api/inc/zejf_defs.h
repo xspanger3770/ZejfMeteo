@@ -1,0 +1,99 @@
+#ifndef _ZEJF_DEFS_H
+#define _ZEJF_DEFS_H
+
+#include <stdint.h>
+#include <sys/types.h>
+#include <stdbool.h>
+
+#include "zejf_settings.h"
+
+#define ERROR (-999.0)
+#define ONE_PER_MINUTE (60 * 24)
+
+#define UPDATE_SUCCESS 0
+#define UPDATE_FAIL 1
+#define UPDATE_NO_CHANGE 2
+
+#define BROADCAST 0xFFFF
+#define TIME_TYPE uint32_t
+
+/* =======  DATA ============ */
+
+typedef struct interface_t{
+    int uid;
+    enum interface_type_t type;
+    int handle;
+} Interface;
+
+typedef struct variable_info_t{
+    uint16_t id;
+    uint32_t samples_per_day;
+} VariableInfo;
+
+typedef struct variable_t{
+    VariableInfo info;
+    float* _start;
+} Variable;
+
+typedef struct dynamic_day_t{
+    size_t total_size;
+    uint32_t day_number; // todo checksum?
+    int16_t variable_count;
+    bool modified;
+    Variable* variables;
+    uint8_t data[];
+} Day;
+
+typedef struct data_request_t{
+    VariableInfo variable;
+    uint16_t target_device;
+    uint32_t start_day;
+    uint32_t end_day;
+    uint32_t start_log;
+    uint32_t end_log;
+    uint32_t current_day;
+    uint32_t current_log;
+} DataRequest;
+
+/* =======  NETWORK ============ */
+
+enum commands{
+    RIP = 0x01,
+    ACK = 0x02,
+    ID_SYNC = 0x03,
+    TIME_CHECK = 0x04,
+    DATA_REQUEST = 0x05,
+    DATA_LOG = 0x06,
+    MESSAGE = 0x07,
+};
+
+typedef struct routing_table_entry_t {
+    uint32_t rx_id;
+    uint32_t tx_id;
+    TIME_TYPE last_seen;
+    uint16_t device_id;
+    uint16_t demand_count;
+    uint16_t* demanded_variables;
+    Interface* interface;
+    uint8_t paused;
+    uint8_t distance;
+    uint16_t provided_count;
+    VariableInfo* provided_variables;
+} RoutingEntry;
+
+typedef struct packet_t{
+    Interface* source_interface;
+    Interface* destination_interface;
+    uint32_t time_received;
+    uint32_t time_sent;
+    uint32_t tx_id;
+    int32_t checksum;
+    uint16_t from;
+    uint16_t to;
+    uint16_t message_size;
+    uint8_t ttl;
+    uint8_t command;
+    char* message; // WARNING: \0 MUST BE AT THE END, can be NULL
+} Packet;
+
+#endif

@@ -8,8 +8,11 @@
 #define PACKET_MAX_LENGTH 128
 #define PACKET_MAX_TTL 8
 #define PACKET_QUEUE_SIZE 256
-#define PACKET_TIMEOUT 5000
-#define PACKET_RETRY_TIMEOUT 250
+
+#define PACKET_RETRY_TIMEOUT 100
+#define PACKET_RESET_TIMEOUT 500
+#define PACKET_DELETE_TIMEOUT (1000 * 10)
+
 
 // ROUTING
 #define ROUTING_TABLE_SIZE 16
@@ -22,6 +25,7 @@
 enum interface_type_t{
     USB = 1
 };
+
 /*  ===== USAGE ====  
 
     determine values above

@@ -1,10 +1,14 @@
-#include "zejf_protocol.h"
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
+
+#include "zejf_api.h"
+#include "zejf_data.h"
+#include "zejf_routing.h"
+#include "zejf_network.h"
+#include "zejf_protocol.h"
 
 Packet* packet_create(void){
     Packet* pack = calloc(1, sizeof(Packet));

@@ -7,7 +7,7 @@
 #include "serial.h"
 
 #include "zejf_meteo.h"
-#include "zejf_network.h"
+#include "zejf_api.h"
 
 void print_usage(void)
 {
