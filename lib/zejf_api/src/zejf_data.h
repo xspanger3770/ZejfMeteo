@@ -11,4 +11,6 @@ Variable* get_variable(Day* day, uint16_t variable_id);
 
 Day** day_get(uint32_t day_number, bool load, bool create);
 
+float data_get_val(VariableInfo variable, uint32_t day_number, uint32_t log_number);
+
 #endif

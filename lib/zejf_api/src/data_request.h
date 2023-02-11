@@ -12,6 +12,8 @@ void data_requests_destroy(void);
 
 bool data_request_send(u_int16_t to, VariableInfo variable, uint32_t start_day, uint32_t end_day, uint32_t start_log, uint32_t end_log, TIME_TYPE time);
 
+bool data_request_add(uint16_t to, VariableInfo variable, uint32_t start_day, uint32_t end_day, uint32_t start_log, uint32_t end_log);
+
 bool data_request_receive(Packet* packet);
 
 #endif

@@ -2,6 +2,8 @@
 #include "zejf_api.h"
 #include "zejf_queue.h"
 #include "zejf_protocol.h"
+#include "data_info.h"
+#include "zejf_data.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,12 +16,10 @@ void data_requests_init(void){
     data_requests_queue = queue_create(DATA_REQUEST_QUEUE_SIZE);
 }
 
-
 void* data_request_destroy(void* request){
     free(request);
     return NULL;
 }
-
 
 DataRequest* data_request_create(){
     DataRequest* request = calloc(1, sizeof(DataRequest));
@@ -87,8 +87,51 @@ bool data_request_receive(Packet* packet){
     return data_request_add(packet->from, variable, start_day, end_day, start_log, end_log);
 }
 
+inline bool request_finished(DataRequest* request){
+    return request->current_day >= request->end_day && request->current_log >= request->end_log;
+}
+
+void request_increase(DataRequest* request){
+    request->current_log++;
+    if(request->current_log >= request->variable.samples_per_day){
+        request->current_log = 0;
+        request->current_day++;
+    }
+}
+
+void data_requests_process(TIME_TYPE time){
+    size_t remaining_slots = allocate_packet_queue(PRIORITY_HIGH);
+    DataRequest* request = NULL;
+    while(remaining_slots > 0){
+        if(request == NULL){
+            request = queue_peek(data_requests_queue);
+            if(request == NULL){
+                break; // still null, nothing left
+            }
+        }
+
+        if(request_finished(request)){
+            data_request_destroy(queue_pop(data_requests_queue));
+            goto next;
+        }
+
+        float val = data_get_val(request->variable, request->current_day, request->current_log);
+
+        data_send_log(request->target_device, request->variable, request->current_day, request->current_log, val, time);
+
+        request_increase(request);
+
+        continue;
+
+        next:
+        remaining_slots--;
+    }
+}
+
 int mains(){
     float f = -999.0001;
     printf("%d\n", (f == VALUE_EMPTY));
     printf("%f\n" , FLT_MAX-100);
+
+    return 0;
 }

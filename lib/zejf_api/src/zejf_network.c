@@ -106,6 +106,10 @@ void ack_packet(Interface* interface, uint32_t id){
 bool network_send_packet(Packet* packet, TIME_TYPE time){
     // HANDLE SPECIAL PACKETS
 
+    if(packet == NULL){
+        return false;
+    }
+
     if(packet->from != DEVICE_ID && packet->command == ID_SYNC){
         RoutingEntry* entry = routing_entry_find(packet->from);
         if(entry == NULL){

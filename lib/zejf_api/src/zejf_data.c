@@ -221,6 +221,24 @@ float* data_pointer(uint32_t day_number, VariableInfo target_variable){
     return var->_start;
 }
 
+float data_get_val(VariableInfo variable, uint32_t day_number, uint32_t log_number){
+    Day** day = day_get(day_number, true, true);
+    if(day == NULL){
+        return VALUE_EMPTY;
+    }
+
+    Variable* var = get_variable(*day, variable.id);
+    if(var == NULL){
+        return VALUE_EMPTY;
+    }
+
+    if(log_number >= var->info.samples_per_day){
+        return VALUE_EMPTY;
+    }
+
+    return var->_start[log_number];
+}
+
 void data_save(void){
     for(int16_t i = 0; i <= data_days_top; i++){
         Day* day = data_days[i];
