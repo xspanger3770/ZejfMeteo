@@ -8,12 +8,12 @@
 #include <stdio.h>
 
 uint32_t calculate_data_check(VariableInfo variable, uint32_t day_num, uint32_t log_num){
-    Day* day = *day_get(day_num, true, false);
-    if(day == NULL){
+    Day** day_ptr = day_get(day_num, true, false);
+    if(day_ptr == NULL){
         return 0;
     }
 
-    Variable* current_variable = get_variable(day, variable.id);
+    Variable* current_variable = get_variable(*day_ptr, variable.id);
     if(variable.samples_per_day != current_variable->info.samples_per_day){
         return 0;
     }

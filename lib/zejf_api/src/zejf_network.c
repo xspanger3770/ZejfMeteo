@@ -147,7 +147,7 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
     }
 
 
-    if(packet_queue_top >= PACKET_MAX_LENGTH){
+    if(packet_queue_top >= PACKET_QUEUE_SIZE){
         packet_destroy(packet);
         printf("WARN: queue full\n");
         return false;

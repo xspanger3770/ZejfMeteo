@@ -12,6 +12,6 @@ bool network_announce_log(VariableInfo target_variable, uint32_t day_number, uin
 
 void process_data_log(Packet* packet, TIME_TYPE time);
 
-void data_send_log(uint16_t to, VariableInfo variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time);
+bool data_send_log(uint16_t to, VariableInfo variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time);
 
 #endif

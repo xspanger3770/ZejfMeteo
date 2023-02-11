@@ -113,21 +113,21 @@ void process_data_provide(Packet* packet){
     routing_entry_add_provided_variable(entry, var_info);
 }
 
-void data_send_log(uint16_t to, VariableInfo variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){
+bool data_send_log(uint16_t to, VariableInfo variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){
     char msg[PACKET_MAX_LENGTH];
     
     if(snprintf(msg, PACKET_MAX_LENGTH, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%.4f", variable.id, variable.samples_per_day, day_number, sample_num, val) <=0){
-        return;
+        return false;
     }
 
     Packet* packet = network_prepare_packet(to, DATA_LOG, msg);
     
     if(packet == NULL){
-        return;
+        return false;
     }
 
 
-    network_send_packet(packet, time);
+    return network_send_packet(packet, time);
 }
 
 bool network_announce_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){

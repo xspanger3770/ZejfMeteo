@@ -98,7 +98,7 @@ bool data_request_receive(Packet* packet){
 }
 
 inline bool request_finished(DataRequest* request){
-    return request->current_log >= request->end_log;
+    return request->current_log > request->end_log;
 }
 
 void request_increase(DataRequest* request){
@@ -107,7 +107,6 @@ void request_increase(DataRequest* request){
 
 void data_requests_process(TIME_TYPE time){
     size_t remaining_slots = allocate_packet_queue(PRIORITY_HIGH);
-    printf("PROCESSING REQ\n");
     DataRequest* request = NULL;
     while(remaining_slots > 0){
         if(request == NULL){
@@ -119,13 +118,16 @@ void data_requests_process(TIME_TYPE time){
 
         if(request_finished(request)){
             data_request_destroy(queue_pop(data_requests_queue));
+            request = NULL;
             goto next;
         }
 
         float val = data_get_val(request->variable, request->day_number, request->current_log);
 
-        data_send_log(request->target_device, request->variable, request->day_number, request->current_log, val, time);
-
+        if(!data_send_log(request->target_device, request->variable, request->day_number, request->current_log, val, time)){
+            break;
+        }
+        
         request_increase(request);
 
         next:
