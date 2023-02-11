@@ -14,4 +14,10 @@ RoutingEntry* routing_entry_find(uint16_t device_id);
 
 int routing_table_update(uint16_t device_id, Interface* interface, uint8_t distance, TIME_TYPE time);
 
+bool routing_entry_add_demanded_variable(RoutingEntry* entry, uint16_t demanded_variable);
+
+bool routing_entry_add_provided_variable(RoutingEntry* entry, VariableInfo provided_variable);
+
+void print_table(void);
+
 #endif

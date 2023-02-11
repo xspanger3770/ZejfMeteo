@@ -117,7 +117,7 @@ bool packet_to_string(Packet* pack, char* buff, size_t max_length){
         pack->message_size = strlen(pack->message);
     }
     int32_t checksum = packet_checksum(pack);
-    
+
     if(pack->message != NULL){
         return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";%s}", pack->from, pack->to, pack->ttl, pack->tx_id,
             pack->command, checksum, pack->message_size, pack->message) > 0;

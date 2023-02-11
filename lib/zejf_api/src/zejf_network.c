@@ -10,10 +10,15 @@
 #include "zejf_routing.h"
 #include "zejf_network.h"
 #include "zejf_protocol.h"
+#include "data_info.h"
+#include "data_request.h"
 
 Packet* packet_queue[PACKET_QUEUE_SIZE];
 size_t packet_queue_top;
 size_t packet_next;
+
+uint16_t provide_ptr;
+uint16_t demand_ptr;
 
 void packet_queue_remove(size_t index);
 
@@ -23,18 +28,29 @@ bool process_rip_packet(Packet* packet, TIME_TYPE now);
 
 void sync_id(RoutingEntry* entry, int back);
 
+bool network_catch_packet(Packet* packet, TIME_TYPE time);
+
 void network_init(void){
     packet_queue_top = 0;
     packet_next = 0;
+
+    provide_ptr = 0;
+    demand_ptr = 0;
 
     for(int i = 0; i < PACKET_QUEUE_SIZE; i++){
         packet_queue[i] = NULL;
     }
 
     printf("Attention ==========\n");
-    printf("DataDays will take at most %ldb\n", ((uint64_t)DAY_MAX_SIZE*(uint64_t)DAY_BUFFER_SIZE));
-    printf("Packets will take around %ldb\n", ((uint64_t)PACKET_MAX_LENGTH*PACKET_QUEUE_SIZE));
+    printf("DataDays will take at most %"SCNu64"b\n", ((uint64_t)DAY_MAX_SIZE*(uint64_t)DAY_BUFFER_SIZE));
+    printf("Packets will take around %"SCNu64"b\n", ((uint64_t)PACKET_MAX_LENGTH*PACKET_QUEUE_SIZE));
     printf("RoutingEntries will take at most %ldb\n", (sizeof(RoutingEntry)*ROUTING_TABLE_SIZE));
+}
+
+void network_destroy(void){
+    for(size_t i = 0; i < packet_queue_top; i++){
+        packet_destroy(packet_queue[i]);
+    }
 }
 
 // ALL PACKETS FROM OUTSIDE MUST PASS THIS FUNCTION
@@ -89,10 +105,12 @@ void ack_packet(Interface* interface, uint32_t id){
 // PACKET MUST BE ALLOCATED
 bool network_send_packet(Packet* packet, TIME_TYPE time){
     // HANDLE SPECIAL PACKETS
+
     if(packet->from != DEVICE_ID && packet->command == ID_SYNC){
         RoutingEntry* entry = routing_entry_find(packet->from);
         if(entry == NULL){
             packet_destroy(packet);
+            printf("lol he wants reset but didnt even send routing info\n");
             return false;
         }
         
@@ -124,8 +142,9 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
     }
 
 
-    if(packet_queue_top == PACKET_MAX_LENGTH){
+    if(packet_queue_top >= PACKET_MAX_LENGTH){
         packet_destroy(packet);
+        printf("WARN: queue full\n");
         return false;
     }
         
@@ -138,12 +157,14 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
 
         if(entry->tx_id == 0){
             packet_destroy(packet);
+            printf("rejected txid not set yet\n");
             return false; // waiting for sync
         }
 
         if(entry->rx_id != packet->tx_id){
             packet_destroy(packet);
-            return false; // something went wrong
+            printf("rejected wrong id\n");
+            return false; // wriong txid
         }
 
         entry->rx_id++;
@@ -155,7 +176,9 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
     packet->time_sent = 0; // last send attempt
     packet->tx_id = 0; // not determined yet
 
-    network_push_packet(packet);
+    if(!network_push_packet(packet)){
+        printf("THIS SHOULD HAVE NEVER HAPPENED\n");
+    }
 
     // SEND ACK HERE
     if(packet->from != DEVICE_ID){ // if it came from outside it will have source_interface set
@@ -293,7 +316,9 @@ void network_send_all(TIME_TYPE time){
         goto next_one;
     }
 
-    if(time - packet->time_received >= PACKET_DELETE_TIMEOUT){
+    if((time - packet->time_received) >= PACKET_DELETE_TIMEOUT){
+        //printf("timeout hard of packed command %d txid %d from %d to %d after %ldms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
+        //printf("times were %ld %ld\n", time, packet->time_received);
         goto remove;
     }
 
@@ -304,8 +329,10 @@ void network_send_all(TIME_TYPE time){
         goto remove;
     }
 
-    if(packet->to == DEVICE_ID){ 
-        network_process_packet(packet);
+    if(packet->to == DEVICE_ID) {
+        if(!network_catch_packet(packet, time)){ 
+            network_process_packet(packet);
+        }
         goto remove;
     }
 
@@ -328,7 +355,9 @@ void network_send_all(TIME_TYPE time){
     // check for reset timeout
     if(packet->time_sent != 0 && (packet->time_sent - packet->time_received) / PACKET_RESET_TIMEOUT != (time - packet->time_received) / PACKET_RESET_TIMEOUT){
         entry->tx_id = 0;
+        entry->rx_id = 0;
         entry->paused = 1;
+        printf("reset\n");
         // no goto here!
     }
 
@@ -365,16 +394,6 @@ void network_send_all(TIME_TYPE time){
     packet_queue_remove(packet_next);
 }
 
-bool queue_full(){
-    return packet_queue_top >= PACKET_QUEUE_SIZE;
-}
-
-void network_destroy(void){
-    for(size_t i = 0; i < packet_queue_top; i++){
-        packet_destroy(packet_queue[i]);
-    }
-}
-
 Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg){
     Packet* packet = packet_create();
     packet->command = command;
@@ -394,7 +413,28 @@ Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg){
     return packet;
 }
 
+size_t allocate_packet_queue(int priority){
+    return (((size_t)PACKET_QUEUE_SIZE - packet_queue_top) - 1) / priority;
+}
 
-int network_test(void){
-    return 0;
+bool network_catch_packet(Packet* packet, TIME_TYPE time){
+    switch (packet->command)
+    {
+    case DATA_DEMAND:
+        process_data_demand(packet);
+        break;
+    case DATA_PROVIDE:
+        process_data_provide(packet);
+        break;
+    case DATA_LOG:
+        process_data_log(packet, time);
+        break;
+    case DATA_REQUEST:
+        data_request_receive(packet);
+        break;
+    default:
+        return false;
+    }
+
+    return true;
 }

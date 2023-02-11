@@ -32,9 +32,11 @@ int main2(){
     printf("%d\n", i);
     printf("%d\n", (i | B));
     printf("%d\n", (i | A));
+
+    return 0;
 }
 
-int main(int argc, char *argv[]){
+int maind(int argc, char *argv[]){
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
     int port = 1955;

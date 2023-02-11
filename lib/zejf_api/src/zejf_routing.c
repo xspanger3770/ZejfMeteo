@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <inttypes.h>
+#include <stdio.h>
 
 #include "zejf_api.h"
 #include "zejf_data.h"
@@ -16,8 +17,6 @@ size_t routing_table_top;
 RoutingEntry* routing_entry_create();
 
 int routing_table_update(uint16_t device_id, Interface* interface, uint8_t distance, TIME_TYPE time);
-
-void print_table();
 
 void routing_entry_destroy(RoutingEntry* entry);
 
@@ -73,8 +72,15 @@ void routing_entry_destroy(RoutingEntry* entry){
 }
 
 bool routing_entry_add_provided_variable(RoutingEntry* entry, VariableInfo provided_variable){
-    size_t new_size = (entry->provided_count++) * sizeof(VariableInfo);
+    for(uint16_t i = 0; i < entry->provided_count; i++){
+        if(entry->provided_variables[i].id == provided_variable.id){
+            // TODO what about differeing sample rates?
+            return false;
+        }
+    }
 
+    size_t new_size = (++entry->provided_count) * sizeof(VariableInfo);
+    
     VariableInfo* ptr = realloc(entry->provided_variables, new_size);
     if(ptr == NULL){
         return false;
@@ -87,7 +93,12 @@ bool routing_entry_add_provided_variable(RoutingEntry* entry, VariableInfo provi
 }
 
 bool routing_entry_add_demanded_variable(RoutingEntry* entry, uint16_t demanded_variable){
-    size_t new_size = (entry->demand_count++) * sizeof(uint16_t);
+    for(uint16_t i = 0; i < entry->demand_count; i++){
+        if(entry->demanded_variables[i] == demanded_variable){
+            return false;
+        }
+    }
+    size_t new_size = (++entry->demand_count) * sizeof(uint16_t);
 
     uint16_t* ptr = realloc(entry->demanded_variables, new_size);
     if(ptr == NULL){
@@ -208,75 +219,12 @@ bool parseUNumber(const char *str,unsigned long *val, uint32_t max)
     return rc;
 }
 
-bool _parse_rip(char* msg, int length, uint8_t* variable_count, VariableInfo** variables){
-    char msg_copy[length+1];
-    strncpy(msg_copy, msg, length+1);
-    char *token;
-
-    token = strtok(msg_copy, ",");
-   
-    *variable_count = 0;
-
-    int i = 0;
-    unsigned long variable_id;
-    unsigned long samples_per_day;
-
-    VariableInfo tmp={
-        .id=0,
-        .samples_per_day=0
-    };
-
-    while( token != NULL ) {
-
-        if(i % 2 == 0) {
-            if(!parseUNumber(token, &variable_id, UINT16_MAX)){
-                free(*variables);
-                return false;
-            }
-
-            tmp.id=(uint16_t)variable_id;
-        } else {
-            if(!parseUNumber(token, &samples_per_day, UINT32_MAX)){
-                free(*variables);
-                return false;
-            }
-
-            tmp.samples_per_day = samples_per_day;
-
-            (*variable_count)++;
-            VariableInfo* ptr = realloc(*variables, *variable_count * sizeof(VariableInfo));
-
-            if(ptr == NULL){
-                free(*variables);
-                return false;
-            }
-
-            *variables = ptr;
-            (*variables)[*variable_count-1] = tmp;
-        }
-        token = strtok(NULL, ",");
-        i++;
-    }
-
-    return true;
-}
-
-// finish if needed
-/*void print_table(){ 
-    printf("Printing rounting table size %d\n", routing_table_top);
+void print_table(void){
+    printf("Printing routing table size %ld\n", routing_table_top);
     for(size_t i = 0; i < routing_table_top; i++){
         RoutingEntry* entry = routing_table[i];
-        printf("    Entry #%d\n", i);
-        printf("        device=%d\n", entry->device_id);
-        printf("        distanc=%d\n", entry->distance);
-        printf("        interfa=%d\n", entry->interface->uid);
-        printf("        lastseen=%"SCNu32"\n", entry->last_seen);
-        printf("        var_count=%d\n", entry->variable_count);
-        for(int i = 0; i < entry->variable_count; i++){
-            VariableInfo var = entry->variables[i];
-            printf("        var #%d\n", i);
-            printf("            id=%d\n", var.id);
-            printf("            sr=%"SCNu32"\n", var.samples_per_day);
-        }
+        printf("    Device %"SCNx16"\n", entry->device_id);
+        printf("        provided variables: %"SCNu16"\n", entry->provided_count);
+        printf("        demanded variables: %"SCNu16"\n", entry->demand_count);
     }
-}*/
+}   

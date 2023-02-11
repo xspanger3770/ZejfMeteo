@@ -15,7 +15,13 @@ void zejf_destroy(void);
 
 float* data_pointer(uint32_t day_number, VariableInfo target_variable);
 
-bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val);
+bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time);
+
+size_t day_load(Day** day, uint32_t day_number, size_t day_max_size);
+
+bool day_save(Day* day);
+
+void data_save(void);
 
 //* =========== ROUTING ========== */
 
@@ -28,7 +34,7 @@ bool network_send_routing_info(void);
 /* =========== NETWORK ========== */
 
 // return number of allocated slots
-size_t allocate_packet_queue(void);
+size_t allocate_packet_queue(int priority);
 
 // Packet received
 bool network_accept(char* msg, int length, Interface* interface, TIME_TYPE time);
@@ -40,10 +46,10 @@ bool network_send_packet(Packet* packet, TIME_TYPE time);
 void network_send_all(TIME_TYPE time);
 
 // send info about data variables that this device provides
-bool network_send_provide_info(uint16_t provide_count, VariableInfo* provided_variables);
+bool network_send_provide_info(uint16_t provide_count, VariableInfo* provided_variables, TIME_TYPE time);
 
 // send info about data variables that this device wants to receive
-bool network_send_demand_info(uint16_t demand_count, uint16_t* demanded_variables);
+bool network_send_demand_info(uint16_t demand_count, uint16_t* demanded_variables, TIME_TYPE time);
 
 // create Packet handle that can be send using network_send_packet
 Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg);

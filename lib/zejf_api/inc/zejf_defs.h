@@ -8,14 +8,21 @@
 #include "zejf_settings.h"
 
 #define ERROR (-999.0)
-#define ONE_PER_MINUTE (60 * 24)
 
 #define UPDATE_SUCCESS 0
 #define UPDATE_FAIL 1
 #define UPDATE_NO_CHANGE 2
 
 #define BROADCAST 0xFFFF
+
 #define TIME_TYPE uint32_t
+#define ONE_PER_MINUTE (60 * 24)
+
+#define ALL_DATA 0xFFFF
+
+#define PRIORITY_HIGH 2
+#define PRIORITY_MEDIUM 4
+#define PRIORITY_LOW 8
 
 /* =======  DATA ============ */
 
@@ -61,10 +68,12 @@ enum commands{
     RIP = 0x01,
     ACK = 0x02,
     ID_SYNC = 0x03,
-    TIME_CHECK = 0x04,
-    DATA_REQUEST = 0x05,
+    DATA_PROVIDE = 0x04,
+    DATA_DEMAND = 0x05,
     DATA_LOG = 0x06,
-    MESSAGE = 0x07,
+    DATA_REQUEST = 0x07,
+    TIME_CHECK = 0x08,
+    MESSAGE = 0x09,
 };
 
 typedef struct routing_table_entry_t {

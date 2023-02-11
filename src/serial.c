@@ -121,17 +121,24 @@ void* time_check_start(void *ptr){
         if(!time_check(fd)){
             printf("time check fail\n");
         }
-        sleep(120);
+        sleep(12);
     }
 }
+
+uint16_t demand[] = {ALL_DATA};
 
 void* rip_thread_start(void* fd){
     while(true){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
         
+        uint32_t millis = current_millis();
+
         network_send_routing_info();
-        routing_table_check(current_millis());
+        routing_table_check(millis);
+        network_send_demand_info(1, demand, millis);
+
+        data_save();
         
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);

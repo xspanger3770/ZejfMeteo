@@ -5,14 +5,14 @@
 
 #include <stdint.h>
 
+extern uint16_t provide_ptr;
+extern uint16_t demand_ptr;
+
 // Initialise buffers etc..
 void network_init(void);
 
 // Free all resources
 void network_destroy(void);
-
-// tst
-int network_test(void);
 
 void network_send_everywhere(Packet* packet);
 

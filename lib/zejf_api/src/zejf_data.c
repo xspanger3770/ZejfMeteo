@@ -7,6 +7,7 @@
 #include "zejf_routing.h"
 #include "zejf_network.h"
 #include "zejf_protocol.h"
+#include "data_info.h"
 
 Day* data_days[DAY_BUFFER_SIZE];
 int16_t data_days_top;
@@ -101,7 +102,7 @@ Day** day_get(uint32_t day_number, bool load, bool create){
 
 Day* day_create(uint32_t day_number){
     size_t total_size = sizeof(Day);
-    Day* day = (Day*)malloc(total_size);
+    Day* day = (Day*)calloc(1, total_size);
     if(day == NULL){
         return NULL;
     }
@@ -180,7 +181,7 @@ bool day_add_variable(Day** day, VariableInfo new_variable){
     return true;
 }
 
-bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val){
+bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){
     Day** day = day_get(day_number, true, true);
     if(day == NULL){
         return false;
@@ -199,6 +200,8 @@ bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample
         return false;
     }
     existing_variable->_start[sample_num] = val;
+    printf("logged %f day %d ln %d\n", val, day_number, sample_num);
+    network_announce_log(target_variable, day_number, sample_num, val, time);
     (*day)->modified = true;
     return true;
 }
