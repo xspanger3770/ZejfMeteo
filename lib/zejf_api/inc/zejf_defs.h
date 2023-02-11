@@ -56,11 +56,9 @@ typedef struct dynamic_day_t{
 typedef struct data_request_t{
     VariableInfo variable;
     uint16_t target_device;
-    uint32_t start_day;
-    uint32_t end_day;
+    uint32_t day_number;
     uint32_t start_log;
     uint32_t end_log;
-    uint32_t current_day;
     uint32_t current_log;
 } DataRequest;
 

@@ -23,6 +23,10 @@ bool day_save(Day* day);
 
 void data_save(void);
 
+void run_data_check(uint32_t current_day_num, uint32_t current_log_num, uint32_t days, TIME_TYPE time);
+
+void data_requests_process(TIME_TYPE time);
+
 //* =========== ROUTING ========== */
 
 // check for inactive members of routing table

@@ -147,6 +147,7 @@ void* rip_thread_start(void* fd){
         network_send_routing_info();
         routing_table_check(millis);
         network_send_demand_info(millis);
+        run_data_check(current_day(), 1000, 1, millis);
 
         data_save();
         

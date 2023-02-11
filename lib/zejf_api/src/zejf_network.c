@@ -12,6 +12,7 @@
 #include "zejf_protocol.h"
 #include "data_info.h"
 #include "data_request.h"
+#include "data_check.h"
 
 Packet* packet_queue[PACKET_QUEUE_SIZE];
 size_t packet_queue_top;
@@ -435,6 +436,9 @@ bool network_catch_packet(Packet* packet, TIME_TYPE time){
         break;
     case DATA_REQUEST:
         data_request_receive(packet);
+        break;
+    case DATA_CHECK:
+        data_check_receive(packet);
         break;
     default:
         return false;

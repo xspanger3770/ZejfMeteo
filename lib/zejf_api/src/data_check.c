@@ -2,6 +2,7 @@
 #include "zejf_api.h"
 #include "zejf_data.h"
 #include "zejf_routing.h"
+#include "data_request.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -41,7 +42,7 @@ bool data_check_send(uint16_t to, VariableInfo variable, uint32_t day_num, uint3
         return false;
     }
 
-    Packet* packet = network_prepare_packet(to, DATA_REQUEST, msg);
+    Packet* packet = network_prepare_packet(to, DATA_CHECK, msg);
     if(packet == NULL){
         return NULL;
     }
@@ -57,14 +58,16 @@ bool data_check_receive(Packet* packet){
     uint32_t check_number;
 
     if(sscanf(packet->message, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%"SCNu32, 
-                        &variable.id, &variable.samples_per_day, &day_num, &log_num, &check_number) != 6){
+                        &variable.id, &variable.samples_per_day, &day_num, &log_num, &check_number) != 5){
         return false;
     }
 
     uint32_t our_check_number = calculate_data_check(variable, day_num, log_num);
 
+    printf("DATA CHECK %d vs %d\n", our_check_number, check_number);
+
     if(our_check_number != check_number){
-        data_request_add(packet->from, variable, day_num, day_num, 0, log_num);
+        data_request_add(packet->from, variable, day_num, 0, log_num);
     }
 
     return true;
