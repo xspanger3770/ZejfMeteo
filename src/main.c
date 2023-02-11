@@ -36,7 +36,7 @@ int main2(){
     return 0;
 }
 
-int maind(int argc, char *argv[]){
+int main(int argc, char *argv[]){
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
     int port = 1955;

@@ -125,7 +125,17 @@ void* time_check_start(void *ptr){
     }
 }
 
-uint16_t demand[] = {ALL_DATA};
+uint16_t demand[] = {ALL_VARIABLES};
+
+void get_provided_variables(uint16_t* provide_count, VariableInfo** provided_variables){
+    *provide_count = 0;
+    *provided_variables = NULL;
+}
+
+void get_demanded_variables(uint16_t* demand_count, uint16_t** demanded_variables){
+    *demand_count = 1;
+    *demanded_variables = demand;
+}
 
 void* rip_thread_start(void* fd){
     while(true){
@@ -136,7 +146,7 @@ void* rip_thread_start(void* fd){
 
         network_send_routing_info();
         routing_table_check(millis);
-        network_send_demand_info(1, demand, millis);
+        network_send_demand_info(millis);
 
         data_save();
         

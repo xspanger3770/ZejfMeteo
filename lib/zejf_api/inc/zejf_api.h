@@ -46,10 +46,10 @@ bool network_send_packet(Packet* packet, TIME_TYPE time);
 void network_send_all(TIME_TYPE time);
 
 // send info about data variables that this device provides
-bool network_send_provide_info(uint16_t provide_count, VariableInfo* provided_variables, TIME_TYPE time);
+bool network_send_provide_info(TIME_TYPE time);
 
 // send info about data variables that this device wants to receive
-bool network_send_demand_info(uint16_t demand_count, uint16_t* demanded_variables, TIME_TYPE time);
+bool network_send_demand_info(TIME_TYPE time);
 
 // create Packet handle that can be send using network_send_packet
 Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg);
@@ -65,5 +65,9 @@ void network_send_via(char* msg, int length, Interface* interface);
 // fills the pointers with all available inerfaces on target device
 // target platform defines this
 void get_all_interfaces(Interface*** interfaces, int* length);
+
+void get_provided_variables(uint16_t* provide_count, VariableInfo** provided_variables);
+
+void get_demanded_variables(uint16_t* demand_count, uint16_t** demanded_variables);
 
 #endif

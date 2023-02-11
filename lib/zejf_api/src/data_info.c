@@ -16,7 +16,11 @@ void _send_provide(VariableInfo info, TIME_TYPE time) {
     network_send_packet(packet, time);
 }
 
-bool network_send_provide_info(uint16_t provide_count, VariableInfo* provided_variables, TIME_TYPE time){
+bool network_send_provide_info(TIME_TYPE time){
+    uint16_t provide_count;
+    VariableInfo* provided_variables;
+    get_provided_variables(&provide_count, &provided_variables);
+
     if(provide_ptr >= provide_count){
         provide_ptr = 0;
     }
@@ -50,7 +54,10 @@ void _send_demand(uint16_t var, TIME_TYPE time) {
     network_send_packet(packet, time);
 }
 
-bool network_send_demand_info(uint16_t demand_count, uint16_t* demanded_variables, TIME_TYPE time){
+bool network_send_demand_info(TIME_TYPE time){
+    uint16_t demand_count;
+    uint16_t* demanded_variables;
+    get_demanded_variables(&demand_count, &demanded_variables);
     if(demand_ptr >= demand_count){
         demand_ptr = 0;
     }
@@ -130,7 +137,7 @@ bool network_announce_log(VariableInfo target_variable, uint32_t day_number, uin
         bool demanded = false;
         for(uint16_t j = 0; j < entry->demand_count; j++){
             uint16_t var = entry->demanded_variables[j];
-            if(var==ALL_DATA||var == target_variable.id){
+            if(var==ALL_VARIABLES||var == target_variable.id){
                 demanded = true;
                 break;
             }

@@ -87,6 +87,8 @@ bool data_request_receive(Packet* packet){
     return data_request_add(packet->from, variable, start_day, end_day, start_log, end_log);
 }
 
-int main(){
-    // nothn
+int mains(){
+    float f = -999.0001;
+    printf("%d\n", (f == VALUE_EMPTY));
+    printf("%f\n" , FLT_MAX-100);
 }

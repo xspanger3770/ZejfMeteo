@@ -157,6 +157,7 @@ bool day_add_variable(Day** day, VariableInfo new_variable){
 
     // add new variable
     new_day->variables[new_day->variable_count - 1].info = new_variable;
+    new_day->variables[new_day->variable_count - 1]._start = NULL;
     
     calculate_offsets(new_day);
     
@@ -173,7 +174,7 @@ bool day_add_variable(Day** day, VariableInfo new_variable){
     // set all to -99
     Variable new_var = new_day->variables[new_day->variable_count - 1];
     for(uint32_t j = 0; j < new_variable.samples_per_day; j++){
-        new_var._start[j] = ERROR;
+        new_var._start[j] = VALUE_EMPTY;
     }
 
     free(*day);

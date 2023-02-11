@@ -6,8 +6,10 @@
 #include <stdbool.h>
 
 #include "zejf_settings.h"
+#include "float.h"
 
-#define ERROR (-999.0)
+#define VALUE_EMPTY -999.0
+#define VALUE_NOT_MEASURED -998.0
 
 #define UPDATE_SUCCESS 0
 #define UPDATE_FAIL 1
@@ -18,7 +20,7 @@
 #define TIME_TYPE uint32_t
 #define ONE_PER_MINUTE (60 * 24)
 
-#define ALL_DATA 0xFFFF
+#define ALL_VARIABLES 0xFFFF
 
 #define PRIORITY_HIGH 2
 #define PRIORITY_MEDIUM 4
@@ -72,8 +74,9 @@ enum commands{
     DATA_DEMAND = 0x05,
     DATA_LOG = 0x06,
     DATA_REQUEST = 0x07,
-    TIME_CHECK = 0x08,
-    MESSAGE = 0x09,
+    DATA_CHECK = 0x08,
+    TIME_CHECK = 0x09,
+    MESSAGE = 0x0a,
 };
 
 typedef struct routing_table_entry_t {
