@@ -12,6 +12,7 @@ void zejf_init(void) {
 }
 
 void zejf_destroy(void) {
+    data_save();
     network_destroy();
     routing_destroy();
     data_requests_destroy();

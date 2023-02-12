@@ -31,7 +31,6 @@
 #define BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 128
 
-pthread_t time_check_thread;
 pthread_t rip_thread;
 pthread_t serial_reader_thread;
 pthread_t packet_sender_thread;
@@ -70,37 +69,24 @@ void network_send_via(char* msg, int length, Interface* interface){
     }
 }
 
-bool time_check(int port_fd){
+bool time_check(){
     char msg[PACKET_MAX_LENGTH];
-
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    pthread_mutex_lock(&zejf_lock);
 
     int64_t seconds = current_seconds();
     if(snprintf(msg, 32, "%"SCNd64, seconds) < 0){
-        pthread_mutex_unlock(&zejf_lock);
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         return false;
     }
 
 
     Packet* packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
     if(packet == NULL){
-        pthread_mutex_unlock(&zejf_lock);
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         return false;
     }
 
     
     if(!network_send_packet(packet, current_millis())){
-        pthread_mutex_unlock(&zejf_lock);
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         return false;
     }
-    
-    pthread_mutex_unlock(&zejf_lock);
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-
 
     return true;
 }
@@ -112,19 +98,6 @@ void process_packet(Packet* pack){
             break;
         default:
             printf("Weird packet, command=%d\n", pack->command);
-    }
-
-    free(pack->message);
-}
-
-void* time_check_start(void *ptr){
-    int fd = *((int*)ptr);
-    sleep(3);
-    while(true){
-        if(!time_check(fd)){
-            printf("time check fail\n");
-        }
-        sleep(12);
     }
 }
 
@@ -140,29 +113,38 @@ void get_demanded_variables(uint16_t* demand_count, uint16_t** demanded_variable
     *demanded_variables = demand;
 }
 
-void* rip_thread_start(void* fd){
+void* run_timer(void* ptr){
+    int count = 0;
     while(true){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
         
         int64_t millis = current_millis();
 
-        network_send_routing_info();
-        routing_table_check(millis);
-        network_send_demand_info(millis);
-        run_data_check(current_day(), millis % DAY, 1, millis);
+        if(count % 5 == 0){
+            network_send_routing_info();
+            routing_table_check(millis);
+            network_send_demand_info(millis);
+        }
+        if((count-5) % 60 == 0 && count >= 5){
+            time_check();
+            data_save();
+        }
 
-        data_save();
+        if((count - 10) % (15) == 0 && count >= 10) {
+            run_data_check(current_day(), millis % DAY, 7, millis);
+        }
         
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-        sleep(10);
+        sleep(1);
+        count++;
     }
 }
 
 
 void* packet_sender_start(void *fd){
-    sleep(1);
+    sleep(5);
     while(true){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
@@ -183,8 +165,7 @@ void run_reader(int port_fd, char* serial)
     sleep(2);
 
     time_threads_running = true;
-    pthread_create(&time_check_thread, NULL, &time_check_start, &port_fd);
-    pthread_create(&rip_thread, NULL, &rip_thread_start, &port_fd);
+    pthread_create(&rip_thread, NULL, &run_timer, &port_fd);
     pthread_create(&packet_sender_thread, NULL, &packet_sender_start, &port_fd);
 
     printf("serial port running fd %d\n", port_fd);
@@ -232,8 +213,6 @@ void run_reader(int port_fd, char* serial)
     close(port_fd);
     
     time_threads_running = false;
-    pthread_cancel(time_check_thread);
-    pthread_join(time_check_thread, NULL);
     pthread_cancel(rip_thread);
     pthread_join(rip_thread, NULL);
     pthread_cancel(packet_sender_thread);
@@ -323,8 +302,6 @@ void stop_serial() {
     pthread_cancel(serial_reader_thread);
     pthread_join(serial_reader_thread, NULL);
     if(time_threads_running){
-        pthread_cancel(time_check_thread);
-        pthread_join(time_check_thread, NULL);
         pthread_cancel(rip_thread);
         pthread_join(rip_thread, NULL);
         pthread_cancel(packet_sender_thread);

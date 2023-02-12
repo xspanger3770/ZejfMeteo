@@ -52,7 +52,7 @@ Day** day_find(uint32_t day_number){
         Day** day = &data_days[i];
         if((*day)->day_number == day_number){
             buffer_prio(i);
-            return day;
+            return &data_days[0];
         }
     }
     return NULL;

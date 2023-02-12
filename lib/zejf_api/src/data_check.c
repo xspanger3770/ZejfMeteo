@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <math.h>
 
 uint32_t calculate_data_check(VariableInfo variable, uint32_t day_num, uint32_t log_num){
     Day** day_ptr = day_get(day_num, true, false);
@@ -19,15 +20,18 @@ uint32_t calculate_data_check(VariableInfo variable, uint32_t day_num, uint32_t 
     }
 
     uint32_t result = 0;
+    printf("scanning day %d up to %d start is %p day is %p its number %d\n", day_num, log_num, (void*)current_variable->_start, *day_ptr, (*day_ptr)->day_number);
     for(uint32_t log = 0; log <= log_num; log++){
         if(log >= variable.samples_per_day){
             break;
         }
         float val = current_variable->_start[log];
-        if(val != VALUE_EMPTY && val != VALUE_NOT_MEASURED){
+        if(fabs(val - VALUE_EMPTY) > 0.01 && fabs(val - VALUE_NOT_MEASURED) > 0.01){
             result++;
         }
     }
+
+    printf("resulted in %d\n", result);
 
     return result;
 }
@@ -64,7 +68,7 @@ bool data_check_receive(Packet* packet){
 
     uint32_t our_check_number = calculate_data_check(variable, day_num, log_num);
 
-    printf("DATA CHECK %d vs %d\n", our_check_number, check_number);
+    printf("DATA CHECK day %d [%d vs %d]\n", day_num, our_check_number, check_number);
 
     if(our_check_number != check_number){
         data_request_add(packet->from, variable, day_num, 0, log_num);

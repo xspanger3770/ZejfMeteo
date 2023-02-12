@@ -62,7 +62,7 @@ bool data_request_add(uint16_t to, VariableInfo variable, uint32_t day_number, u
     request->target_device = to;
     request->variable = variable;
 
-    printf("adding now %ld\n", data_requests_queue->item_count);
+    printf("adding now day %d total %ld\n", day_number, data_requests_queue->item_count);
 
     return queue_push(data_requests_queue, request);
 }

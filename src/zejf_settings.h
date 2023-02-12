@@ -9,7 +9,7 @@
 #define PACKET_MAX_TTL 8
 #define PACKET_QUEUE_SIZE 256
 
-#define PACKET_RETRY_TIMEOUT 100
+#define PACKET_RETRY_TIMEOUT 400
 #define PACKET_RESET_TIMEOUT (1000 * 2)
 #define PACKET_DELETE_TIMEOUT (1000 * 10)
 
@@ -23,7 +23,6 @@
 
 // REQUESTS
 #define DATA_REQUEST_QUEUE_SIZE 16
-#define DATA_REQUEST_MAX_DAYS 4
 
 enum interface_type_t{
     USB = 1
