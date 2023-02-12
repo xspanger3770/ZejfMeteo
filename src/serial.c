@@ -73,14 +73,17 @@ void network_send_via(char* msg, int length, Interface* interface){
 bool time_check(int port_fd){
     char msg[PACKET_MAX_LENGTH];
 
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    pthread_mutex_lock(&zejf_lock);
+
     int64_t seconds = current_seconds();
     if(snprintf(msg, 32, "%"SCNd64, seconds) < 0){
+        pthread_mutex_unlock(&zejf_lock);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         return false;
     }
 
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    pthread_mutex_lock(&zejf_lock);
-    
+
     Packet* packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
     if(packet == NULL){
         pthread_mutex_unlock(&zejf_lock);
@@ -142,12 +145,12 @@ void* rip_thread_start(void* fd){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
         
-        uint32_t millis = current_millis();
+        int64_t millis = current_millis();
 
         network_send_routing_info();
         routing_table_check(millis);
         network_send_demand_info(millis);
-        run_data_check(current_day(), 1000, 1, millis);
+        run_data_check(current_day(), millis % DAY, 1, millis);
 
         data_save();
         
@@ -169,7 +172,7 @@ void* packet_sender_start(void *fd){
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         
-        usleep(1000 * 5);
+        usleep(1000 * 1);
     }
 }
 
@@ -205,10 +208,11 @@ void run_reader(int port_fd, char* serial)
             if(buffer[i] == '\n'){
                 line_buffer[line_buffer_ptr-1] = '\0';
                 printf("            %s\n", line_buffer);
-                if(line_buffer[0] == '{'){
+                 if(line_buffer[0] == '{'){
                     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
                     pthread_mutex_lock(&zejf_lock);
-                    network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, current_millis());
+                    int64_t millis= current_millis();
+                    network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, millis );
                     pthread_mutex_unlock(&zejf_lock);
                     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
                 }

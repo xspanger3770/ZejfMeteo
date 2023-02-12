@@ -74,7 +74,8 @@ bool data_check_receive(Packet* packet){
 }
 
 // warning: you may vomit after seeing this function
-void run_data_check(uint32_t current_day_num, uint32_t current_log_num, uint32_t days, TIME_TYPE time){
+// todo do something about current_log_num
+void run_data_check(uint32_t current_day_num, uint32_t current_millis_in_day, uint32_t days, TIME_TYPE time){
     if(days>30){
         return;
     }
@@ -87,6 +88,7 @@ void run_data_check(uint32_t current_day_num, uint32_t current_log_num, uint32_t
             RoutingEntry* entry = routing_table[i];
             for(uint16_t j = 0; j < entry->provided_count; j++){
                 VariableInfo provided_variable = entry->provided_variables[j];
+                uint32_t current_log_num = ((double)current_millis_in_day / DAY) * (provided_variable.samples_per_day - 1);
                 bool wanted = false;
                 
                 for(uint16_t k = 0; k < demand_count; k++){

@@ -26,6 +26,8 @@
 #define PRIORITY_MEDIUM 4
 #define PRIORITY_LOW 8
 
+#define DAY (1000l*60*60*24l)
+
 /* =======  DATA ============ */
 
 typedef struct interface_t{

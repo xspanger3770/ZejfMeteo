@@ -199,7 +199,7 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
 }
 
 bool network_push_packet(Packet* packet){
-    if(packet_queue_top == PACKET_MAX_LENGTH){
+    if(packet_queue_top == PACKET_QUEUE_SIZE){
         return false; // queue full
     }
 
@@ -322,8 +322,8 @@ void network_send_all(TIME_TYPE time){
     }
 
     if((time - packet->time_received) >= PACKET_DELETE_TIMEOUT){
-        //printf("timeout hard of packed command %d txid %d from %d to %d after %ldms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
-        //printf("times were %ld %ld\n", time, packet->time_received);
+        printf("timeout hard of packed command %d txid %d from %d to %d after %ldms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
+        printf("times were %ld %ld\n", time, packet->time_received);
         goto remove;
     }
 
@@ -432,6 +432,7 @@ bool network_catch_packet(Packet* packet, TIME_TYPE time){
         process_data_provide(packet);
         break;
     case DATA_LOG:
+        printf("caught log\n");
         process_data_log(packet, time);
         break;
     case DATA_REQUEST:
