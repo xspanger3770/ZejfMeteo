@@ -27,7 +27,7 @@ bool network_push_packet(Packet* packet);
 
 bool process_rip_packet(Packet* packet, TIME_TYPE now);
 
-void sync_id(RoutingEntry* entry, int back);
+void sync_id(RoutingEntry* entry, int back, TIME_TYPE time);
 
 bool network_catch_packet(Packet* packet, TIME_TYPE time);
 
@@ -120,7 +120,7 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
         }
         
         if(packet->tx_id == 1){ // back
-            sync_id(entry, 0);
+            sync_id(entry, 0, time);
         }
         
         entry->rx_id = 1;
@@ -192,7 +192,7 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
             return false;
         }
 
-        network_send_via(buff, strlen(buff), packet->source_interface);
+        network_send_via(buff, strlen(buff), packet->source_interface, time);
     }
 
     return true;
@@ -209,7 +209,7 @@ bool network_push_packet(Packet* packet){
     return true;
 }
 
-bool prepare_and_send(Packet* packet, RoutingEntry* entry){
+int prepare_and_send(Packet* packet, RoutingEntry* entry, TIME_TYPE time){
     
     if(packet->tx_id == 0 || packet->tx_id >= entry->tx_id){
         packet->tx_id = entry->tx_id++;
@@ -217,13 +217,12 @@ bool prepare_and_send(Packet* packet, RoutingEntry* entry){
 
     char buff[PACKET_MAX_LENGTH];
     if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
-        return false;
+        return SEND_UNABLE;
     }
 
     packet->destination_interface = entry->interface;
 
-    network_send_via(buff, strlen(buff), entry->interface);
-    return true;
+    return network_send_via(buff, strlen(buff), entry->interface, time);
 }
 
 
@@ -245,7 +244,7 @@ bool process_broadcast_packet(Packet* packet){
     return false;
 }
 
-void network_send_everywhere(Packet* packet){
+void network_send_everywhere(Packet* packet, TIME_TYPE time){
     char buff[PACKET_MAX_LENGTH];
     if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
         return;
@@ -258,14 +257,14 @@ void network_send_everywhere(Packet* packet){
     for(int i = 0; i < count; i++){
         Interface* interface = interfaces[i];
         if(packet->source_interface == NULL || interface->uid != packet->source_interface->uid){
-            network_send_via(buff, strlen(buff), interface);
+            network_send_via(buff, strlen(buff), interface, time);
         }
     }
 }
 
 bool process_rip_packet(Packet* packet, TIME_TYPE now){
     if(routing_table_update(packet->from, packet->source_interface, packet->ttl, now) == UPDATE_SUCCESS){
-        network_send_everywhere(packet);
+        network_send_everywhere(packet, now);
     }
 
     return true;
@@ -289,7 +288,7 @@ void packet_queue_remove(size_t index){
     }
 }
 
-void sync_id(RoutingEntry* entry, int back){
+void sync_id(RoutingEntry* entry, int back, TIME_TYPE time){
     Packet packet[1];
     packet->command = ID_SYNC;
     packet->from = DEVICE_ID;
@@ -307,7 +306,7 @@ void sync_id(RoutingEntry* entry, int back){
     entry->rx_id = 1;
     entry->tx_id = 0;
 
-    network_send_via(buff, strlen(buff), entry->interface);
+    network_send_via(buff, strlen(buff), entry->interface, time);
 }
 
 void network_send_all(TIME_TYPE time){
@@ -374,12 +373,15 @@ void network_send_all(TIME_TYPE time){
     // 1,1 = ready
     if(entry->tx_id == 0) {
         if(entry->rx_id == 0){
-            sync_id(entry, 1);  
+            sync_id(entry, 1, time);  
         }
         goto next_one;
     }
 
-    prepare_and_send(packet, entry);
+    int rv = prepare_and_send(packet, entry, time);
+    if(rv == SEND_UNABLE){
+        goto remove;
+    }
 
     next_one:
     packet_next ++;

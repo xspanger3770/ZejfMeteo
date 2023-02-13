@@ -187,13 +187,13 @@ void routing_entry_remove(size_t index){
     routing_table[routing_table_top] = NULL;
 }
 
-bool network_send_routing_info(void) {    
+bool network_send_routing_info(TIME_TYPE time) {    
     Packet* packet = network_prepare_packet(0, RIP, NULL);
     if(packet == NULL){
         return false;
     }
 
-    network_send_everywhere(packet);
+    network_send_everywhere(packet, time);
 
     packet_destroy(packet);
 

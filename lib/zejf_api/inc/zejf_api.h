@@ -33,7 +33,7 @@ void data_requests_process(TIME_TYPE time);
 void routing_table_check(TIME_TYPE time);
 
 // sends routing info to everyone
-bool network_send_routing_info(void);
+bool network_send_routing_info(TIME_TYPE time);
 
 /* =========== NETWORK ========== */
 
@@ -64,7 +64,7 @@ void network_process_packet(Packet* packet);
 
 // send package as message using given interface
 // target platform defines this
-void network_send_via(char* msg, int length, Interface* interface);
+int network_send_via(char* msg, int length, Interface* interface, TIME_TYPE time);
 
 // fills the pointers with all available inerfaces on target device
 // target platform defines this

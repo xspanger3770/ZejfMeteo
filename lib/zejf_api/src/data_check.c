@@ -20,18 +20,15 @@ uint32_t calculate_data_check(VariableInfo variable, uint32_t day_num, uint32_t 
     }
 
     uint32_t result = 0;
-    printf("scanning day %d up to %d start is %p day is %p its number %d\n", day_num, log_num, (void*)current_variable->_start, *day_ptr, (*day_ptr)->day_number);
     for(uint32_t log = 0; log <= log_num; log++){
         if(log >= variable.samples_per_day){
             break;
         }
         float val = current_variable->_start[log];
-        if(fabs(val - VALUE_EMPTY) > 0.01 && fabs(val - VALUE_NOT_MEASURED) > 0.01){
+        if(val != VALUE_EMPTY && val != VALUE_NOT_MEASURED){
             result++;
         }
     }
-
-    printf("resulted in %d\n", result);
 
     return result;
 }

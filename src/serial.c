@@ -47,7 +47,7 @@ Interface usb_interface_1 = {
 Interface* all_interfaces[] = {&usb_interface_1};
 
 void network_process_packet(Packet* packet){
-    
+    packet->checksum=packet->checksum;
 }
 
 void get_all_interfaces(Interface*** interfaces, int* length){
@@ -55,7 +55,7 @@ void get_all_interfaces(Interface*** interfaces, int* length){
     *length = 1;
 }
 
-void network_send_via(char* msg, int length, Interface* interface){
+int network_send_via(char* msg, int length, Interface* interface, TIME_TYPE time){
     switch(interface->type){
         case USB:
             if(!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)){
@@ -63,9 +63,10 @@ void network_send_via(char* msg, int length, Interface* interface){
             }else{
                 printf("%s\n", msg);
             }
-            break;
+            return SEND_SUCCES;
         default:
-            printf("Unknown interaface: %d\n", interface->type);
+            printf("Unknown interaface: %d time %d\n", interface->type, time);
+            return SEND_UNABLE;
     }
 }
 
@@ -113,7 +114,7 @@ void get_demanded_variables(uint16_t* demand_count, uint16_t** demanded_variable
     *demanded_variables = demand;
 }
 
-void* run_timer(void* ptr){
+void* run_timer(){
     int count = 0;
     while(true){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
@@ -122,7 +123,7 @@ void* run_timer(void* ptr){
         int64_t millis = current_millis();
 
         if(count % 5 == 0){
-            network_send_routing_info();
+            network_send_routing_info(millis);
             routing_table_check(millis);
             network_send_demand_info(millis);
         }
@@ -131,7 +132,11 @@ void* run_timer(void* ptr){
             data_save();
         }
 
-        if((count - 10) % (15) == 0 && count >= 10) {
+        if((count - 10) % (10 * 60) == 0 && count >= 10) {
+            run_data_check(current_day(), millis % DAY, 1, millis);
+        }
+        
+        if((count - 10) % (60 * 60) == 0 && count >= 10) {
             run_data_check(current_day(), millis % DAY, 7, millis);
         }
         
@@ -143,7 +148,7 @@ void* run_timer(void* ptr){
 }
 
 
-void* packet_sender_start(void *fd){
+void* packet_sender_start(){
     sleep(5);
     while(true){
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);

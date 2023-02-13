@@ -15,6 +15,10 @@
 #define UPDATE_FAIL 1
 #define UPDATE_NO_CHANGE 2
 
+#define SEND_SUCCES 0
+#define SEND_RETRY 1
+#define SEND_UNABLE 2
+
 #define BROADCAST 0xFFFF
 
 #define TIME_TYPE uint32_t
