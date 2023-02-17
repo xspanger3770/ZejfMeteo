@@ -14,14 +14,14 @@
 #include "data_request.h"
 #include "data_check.h"
 
-Packet* packet_queue[PACKET_QUEUE_SIZE];
-size_t packet_queue_top;
-size_t packet_next;
+typedef LinkedList Queue;
+
+Queue* tx_queue;
+Queue* rx_queue;
+Node* next_packet;
 
 uint16_t provide_ptr;
 uint16_t demand_ptr;
-
-void packet_queue_remove(size_t index);
 
 bool network_push_packet(Packet* packet);
 
@@ -32,26 +32,22 @@ void sync_id(RoutingEntry* entry, int back, TIME_TYPE time);
 bool network_catch_packet(Packet* packet, TIME_TYPE time);
 
 void network_init(void){
-    packet_queue_top = 0;
-    packet_next = 0;
+    rx_queue = list_create(RX_QUEUE_SIZE);
+    tx_queue = list_create(TX_QUEUE_SIZE);
+    next_packet = NULL;
 
     provide_ptr = 0;
     demand_ptr = 0;
 
-    for(int i = 0; i < PACKET_QUEUE_SIZE; i++){
-        packet_queue[i] = NULL;
-    }
-
-    printf("Attention ==========\n");
+    /*printf("Attention ==========\n");
     printf("DataDays will take at most %"SCNu64"b\n", ((uint64_t)DAY_MAX_SIZE*(uint64_t)DAY_BUFFER_SIZE));
     printf("Packets will take around %"SCNu64"b\n", ((uint64_t)PACKET_MAX_LENGTH*PACKET_QUEUE_SIZE));
-    printf("RoutingEntries will take at most %ldb\n", (sizeof(RoutingEntry)*ROUTING_TABLE_SIZE));
+    printf("RoutingEntries will take at most %ldb\n", (sizeof(RoutingEntry)*ROUTING_TABLE_SIZE));*/
 }
 
 void network_destroy(void){
-    for(size_t i = 0; i < packet_queue_top; i++){
-        packet_destroy(packet_queue[i]);
-    }
+    list_destroy(rx_queue, packet_destroy);
+    list_destroy(tx_queue, packet_destroy);
 }
 
 // ALL PACKETS FROM OUTSIDE MUST PASS THIS FUNCTION
@@ -92,14 +88,23 @@ bool prepare_ack_message(char* buff, uint16_t to, uint32_t tx_id){
     return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
 }
 
+void packet_remove(Node* node){
+    if(node == next_packet){
+        next_packet = next_packet->next == next_packet ? NULL : next_packet->next;
+    }
+    packet_destroy(list_remove(tx_queue, node));
+}
+
 void ack_packet(Interface* interface, uint32_t id){
-    for(size_t i = 0; i < packet_queue_top; i++){
-        Packet* packet = packet_queue[i];
+    Node* node = tx_queue->tail;
+    do{
+        Packet* packet = node->item;
         if(packet->destination_interface != NULL && packet->destination_interface->uid == interface->uid && packet->tx_id == id){
-            packet_queue_remove(i);
+            packet_remove(node);
             return;
         }
-    }
+        node=node->next;
+    }while(node != tx_queue->tail);
 }
 
 // EVERY PACKET THAT ENDS UP IN THE QUEUE MUST PASS THIS FUNCTION
@@ -147,7 +152,7 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
     }
 
 
-    if(packet_queue_top >= PACKET_QUEUE_SIZE){
+    if(list_is_full(packet->to == DEVICE_ID ? rx_queue: tx_queue)){
         packet_destroy(packet);
         printf("WARN: queue full\n");
         return false;
@@ -200,14 +205,8 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
 }
 
 bool network_push_packet(Packet* packet){
-    if(packet_queue_top == PACKET_QUEUE_SIZE){
-        return false; // queue full
-    }
-
-    packet_queue[packet_queue_top] = packet;
-    packet_queue_top += 1;
-
-    return true;
+    Queue* target_queue = packet->to == DEVICE_ID ? rx_queue: tx_queue;
+    return list_push(target_queue, packet);
 }
 
 int prepare_and_send(Packet* packet, RoutingEntry* entry, TIME_TYPE time){
@@ -229,7 +228,7 @@ int prepare_and_send(Packet* packet, RoutingEntry* entry, TIME_TYPE time){
 
 bool process_broadcast_packet(Packet* packet){
     size_t size = routing_table_top; // how many packets will be created
-    size_t free_space = PACKET_QUEUE_SIZE - packet_queue_top;
+    size_t free_space = tx_queue->capacity - tx_queue->item_count;
 
     if(size <= free_space){
         for(size_t i = 0; i < routing_table_top; i++){
@@ -271,23 +270,6 @@ bool process_rip_packet(Packet* packet, TIME_TYPE now){
     return true;
 }
 
-// todo linked list would be better
-
-void packet_queue_remove(size_t index){
-    packet_destroy(packet_queue[index]);
-
-    for(size_t i = index; i < packet_queue_top - 1; i++){
-        packet_queue[i] = packet_queue[i + 1];
-    }
-
-    packet_queue_top--;
-
-    packet_queue[packet_queue_top] = NULL;
-
-    if(packet_next > index){
-        packet_next--;
-    }
-}
 
 void sync_id(RoutingEntry* entry, int back, TIME_TYPE time){
     Packet packet[1];
@@ -310,12 +292,36 @@ void sync_id(RoutingEntry* entry, int back, TIME_TYPE time){
     network_send_via(buff, strlen(buff), entry->interface, time);
 }
 
-void network_send_all(TIME_TYPE time){
-    if(packet_queue_top == 0){
+void network_process_rx(TIME_TYPE time);
+void network_send_tx(TIME_TYPE time);
+
+void network_process_packets(TIME_TYPE time){
+    network_process_rx(time);
+    network_send_tx(time);
+}
+
+void network_process_rx(TIME_TYPE time){
+    Packet* packet = (Packet*)list_pop(rx_queue);
+    while(packet != NULL){
+        if(!network_catch_packet(packet, time)){ 
+            network_process_packet(packet);
+        }
+        packet_destroy(packet);
+    
+        packet = (Packet*)list_pop(rx_queue);
+    }
+}
+
+void network_send_tx(TIME_TYPE time){
+    if(list_is_empty(tx_queue)){
         return;
     }
 
-    Packet* packet = packet_queue[packet_next];
+    if(next_packet == NULL){
+        next_packet = tx_queue->tail;
+    }
+
+    Packet* packet = next_packet->item;
 
     if(packet == NULL){
         goto next_one;
@@ -330,13 +336,6 @@ void network_send_all(TIME_TYPE time){
     if(packet->to == BROADCAST){
         if(!process_broadcast_packet(packet)){
             goto next_one;
-        }
-        goto remove;
-    }
-
-    if(packet->to == DEVICE_ID) {
-        if(!network_catch_packet(packet, time)){ 
-            network_process_packet(packet);
         }
         goto remove;
     }
@@ -385,11 +384,10 @@ void network_send_all(TIME_TYPE time){
     }
 
     next_one:
-    packet_next ++;
-    packet_next %= packet_queue_top;
+    next_packet = next_packet->next == next_packet ? NULL : next_packet->next;
 
     // toggle reset flag to all routing entries
-    if(packet_next == 0){
+    if(next_packet == tx_queue->tail){
         for(size_t i = 0; i < routing_table_top; i++){
             RoutingEntry* entry = routing_table[i];
             entry->paused = 0;
@@ -399,7 +397,7 @@ void network_send_all(TIME_TYPE time){
     return;
     
     remove:
-    packet_queue_remove(packet_next);
+    packet_remove(next_packet);
 }
 
 Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg){
@@ -422,7 +420,7 @@ Packet* network_prepare_packet(uint16_t to, uint8_t command, char* msg){
 }
 
 size_t allocate_packet_queue(int priority){
-    return (((size_t)PACKET_QUEUE_SIZE - packet_queue_top) - 1) / priority;
+    return (tx_queue->capacity - tx_queue->item_count) / priority;
 }
 
 bool network_catch_packet(Packet* packet, TIME_TYPE time){

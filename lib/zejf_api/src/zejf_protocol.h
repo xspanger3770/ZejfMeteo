@@ -5,7 +5,7 @@
 
 Packet* packet_create(void);
 
-void packet_destroy(Packet* pack);
+void* packet_destroy(void* ptr);
 
 int packet_from_string(Packet* packet, char* data, int length);
 

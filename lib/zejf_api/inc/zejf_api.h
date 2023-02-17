@@ -47,7 +47,7 @@ bool network_accept(char* msg, int length, Interface* interface, TIME_TYPE time)
 bool network_send_packet(Packet* packet, TIME_TYPE time);
 
 // Iterate the queue
-void network_send_all(TIME_TYPE time);
+void network_process_packets(TIME_TYPE time);
 
 // send info about data variables that this device provides
 bool network_send_provide_info(TIME_TYPE time);

@@ -19,9 +19,10 @@ Packet* packet_create(void){
     return pack;
 }
 
-void packet_destroy(Packet* pack){
+void* packet_destroy(void* ptr){
+    Packet* pack = (Packet*)ptr;
     if(pack == NULL){
-        return;
+        return NULL;
     }
 
     if(pack->message != NULL){
@@ -29,6 +30,8 @@ void packet_destroy(Packet* pack){
     }
 
     free(pack);
+
+    return NULL;
 }
 
 int32_t checksum(void* ptr, size_t size){

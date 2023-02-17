@@ -25,7 +25,6 @@ void list_destroy(LinkedList* list, void* (*destructor)(void*)){
 
     do {
         destructor(node->item);
-        printf("freed\n");
         Node* tmp = node;
         node = node->next;
         free(tmp);
@@ -120,40 +119,4 @@ inline bool list_is_full(LinkedList* list){
 
 inline bool list_is_empty(LinkedList* list){
     return list->item_count == 0;
-}
-
-void* nothing(void* item){
-    return NULL;
-}
-
-void print_list(LinkedList* list){
-    printf("========== list %ld ==========\n", list->item_count);
-    Node* node = list->tail;
-    while(node != NULL) {
-        printf("item %d\n", *((int*)node->item));
-        node = node == list->head ? NULL : node->next;
-    }
-}
-
-int main_tst(){
-    LinkedList* list = list_create(10);
-    printf("Yes\n");
-
-    int ints[5] = {1,2,3,4,5};
-    for(int i = 0; i < 5; i++){
-        list_push(list, &ints[i]);
-    }
-
-    print_list(list);
-
-    list_remove(list, list->head);
-
-    print_list(list);
-
-    list_prioritise(list, list->tail->next->next);
-
-    print_list(list);
-
-    list_destroy(list, nothing);
-    return 0;
 }

@@ -7,7 +7,8 @@
 // PACKETS
 #define PACKET_MAX_LENGTH 128 // maximum theoretical is 108 characters long data request
 #define PACKET_MAX_TTL 8
-#define PACKET_QUEUE_SIZE 256
+#define RX_QUEUE_SIZE 256
+#define TX_QUEUE_SIZE 256
 
 #define PACKET_RETRY_TIMEOUT 400
 #define PACKET_RESET_TIMEOUT (1000 * 2)
