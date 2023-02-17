@@ -137,7 +137,7 @@ bool network_announce_log(VariableInfo target_variable, uint32_t day_number, uin
         bool demanded = false;
         for(uint16_t j = 0; j < entry->demand_count; j++){
             uint16_t var = entry->demanded_variables[j];
-            if(var==ALL_VARIABLES||var == target_variable.id){
+            if(var == ALL_VARIABLES || var == target_variable.id){
                 demanded = true;
                 break;
             }
@@ -166,5 +166,5 @@ void process_data_log(Packet* packet, TIME_TYPE time){
         return;
     }
 
-    data_log(variable, day_number, sample_num, val, time);
+    data_log(variable, day_number, sample_num, val, time, false);
 }

@@ -201,24 +201,6 @@ bool network_send_routing_info(TIME_TYPE time) {
 }
 
 
-bool parseUNumber(const char *str,unsigned long *val, uint32_t max)
-{
-    char *temp;
-    bool rc = true;
-    errno = 0;
-    *val = strtoul(str, &temp, 0);
-
-    if (temp == str || *temp != '\0' ||
-        ((*val == LONG_MAX) && errno == ERANGE))
-        rc = false;
-
-    if(*val > max){
-        rc = false;
-    }
-
-    return rc;
-}
-
 void print_table(void){
     printf("Printing routing table size %ld\n", routing_table_top);
     for(size_t i = 0; i < routing_table_top; i++){

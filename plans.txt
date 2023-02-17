@@ -1,0 +1,18 @@
+todo queue:
+
+	- RoutingEntry linked list
+	- Packets linked list
+	- RX & TX packet queues
+	- data checks for each hour instead of day
+	
+some other considered stuff:
+	
+	- not having to alloc every packet
+
+DONE:
+	- queue things to implement:
+		- remove nth elem
+		- put element to front
+	- DataDays linked list
+
+

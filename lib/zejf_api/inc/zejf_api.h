@@ -15,7 +15,7 @@ void zejf_destroy(void);
 
 float* data_pointer(uint32_t day_number, VariableInfo target_variable);
 
-bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time);
+bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time, bool announce);
 
 size_t day_load(Day** day, uint32_t day_number, size_t day_max_size);
 

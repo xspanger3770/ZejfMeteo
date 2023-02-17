@@ -45,7 +45,7 @@ bool data_check_send(uint16_t to, VariableInfo variable, uint32_t day_num, uint3
 
     Packet* packet = network_prepare_packet(to, DATA_CHECK, msg);
     if(packet == NULL){
-        return NULL;
+        return false;
     }
 
     return network_send_packet(packet, time);
@@ -75,10 +75,9 @@ bool data_check_receive(Packet* packet){
 }
 
 // warning: you may vomit after seeing this function
-// todo do something about current_log_num
 void run_data_check(uint32_t current_day_num, uint32_t current_millis_in_day, uint32_t days, TIME_TYPE time){
-    if(days>30){
-        return;
+    if(days > 30){
+        days = 30;
     }
     uint16_t demand_count;
     uint16_t* demanded_variables;
@@ -95,6 +94,7 @@ void run_data_check(uint32_t current_day_num, uint32_t current_millis_in_day, ui
                 for(uint16_t k = 0; k < demand_count; k++){
                     if(demanded_variables[k] == ALL_VARIABLES || demanded_variables[k] == provided_variable.id){
                         wanted = true;
+                        break;
                     }
                 }
 

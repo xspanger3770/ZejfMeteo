@@ -2,9 +2,9 @@
 #define _DATA_REQUEST_H
 
 #include "zejf_defs.h"
-#include "zejf_queue.h"
+#include "linked_list.h"
 
-extern Queue* data_requests_queue;
+extern LinkedList* data_requests_queue;
 
 void data_requests_init(void);
 

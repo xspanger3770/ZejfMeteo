@@ -8,53 +8,47 @@
 #include "zejf_network.h"
 #include "zejf_protocol.h"
 #include "data_info.h"
+#include "linked_list.h"
 
-Day* data_days[DAY_BUFFER_SIZE];
-int16_t data_days_top;
+typedef LinkedList Queue;
 
-void day_destroy(Day* day);
+Queue* day_queue;
+
+void* day_destroy(void* day);
 Day* day_create(uint32_t day_number);
 
 void data_init(void){
-    data_days_top = -1;
+    day_queue = list_create(DAY_BUFFER_SIZE);
 }
 
-void buffer_shift(){
-    if(data_days_top < DAY_BUFFER_SIZE - 1){
-        data_days_top ++;
-    } else {
-        Day* top = data_days[data_days_top];
-        if(top->modified){
-            day_save(top);
-        }
-        day_destroy(top);
-    }
-    for(int16_t i = data_days_top; i >= 1; i--){
-        data_days[i] = data_days[i-1];
-    }
-    data_days[0] = NULL;
-}
-
-// Move item at index i to the bottom
-void buffer_prio(size_t i){
-    Day* d0 = data_days[0];
-    data_days[0] = data_days[i];
-    data_days[i] = d0;
+void data_destroy(void){
+    list_destroy(day_queue, day_destroy);
 }
 
 void buffer_add(Day* day){
-    buffer_shift();
-    data_days[0] = day;
+    if(list_is_full(day_queue)){
+        Day* old = list_pop(day_queue);
+        day_save(old);
+        day_destroy(day);
+    }
+
+    list_push(day_queue, day);
 }
 
 Day** day_find(uint32_t day_number){
-    for(int16_t i = 0; i <= data_days_top; i++){
-        Day** day = &data_days[i];
-        if((*day)->day_number == day_number){
-            buffer_prio(i);
-            return &data_days[0];
-        }
+    Node* node = day_queue->head;
+    if(node == NULL){
+        return NULL;
     }
+    do{
+        Day** day = (Day**)&node->item;
+        if((*day)->day_number == day_number){
+            list_prioritise(day_queue, node);
+            return (Day**)&node->item;
+        }
+        node=node->previous;
+    }while(node != day_queue->head);
+
     return NULL;
 }
 
@@ -182,7 +176,7 @@ bool day_add_variable(Day** day, VariableInfo new_variable){
     return true;
 }
 
-bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){
+bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time, bool announce){
     Day** day = day_get(day_number, true, true);
     if(day == NULL){
         return false;
@@ -202,7 +196,9 @@ bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample
     }
     existing_variable->_start[sample_num] = val;
     printf("logged %f day %d ln %d\n", val, day_number, sample_num);
-    network_announce_log(target_variable, day_number, sample_num, val, time);
+    if(announce){
+        network_announce_log(target_variable, day_number, sample_num, val, time);
+    }
     (*day)->modified = true;
     return true;
 }
@@ -240,26 +236,27 @@ float data_get_val(VariableInfo variable, uint32_t day_number, uint32_t log_numb
 }
 
 void data_save(void){
-    for(int16_t i = 0; i <= data_days_top; i++){
-        Day* day = data_days[i];
+    printf("SAVE\n");
+    Node* node = day_queue->head;
+    if(node == NULL){
+        return;
+    }
+    do{
+        Day* day = (Day*)node->item;
         if(!day->modified){
-            continue;
+            goto next;
         }
         if(!day_save(day)){
-            continue;
+            goto next;
         }
         day->modified = false;
-        
-    }
+
+        next:
+        node=node->previous;
+    }while(node != day_queue->head);
 }
 
-void day_destroy(Day* day){
+void* day_destroy(void* day){
     free(day);
-}
-
-void data_destroy(void){
-    for(int16_t i = 0; i <= data_days_top; i++){
-        day_destroy(data_days[i]);
-        data_days[i] = NULL;
-    }
+    return NULL;
 }

@@ -1,6 +1,5 @@
 #include "data_request.h"
 #include "zejf_api.h"
-#include "zejf_queue.h"
 #include "zejf_protocol.h"
 #include "data_info.h"
 #include "zejf_data.h"
@@ -10,10 +9,12 @@
 #include <string.h>
 #include <inttypes.h>
 
+typedef LinkedList Queue;
+
 Queue* data_requests_queue;
 
 void data_requests_init(void){
-    data_requests_queue = queue_create(DATA_REQUEST_QUEUE_SIZE);
+    data_requests_queue = list_create(DATA_REQUEST_QUEUE_SIZE);
 }
 
 void* data_request_destroy(void* request){
@@ -31,17 +32,20 @@ DataRequest* data_request_create(){
 }
 
 void data_requests_destroy(void){
-    queue_destroy(data_requests_queue, &data_request_destroy);
+    list_destroy(data_requests_queue, &data_request_destroy);
 }
 
 bool request_already_exists(uint16_t to, VariableInfo variable, uint32_t day_number){
-    Node* node = data_requests_queue->first;
+    Node* node = data_requests_queue->tail;
     while(node != NULL){
         DataRequest* request = (DataRequest*)node->item;
         if(request->target_device == to && request->day_number == day_number && request->variable.id == variable.id){
             return true;
         }
         node = node->next;
+        if(node == data_requests_queue->tail){
+            break;
+        }
     }
     return false;
 }
@@ -64,7 +68,7 @@ bool data_request_add(uint16_t to, VariableInfo variable, uint32_t day_number, u
 
     printf("adding now day %d total %ld\n", day_number, data_requests_queue->item_count);
 
-    return queue_push(data_requests_queue, request);
+    return list_push(data_requests_queue, request);
 }
 
 bool data_request_send(u_int16_t to, VariableInfo variable, uint32_t day_number, uint32_t start_log, uint32_t end_log, TIME_TYPE time){
@@ -101,23 +105,16 @@ inline bool request_finished(DataRequest* request){
     return request->current_log > request->end_log;
 }
 
-void request_increase(DataRequest* request){
-    request->current_log++;
-}
-
 void data_requests_process(TIME_TYPE time){
     size_t remaining_slots = allocate_packet_queue(PRIORITY_HIGH);
-    DataRequest* request = NULL;
-    while(remaining_slots > 0){
+    while(remaining_slots > 0 && !list_is_empty(data_requests_queue)){
+        DataRequest* request = list_peek(data_requests_queue)->item;
         if(request == NULL){
-            request = queue_peek(data_requests_queue);
-            if(request == NULL){
-                break; // still null, nothing left
-            }
+            break; // still null, nothing left
         }
 
         if(request_finished(request)){
-            data_request_destroy(queue_pop(data_requests_queue));
+            data_request_destroy(list_pop(data_requests_queue));
             request = NULL;
             goto next;
         }
@@ -128,7 +125,7 @@ void data_requests_process(TIME_TYPE time){
             break;
         }
         
-        request_increase(request);
+        request->current_log++;
 
         next:
         remaining_slots--;
