@@ -194,6 +194,11 @@ bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample
     if(sample_num >= existing_variable->info.samples_per_day){
         return false;
     }
+    if(existing_variable->_start[sample_num] != VALUE_EMPTY && 
+        existing_variable->_start[sample_num] != VALUE_NOT_MEASURED &&
+            (val == VALUE_EMPTY || val == VALUE_NOT_MEASURED)){
+                return false; // cannot rewrite wrong value
+    }
     existing_variable->_start[sample_num] = val;
     printf("logged %f day %d ln %d\n", val, day_number, sample_num);
     if(announce){

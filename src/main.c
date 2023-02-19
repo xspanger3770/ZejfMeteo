@@ -36,6 +36,18 @@ int main2(){
     return 0;
 }
 
+int main44f(){
+    char kill_me[16][128] = {0};
+    snprintf(kill_me[0], 128, "this is a very important message");
+    kill_me[0][127] = '\0';
+    printf("%s\n", kill_me[0]);
+    snprintf(kill_me[15], 128, "asdasdasdasd");
+    printf("%s\n", kill_me[0]);
+    printf("%s\n", kill_me[1]);
+
+    return 0;
+}
+
 int main(int argc, char *argv[]){
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";

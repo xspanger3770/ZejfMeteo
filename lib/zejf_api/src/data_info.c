@@ -21,6 +21,10 @@ bool network_send_provide_info(TIME_TYPE time){
     VariableInfo* provided_variables;
     get_provided_variables(&provide_count, &provided_variables);
 
+    if(provide_count == 0 || provided_variables == NULL){
+        return false;
+    }
+
     if(provide_ptr >= provide_count){
         provide_ptr = 0;
     }
@@ -58,6 +62,11 @@ bool network_send_demand_info(TIME_TYPE time){
     uint16_t demand_count;
     uint16_t* demanded_variables;
     get_demanded_variables(&demand_count, &demanded_variables);
+
+    if(demand_count == 0 || demanded_variables == NULL){
+        return false;
+    }
+
     if(demand_ptr >= demand_count){
         demand_ptr = 0;
     }

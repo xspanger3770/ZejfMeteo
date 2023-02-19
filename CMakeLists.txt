@@ -8,7 +8,7 @@ set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra -Wpedantic")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_FLAGS}")
 
-set(EXECUTABLE zejfmeteo_0.0.0)
+set(EXECUTABLE zejfmeteo_beta_1.0.0)
 
 # Project configuration
 project(zejfmeteo)
@@ -21,5 +21,7 @@ add_subdirectory(lib)
 target_include_directories(zejf_api PUBLIC src)
 
 target_link_libraries(zejfmeteo zejf_api)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${EXECUTABLE})
 
 

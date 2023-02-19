@@ -42,8 +42,6 @@ RoutingEntry* routing_entry_create(){
         return NULL;
     }
 
-    entry->tx_id = 0;
-    entry->rx_id = 0;
     entry->paused = 0;
     
     entry->provided_count = 0;
@@ -121,6 +119,16 @@ RoutingEntry* routing_entry_find(uint16_t device_id){
     return NULL;
 }
 
+RoutingEntry* routing_entry_find_by_interface(int uid){
+    for(size_t i = 0; i < routing_table_top; i++){
+        RoutingEntry* entry = routing_table[i];
+        if(entry->interface->uid == uid){
+            return entry;
+        }
+    }
+    return NULL;
+}
+
 int routing_table_insert(uint16_t device_id, Interface* interface, uint8_t distance, TIME_TYPE time)
 {
     if(routing_table_top >= ROUTING_TABLE_SIZE){
@@ -129,6 +137,8 @@ int routing_table_insert(uint16_t device_id, Interface* interface, uint8_t dista
     RoutingEntry* entry = routing_entry_create();
     entry->device_id=device_id;
     entry->distance=distance;
+    interface->tx_id = 0;
+    interface->rx_id = 0;
     entry->interface=interface;
     entry->last_seen=time;
     
@@ -154,13 +164,13 @@ int routing_table_update(uint16_t device_id, Interface* interface, uint8_t dista
     if((existing_entry)->distance > distance){
         (existing_entry)->distance=distance;
         (existing_entry)->interface=interface;
-        (existing_entry)->tx_id = 0;
+        (existing_entry)->interface->tx_id = 0;
         result = UPDATE_SUCCESS;
     }
 
     if((existing_entry)->distance == distance){
         (existing_entry)->last_seen = time;
-        return UPDATE_FAIL;
+        result = UPDATE_SUCCESS;
     }
 
     return result;

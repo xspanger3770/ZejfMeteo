@@ -27,7 +27,7 @@ bool network_push_packet(Packet* packet);
 
 bool process_rip_packet(Packet* packet, TIME_TYPE now);
 
-void sync_id(RoutingEntry* entry, int back, TIME_TYPE time);
+void sync_id(Interface* entry, int back, TIME_TYPE time);
 
 bool network_catch_packet(Packet* packet, TIME_TYPE time);
 
@@ -75,11 +75,11 @@ bool network_accept(char* msg, int length, Interface* interface, TIME_TYPE time)
     return network_send_packet(packet, time);
 }
 
-bool prepare_ack_message(char* buff, uint16_t to, uint32_t tx_id){
+bool prepare_ack_message(char* buff, uint32_t tx_id){
     Packet packet[1];
     packet->command = ACK;
     packet->from = DEVICE_ID;
-    packet->to = to;
+    packet->to = 0;
     packet->ttl = 0;
     packet->tx_id = tx_id;
     packet->message_size = 0;
@@ -97,6 +97,9 @@ void packet_remove(Node* node){
 
 void ack_packet(Interface* interface, uint32_t id){
     Node* node = tx_queue->tail;
+    if(node == NULL){
+        return;
+    }
     do{
         Packet* packet = node->item;
         if(packet->destination_interface != NULL && packet->destination_interface->uid == interface->uid && packet->tx_id == id){
@@ -116,30 +119,9 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
         return false;
     }
 
-    if(packet->from != DEVICE_ID && packet->command == ID_SYNC){
-        RoutingEntry* entry = routing_entry_find(packet->from);
-        if(entry == NULL){
-            packet_destroy(packet);
-            printf("lol he wants reset but didnt even send routing info\n");
-            return false;
-        }
-        
-        if(packet->tx_id == 1){ // back
-            sync_id(entry, 0, time);
-        }
-        
-        entry->rx_id = 1;
-        entry->tx_id = 1;
-
-        packet_destroy(packet);
-        return true;
-    }
-
-    if(packet->from != DEVICE_ID && packet->command == ACK){
-        ack_packet(packet->source_interface, packet->tx_id);
-
-        packet_destroy(packet);
-        return true;
+    if(packet->from == DEVICE_ID && packet->to == DEVICE_ID){
+        packet_destroy(packet); // CANNOT SEND TO ITSELF
+        return false;
     }
 
     if(packet->command == RIP){ // always from outside
@@ -151,6 +133,29 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
         return true;
     }
 
+    if(packet->command == ID_SYNC){
+        if(packet->source_interface == NULL){
+            packet_destroy(packet);
+            return true;
+        }
+        
+        if(packet->tx_id == 1){ // back
+            sync_id(packet->source_interface, 0, time);
+        }
+        
+        packet->source_interface->rx_id = 1;
+        packet->source_interface->tx_id = 1;
+
+        packet_destroy(packet);
+        return true;
+    }
+
+    if(packet->command == ACK) {
+        ack_packet(packet->source_interface, packet->tx_id);
+
+        packet_destroy(packet);
+        return true;
+    }
 
     if(list_is_full(packet->to == DEVICE_ID ? rx_queue: tx_queue)){
         packet_destroy(packet);
@@ -159,25 +164,24 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
     }
         
     if(packet->from != DEVICE_ID && packet->command != RIP){
-        RoutingEntry* entry = routing_entry_find(packet->from);
-        if(entry == NULL){
+        if(packet->source_interface == NULL){
             packet_destroy(packet);
-            return false;
+            return true;
         }
 
-        if(entry->tx_id == 0){
+        if(packet->source_interface->tx_id == 0){
             packet_destroy(packet);
             printf("rejected txid not set yet\n");
             return false; // waiting for sync
         }
 
-        if(entry->rx_id != packet->tx_id){
+        if(packet->source_interface->rx_id != packet->tx_id){
             packet_destroy(packet);
             printf("rejected wrong id\n");
             return false; // wriong txid
         }
 
-        entry->rx_id++;
+        packet->source_interface->rx_id++;
     }
 
     uint32_t id_to_ack = packet->tx_id; 
@@ -191,10 +195,10 @@ bool network_send_packet(Packet* packet, TIME_TYPE time){
         // fun fact: it happened
     }
 
-    // SEND ACK HERE
+    // SEND ACK BACK TO EVERY NON-SPECIAL PACKET
     if(packet->from != DEVICE_ID){ // if it came from outside it will have source_interface set
         char buff[PACKET_MAX_LENGTH];
-        if(!prepare_ack_message(buff, packet->from, id_to_ack)){
+        if(!prepare_ack_message(buff, id_to_ack)){
             return false;
         }
 
@@ -209,10 +213,10 @@ bool network_push_packet(Packet* packet){
     return list_push(target_queue, packet);
 }
 
-int prepare_and_send(Packet* packet, RoutingEntry* entry, TIME_TYPE time){
+int prepare_and_send(Packet* packet, Interface* destination_interface, TIME_TYPE time){
     
-    if(packet->tx_id == 0 || packet->tx_id >= entry->tx_id){
-        packet->tx_id = entry->tx_id++;
+    if(packet->tx_id == 0 || packet->tx_id >= destination_interface->tx_id){
+        packet->tx_id = destination_interface->tx_id++;
     }
 
     char buff[PACKET_MAX_LENGTH];
@@ -220,9 +224,9 @@ int prepare_and_send(Packet* packet, RoutingEntry* entry, TIME_TYPE time){
         return SEND_UNABLE;
     }
 
-    packet->destination_interface = entry->interface;
+    packet->destination_interface = destination_interface;
 
-    return network_send_via(buff, strlen(buff), entry->interface, time);
+    return network_send_via(buff, strlen(buff), destination_interface, time);
 }
 
 
@@ -244,6 +248,7 @@ bool process_broadcast_packet(Packet* packet){
     return false;
 }
 
+// EXCEPT BACKWARDS
 void network_send_everywhere(Packet* packet, TIME_TYPE time){
     char buff[PACKET_MAX_LENGTH];
     if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
@@ -271,11 +276,11 @@ bool process_rip_packet(Packet* packet, TIME_TYPE now){
 }
 
 
-void sync_id(RoutingEntry* entry, int back, TIME_TYPE time){
+void sync_id(Interface* interface, int back, TIME_TYPE time){
     Packet packet[1];
     packet->command = ID_SYNC;
     packet->from = DEVICE_ID;
-    packet->to = entry->device_id;
+    packet->to = 0;
     packet->ttl = 0;
     packet->tx_id = back;
     packet->message_size = 0;
@@ -286,10 +291,10 @@ void sync_id(RoutingEntry* entry, int back, TIME_TYPE time){
     if(!packet_to_string(packet, buff, PACKET_MAX_LENGTH)){
         return;
     }
-    entry->rx_id = 1;
-    entry->tx_id = 0;
+    interface->rx_id = 1;
+    interface->tx_id = 0;
 
-    network_send_via(buff, strlen(buff), entry->interface, time);
+    network_send_via(buff, strlen(buff), interface, time);
 }
 
 void network_process_rx(TIME_TYPE time);
@@ -324,12 +329,13 @@ void network_send_tx(TIME_TYPE time){
     Packet* packet = next_packet->item;
 
     if(packet == NULL){
+        printf("FATALLLLLLLL NULKLLLLLLLL\n");
         goto next_one;
     }
 
     if((time - packet->time_received) >= PACKET_DELETE_TIMEOUT){
-        //printf("timeout hard of packed command %d txid %d from %d to %d after %"SCNu32"ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
-        //printf("times were %d %ld\n", time, packet->time_received);
+        printf("timeout hard of packed command %d txid %d from %d to %d after %"SCNu32"ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
+        printf("times were %d %d\n", time, packet->time_received);
         goto remove;
     }
 
@@ -358,10 +364,10 @@ void network_send_tx(TIME_TYPE time){
 
     // check for reset timeout
     if(packet->time_sent != 0 && (packet->time_sent - packet->time_received) / PACKET_RESET_TIMEOUT != (time - packet->time_received) / PACKET_RESET_TIMEOUT){
-        entry->tx_id = 0;
-        entry->rx_id = 0;
+        entry->interface->tx_id = 0;
+        entry->interface->rx_id = 0;
         entry->paused = 1;
-        printf("reset\n");
+        printf("reset at entry for device %d packet command %d\n", entry->device_id, packet->command);
         // no goto here!
     }
 
@@ -371,20 +377,22 @@ void network_send_tx(TIME_TYPE time){
     // 0,0 = not initialised
     // 0,1 = not initialised, waiting for returning sync packet
     // 1,1 = ready
-    if(entry->tx_id == 0) {
-        if(entry->rx_id == 0){
-            sync_id(entry, 1, time);  
+    if(entry->interface->tx_id == 0) {
+        printf("cannot send %d to %d\n", packet->command, packet->to);
+        if(entry->interface->rx_id == 0){
+            sync_id(entry->interface, 1, time);  
         }
         goto next_one;
     }
 
-    int rv = prepare_and_send(packet, entry, time);
+    int rv = prepare_and_send(packet, entry->interface, time);
     if(rv == SEND_UNABLE){
         goto remove;
     }
 
     next_one:
-    next_packet = next_packet->next == next_packet ? NULL : next_packet->next;
+    
+    next_packet = next_packet->next;
 
     // toggle reset flag to all routing entries
     if(next_packet == tx_queue->tail){

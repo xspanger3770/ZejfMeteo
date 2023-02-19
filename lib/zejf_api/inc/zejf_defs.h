@@ -38,6 +38,8 @@ typedef struct interface_t{
     int uid;
     enum interface_type_t type;
     int handle;
+    uint32_t rx_id;
+    uint32_t tx_id;
 } Interface;
 
 typedef struct variable_info_t{
@@ -84,8 +86,6 @@ enum commands{
 };
 
 typedef struct routing_table_entry_t {
-    uint32_t rx_id;
-    uint32_t tx_id;
     TIME_TYPE last_seen;
     uint16_t device_id;
     uint16_t demand_count;

@@ -122,13 +122,16 @@ void* run_timer(){
         
         int64_t millis = current_millis();
 
-        if(count % 5 == 0){
+        if(count % 10 == 0){
             network_send_routing_info(millis);
             routing_table_check(millis);
             network_send_demand_info(millis);
         }
-        if((count-5) % 60 == 0 && count >= 5){
-            time_check();
+        if((count-5) % 30 == 0 && count >= 5){
+            int co = allocate_packet_queue(1);
+            if(co > 0){
+                time_check();
+            }
             data_save();
         }
 
@@ -142,7 +145,7 @@ void* run_timer(){
         
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-        sleep(1);
+        usleep(1000 * 1000);
         count++;
     }
 }

@@ -65,9 +65,9 @@ bool data_check_receive(Packet* packet){
 
     uint32_t our_check_number = calculate_data_check(variable, day_num, log_num);
 
-    printf("DATA CHECK day %d [%d vs %d]\n", day_num, our_check_number, check_number);
+    printf("DATA CHECK day %d [our %d vs their %d]\n", day_num, our_check_number, check_number);
 
-    if(our_check_number != check_number){
+    if(our_check_number > check_number){
         data_request_add(packet->from, variable, day_num, 0, log_num);
     }
 
