@@ -13,17 +13,15 @@ void zejf_destroy(void);
 
 /* =========== DATA ========== */
 
-float* data_pointer(uint32_t day_number, VariableInfo target_variable);
+bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_number, float value, TIME_TYPE time, bool announce);
 
-bool data_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time, bool announce);
+size_t hour_load(uint8_t** data_buffer, uint32_t hour_number);
 
-size_t day_load(Day** day, uint32_t day_number, size_t day_max_size);
-
-bool day_save(Day* day);
+bool hour_save(uint32_t hour_number, uint8_t* buffer, size_t total_size);
 
 void data_save(void);
 
-void run_data_check(uint32_t current_day_num, uint32_t current_log_num, uint32_t days, TIME_TYPE time);
+void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, uint32_t hours, TIME_TYPE time);
 
 void data_requests_process(TIME_TYPE time);
 

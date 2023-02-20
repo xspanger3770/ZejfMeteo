@@ -1,10 +1,7 @@
 todo queue:
-
-	- huge change: data hours instead of data days
-	- some checking of loaded data, serialization?
+	- simple data viewer
 	
 some other considered stuff:
-	
 	- not having to alloc every packet
 
 not worth it:
@@ -12,6 +9,8 @@ not worth it:
 	- RoutingEntry linked list (not worth it)
 
 DONE:
+	- huge change: data hours instead of data days
+	- some checking of loaded data, serialization?
 	- queue things to implement:
 		- remove nth elem
 		- put element to front

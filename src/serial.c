@@ -136,11 +136,11 @@ void* run_timer(){
         }
 
         if((count - 10) % (10 * 60) == 0 && count >= 10) {
-            run_data_check(current_day(), millis % DAY, 1, millis);
+            run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
         
         if((count - 10) % (60 * 60) == 0 && count >= 10) {
-            run_data_check(current_day(), millis % DAY, 7, millis);
+            run_data_check(current_hours(), millis % HOUR, 7, millis);
         }
         
         pthread_mutex_unlock(&zejf_lock);

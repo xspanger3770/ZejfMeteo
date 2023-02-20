@@ -30,7 +30,7 @@
 #define PRIORITY_MEDIUM 4
 #define PRIORITY_LOW 8
 
-#define DAY (1000l*60*60*24l)
+#define HOUR (1000l*60*60l)
 
 /* =======  DATA ============ */
 
@@ -43,28 +43,27 @@ typedef struct interface_t{
 } Interface;
 
 typedef struct variable_info_t{
-    uint32_t samples_per_day;
+    uint32_t samples_per_hour;
     uint16_t id;
 } VariableInfo;
 
 typedef struct variable_t{
-    VariableInfo info;
-    float* _start;
+    VariableInfo variable_info;
+    float* data;
 } Variable;
 
-typedef struct dynamic_day_t{
-    size_t total_size;
-    uint32_t day_number; // todo checksum?
+typedef struct datahour_t{
+    uint32_t hour_id;
+    uint32_t checksum;
     uint16_t variable_count;
-    bool modified;
+    uint8_t flags;
     Variable* variables;
-    uint8_t data[];
-} Day;
+}DataHour;
 
 typedef struct data_request_t{
     VariableInfo variable;
     uint16_t target_device;
-    uint32_t day_number;
+    uint32_t hour_number;
     uint32_t start_log;
     uint32_t end_log;
     uint32_t current_log;

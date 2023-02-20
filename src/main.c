@@ -8,6 +8,7 @@
 
 #include "zejf_meteo.h"
 #include "zejf_api.h"
+#include "time_utils.h"
 
 void print_usage(void)
 {
@@ -48,7 +49,22 @@ int main44f(){
     return 0;
 }
 
-int mainqr(int argc, char *argv[]){
+int mainřž(){
+    zejf_init();
+
+    printf("hello\n");
+
+    VariableInfo TST = {
+        .id = 42,
+        .samples_per_hour = 12 * 60
+    };
+
+    data_log(TST, current_hours(), (current_seconds() % (60 * 60)) / 5, 42.690, current_millis(), false);
+
+    zejf_destroy();
+}
+
+int main(int argc, char *argv[]){
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
     int port = 1955;

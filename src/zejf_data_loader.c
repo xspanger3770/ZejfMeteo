@@ -67,9 +67,9 @@ void str_append(char** end_ptr, char* str){
 char months[12][10] = { "January\0", "February\0", "March\0", "April\0", "May\0", "June\0", 
                         "July\0", "August\0", "September\0", "October\0", "November\0", "December\0" };
 
-void zejf_day_path(char* buff, uint32_t day_number)
+void zejf_day_path(char* buff, uint32_t hour_number)
 {
-    time_t now = day_number * 24l * 60 * 60;
+    time_t now = hour_number * 60 * 60;
     struct tm *t = localtime(&now);
 
     char time_buff[32];
@@ -83,19 +83,19 @@ void zejf_day_path(char* buff, uint32_t day_number)
     str_append(&end_ptr, time_buff);
     str_append(&end_ptr, months[t->tm_mon]);
 
-    strftime(time_buff, sizeof(time_buff) - 1, "/%d.dat", t);
+    strftime(time_buff, sizeof(time_buff) - 1, "/%d_%HH.dat", t);
     str_append(&end_ptr, time_buff);
 
     *end_ptr = '\0';
 }
 
-bool zejf_day_save(Day* day) {
-    if(day == NULL){
+bool hour_save(uint32_t hour_number, uint8_t* buffer, size_t total_size) {
+    if(buffer == NULL){
         return false;
     }
 
     char path_buff[128];
-    zejf_day_path(path_buff, day->day_number);
+    zejf_day_path(path_buff, hour_number);
 
     char path_only[128];
     strcpy(path_only, path_buff);
@@ -118,21 +118,18 @@ bool zejf_day_save(Day* day) {
         return false;
     }
 
-    printf("%ld bytes will be written to [%s]\n", day->total_size, path_buff);
+    printf("%ld bytes will be written to [%s]\n", total_size, path_buff);
 
-    bool result;
-    if((result = (fwrite(day, day->total_size, 1, actual_file) == 1))){
-        day->modified = false;
-    }
+    bool result = fwrite(buffer, total_size, 1, actual_file);
 
     fclose(actual_file);
 
     return result;
 }
 
-size_t day_load(Day** day, uint32_t day_number, size_t max_size){
+size_t hour_load(uint8_t** data_buffer, uint32_t hour_number) {
     char path_buff[128];
-    zejf_day_path(path_buff, day_number);
+    zejf_day_path(path_buff, hour_number);
 
     FILE *file = fopen(path_buff, "rb");
     if (file == NULL) {
@@ -144,24 +141,24 @@ size_t day_load(Day** day, uint32_t day_number, size_t max_size){
     size_t fsize = ftell(file);
     fseek(file, 0, SEEK_SET); 
 
-    if(fsize > max_size){
+    if(fsize > HOUR_FILE_MAX_SIZE){
         fsize = 0;
         goto close;
     }
 
     printf("%ld bytes will be loaded from [%s]\n", fsize, path_buff);
 
-    (*day) = malloc(fsize);
-    if((*day) == NULL){
+    (*data_buffer) = malloc(fsize);
+    if((*data_buffer) == NULL){
         perror("malloc");
         fsize = 0;
         goto close;
     }
 
-    if(fread(*day, fsize, 1, file) != 1){
+    if(fread(*data_buffer, fsize, 1, file) != 1){
         perror("fread");
-        free(*day);
-        (*day) = NULL;
+        free(*data_buffer);
+        (*data_buffer) = NULL;
         fsize = 0;
         goto close;
     }
@@ -170,9 +167,4 @@ size_t day_load(Day** day, uint32_t day_number, size_t max_size){
     fclose(file);
 
     return fsize;
-}
-
-bool day_save(Day* day){
-    printf("SAVE %d %ld\n", day->day_number, day->total_size);
-    return zejf_day_save(day);
 }

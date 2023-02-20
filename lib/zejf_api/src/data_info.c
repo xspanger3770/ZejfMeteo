@@ -7,7 +7,7 @@
 void _send_provide(VariableInfo info, TIME_TYPE time) {
     char msg[PACKET_MAX_LENGTH];
 
-    if(snprintf(msg, PACKET_MAX_LENGTH, "%"SCNu16"@%"SCNu32, info.id, info.samples_per_day) <= 0){
+    if(snprintf(msg, PACKET_MAX_LENGTH, "%"SCNu16"@%"SCNu32, info.id, info.samples_per_hour) <= 0){
         return;
     }
 
@@ -115,17 +115,17 @@ void process_data_provide(Packet* packet){
 
     VariableInfo var_info;
 
-    if(sscanf(packet->message, "%"SCNu16"@%"SCNu32, &var_info.id, &var_info.samples_per_day) != 2){
+    if(sscanf(packet->message, "%"SCNu16"@%"SCNu32, &var_info.id, &var_info.samples_per_hour) != 2){
         return;
     }
 
     routing_entry_add_provided_variable(entry, var_info);
 }
 
-bool data_send_log(uint16_t to, VariableInfo variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){
+bool data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time){
     char msg[PACKET_MAX_LENGTH];
     
-    if(snprintf(msg, PACKET_MAX_LENGTH, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%.4f", variable.id, variable.samples_per_day, day_number, sample_num, val) <=0){
+    if(snprintf(msg, PACKET_MAX_LENGTH, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%.4f", variable.id, variable.samples_per_hour, hour_number, sample_num, val) <=0){
         return false;
     }
 
@@ -139,7 +139,7 @@ bool data_send_log(uint16_t to, VariableInfo variable, uint32_t day_number, uint
     return network_send_packet(packet, time);
 }
 
-bool network_announce_log(VariableInfo target_variable, uint32_t day_number, uint32_t sample_num, float val, TIME_TYPE time){
+bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time){
     for(size_t i = 0; i < routing_table_top; i++){
         RoutingEntry* entry =routing_table[i];
 
@@ -156,7 +156,7 @@ bool network_announce_log(VariableInfo target_variable, uint32_t day_number, uin
             continue;
         }
 
-        data_send_log(entry->device_id, target_variable, day_number, sample_num, val, time);
+        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
     }
     return true;
 }
@@ -167,13 +167,13 @@ void process_data_log(Packet* packet, TIME_TYPE time){
     }
 
     VariableInfo variable = {0};
-    uint32_t day_number = 0;
+    uint32_t hour_number = 0;
     uint32_t sample_num = 0;
     float val = 0.0;
 
-    if(sscanf(packet->message, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%f", &variable.id, &variable.samples_per_day, &day_number, &sample_num, &val) != 5){
+    if(sscanf(packet->message, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%f", &variable.id, &variable.samples_per_hour, &hour_number, &sample_num, &val) != 5){
         return;
     }
 
-    data_log(variable, day_number, sample_num, val, time, false);
+    data_log(variable, hour_number, sample_num, val, time, false);
 }

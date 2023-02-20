@@ -11,12 +11,15 @@
 
 pthread_mutex_t zejf_lock;
 
-bool process_command(char *line)
+bool process_command(char *cmd, int argc, char** argv)
 {
-    if (strcmp(line, "exit\n") == 0) {
+    if (strcmp(cmd, "exit\n") == 0) {
         return true;
+    } else if (strcmp(cmd, "data\n") == 0) {
+        printf("SO you want to see some data..\n");
+        return false;
     } else {
-        printf("unknown action: %s", line);
+        printf("unknown action: %s argc %d\n", cmd, argc);
     }
     return false;
 }
@@ -26,6 +29,9 @@ void command_line()
     printf("command line active\n");
     size_t len = 0;
     ssize_t lineSize = 0;
+
+    int argc = 0;
+    char* argv[5];
     while (true) {
         char *line = NULL;
         lineSize = getline(&line, &len, stdin);
@@ -33,7 +39,24 @@ void command_line()
             free(line);
             break;
         }
-        bool result = process_command(line);
+
+        argc = 0;
+        argv[0] = line;
+
+        for(ssize_t i = 0; i < lineSize; i++){
+            char ch = line[i];
+            if(ch == ' ' || ch == '\n'){
+                line[i] = '\0';
+                if(i < lineSize - 1){
+                    argv[++argc] = &line[i + 1];
+                }
+                if(argc == 5){
+                    break;
+                }
+            }
+        }
+
+        bool result = process_command(argv[0], argc, argv);
         free(line);
         if (result) {
             break;

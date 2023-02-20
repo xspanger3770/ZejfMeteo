@@ -35,11 +35,11 @@ void data_requests_destroy(void){
     list_destroy(data_requests_queue, &data_request_destroy);
 }
 
-bool request_already_exists(uint16_t to, VariableInfo variable, uint32_t day_number){
+bool request_already_exists(uint16_t to, VariableInfo variable, uint32_t hour_number){
     Node* node = data_requests_queue->tail;
     while(node != NULL){
         DataRequest* request = (DataRequest*)node->item;
-        if(request->target_device == to && request->day_number == day_number && request->variable.id == variable.id){
+        if(request->target_device == to && request->hour_number == hour_number && request->variable.id == variable.id){
             return true;
         }
         node = node->next;
@@ -50,8 +50,8 @@ bool request_already_exists(uint16_t to, VariableInfo variable, uint32_t day_num
     return false;
 }
 
-bool data_request_add(uint16_t to, VariableInfo variable, uint32_t day_number, uint32_t start_log, uint32_t end_log){
-    if(request_already_exists(to, variable, day_number)){
+bool data_request_add(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t start_log, uint32_t end_log){
+    if(request_already_exists(to, variable, hour_number)){
         return false;
     }
     DataRequest* request = data_request_create();
@@ -59,23 +59,23 @@ bool data_request_add(uint16_t to, VariableInfo variable, uint32_t day_number, u
         return false;
     }
 
-    request->day_number = day_number;
+    request->hour_number = hour_number;
     request->current_log = start_log;
     request->start_log = start_log;
     request->end_log = end_log;
     request->target_device = to;
     request->variable = variable;
 
-    printf("adding now day %d total %ld\n", day_number, data_requests_queue->item_count);
+    printf("adding now hour %d total %ld\n", hour_number, data_requests_queue->item_count);
 
     return list_push(data_requests_queue, request);
 }
 
-bool data_request_send(u_int16_t to, VariableInfo variable, uint32_t day_number, uint32_t start_log, uint32_t end_log, TIME_TYPE time){
+bool data_request_send(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t start_log, uint32_t end_log, TIME_TYPE time){
     char msg[PACKET_MAX_LENGTH];
 
     if(snprintf(msg, PACKET_MAX_LENGTH, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%"SCNu32, 
-                        variable.id, variable.samples_per_day, day_number, start_log, end_log) <= 0){
+                        variable.id, variable.samples_per_hour, hour_number, start_log, end_log) <= 0){
         return false;
     }
 
@@ -89,16 +89,16 @@ bool data_request_send(u_int16_t to, VariableInfo variable, uint32_t day_number,
 
 bool data_request_receive(Packet* packet){
     VariableInfo variable; 
-    uint32_t day_number;
+    uint32_t hour_number;
     uint32_t start_log; 
     uint32_t end_log;
 
     if(sscanf(packet->message, "%"SCNu16",%"SCNu32",%"SCNu32",%"SCNu32",%"SCNu32, 
-                        &variable.id, &variable.samples_per_day, &day_number, &start_log, &end_log) != 5){
+                        &variable.id, &variable.samples_per_hour, &hour_number, &start_log, &end_log) != 5){
         return false;
     }
 
-    return data_request_add(packet->from, variable, day_number, start_log, end_log);
+    return data_request_add(packet->from, variable, hour_number, start_log, end_log);
 }
 
 inline bool request_finished(DataRequest* request){
@@ -119,9 +119,9 @@ void data_requests_process(TIME_TYPE time){
             goto next;
         }
 
-        float val = data_get_val(request->variable, request->day_number, request->current_log);
+        float val = data_get_val(request->variable, request->hour_number, request->current_log);
 
-        if(!data_send_log(request->target_device, request->variable, request->day_number, request->current_log, val, time)){
+        if(!data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time)){
             break;
         }
         
