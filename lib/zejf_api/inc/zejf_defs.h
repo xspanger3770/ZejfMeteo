@@ -43,8 +43,8 @@ typedef struct interface_t{
 } Interface;
 
 typedef struct variable_info_t{
-    uint16_t id;
     uint32_t samples_per_day;
+    uint16_t id;
 } VariableInfo;
 
 typedef struct variable_t{
@@ -55,7 +55,7 @@ typedef struct variable_t{
 typedef struct dynamic_day_t{
     size_t total_size;
     uint32_t day_number; // todo checksum?
-    int16_t variable_count;
+    uint16_t variable_count;
     bool modified;
     Variable* variables;
     uint8_t data[];
@@ -103,7 +103,7 @@ typedef struct packet_t{
     uint32_t time_received;
     uint32_t time_sent;
     uint32_t tx_id;
-    int32_t checksum;
+    uint32_t checksum;
     uint16_t from;
     uint16_t to;
     uint16_t message_size;

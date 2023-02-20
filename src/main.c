@@ -48,7 +48,7 @@ int main44f(){
     return 0;
 }
 
-int main(int argc, char *argv[]){
+int mainqr(int argc, char *argv[]){
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
     int port = 1955;

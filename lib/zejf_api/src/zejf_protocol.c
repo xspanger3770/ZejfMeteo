@@ -34,8 +34,8 @@ void* packet_destroy(void* ptr){
     return NULL;
 }
 
-int32_t checksum(void* ptr, size_t size){
-    int32_t result = 5381;
+uint32_t checksum(void* ptr, size_t size){
+    uint32_t result = 5381;
     for(size_t i = 0; i < size; i++){
         result = ((result<<5)+result)+((uint8_t*) ptr)[i];
     }
@@ -43,8 +43,8 @@ int32_t checksum(void* ptr, size_t size){
 }
 
 // note that checksum itself and interfaces are not included
-int32_t packet_checksum(Packet* packet){
-    int32_t result = checksum(&packet->command, sizeof(packet->command));
+uint32_t packet_checksum(Packet* packet){
+    uint32_t result = checksum(&packet->command, sizeof(packet->command));
     result+=checksum(&packet->message_size, sizeof(packet->message_size));
     if(packet->message_size > 0){
         result+=checksum(packet->message, packet->message_size);
@@ -66,13 +66,13 @@ int packet_from_string(Packet* packet, char* data, int length){
     uint16_t to = 0;
     uint16_t ttl = 0;
     uint16_t command = 0;
-    int32_t checksum = 0;
+    uint32_t checksum = 0;
     uint16_t message_size = 0;
     uint32_t tx_id;
 
     char message[length];
 
-    int rv = sscanf(data, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";%s", 
+    int rv = sscanf(data, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNu32";%"SCNu16";%s", 
                             &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
 
     if(rv != 8){
@@ -119,14 +119,14 @@ bool packet_to_string(Packet* pack, char* buff, size_t max_length){
     } else {
         pack->message_size = strlen(pack->message);
     }
-    int32_t checksum = packet_checksum(pack);
+    uint32_t checksum = packet_checksum(pack);
 
     if(pack->message != NULL){
-        return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";%s}", pack->from, pack->to, pack->ttl, pack->tx_id,
+        return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNu32";%"SCNu16";%s}", pack->from, pack->to, pack->ttl, pack->tx_id,
             pack->command, checksum, pack->message_size, pack->message) > 0;
     }
 
-     return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNd32";%"SCNu16";}", pack->from, pack->to, pack->ttl, pack->tx_id,
+     return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNu32";%"SCNu16";}", pack->from, pack->to, pack->ttl, pack->tx_id,
             pack->command, checksum, pack->message_size) > 0;
 }
 

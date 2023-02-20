@@ -1,6 +1,7 @@
 todo queue:
 
-	- data checks for each hour instead of day
+	- huge change: data hours instead of data days
+	- some checking of loaded data, serialization?
 	
 some other considered stuff:
 	
