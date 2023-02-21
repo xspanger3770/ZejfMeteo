@@ -22,7 +22,6 @@
 #define BROADCAST 0xFFFF
 
 #define TIME_TYPE uint32_t
-#define ONE_PER_MINUTE (60 * 24)
 
 #define ALL_VARIABLES 0xFFFF
 
