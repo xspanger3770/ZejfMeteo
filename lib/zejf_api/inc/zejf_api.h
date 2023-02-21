@@ -15,6 +15,10 @@ void zejf_destroy(void);
 
 bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_number, float value, TIME_TYPE time, bool announce);
 
+DataHour* datahour_get(uint32_t hour_number, bool load, bool create);
+
+Variable* get_variable(DataHour* hour, uint16_t variable_id);
+
 size_t hour_load(uint8_t** data_buffer, uint32_t hour_number);
 
 bool hour_save(uint32_t hour_number, uint8_t* buffer, size_t total_size);

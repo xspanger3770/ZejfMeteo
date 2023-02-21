@@ -291,7 +291,7 @@ DataHour* datahour_get(uint32_t hour_number, bool load, bool create) {
         size_t loaded_size = 0;
         result = datahour_load(hour_number, &loaded_size);
         if(result != NULL){
-            result->flags = 1;
+            result->flags |= FLAG_MODIFIED;
             add = true;
         }
     }
@@ -334,7 +334,7 @@ void data_save(void){
     }
     do{
         DataHour* hour = (DataHour*)node->item;
-        if(hour->flags == 0){
+        if((hour->flags & FLAG_MODIFIED) == 0){
             goto next;
         }
         if(!datahour_save(hour)){
