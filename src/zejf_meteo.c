@@ -14,9 +14,11 @@
 pthread_mutex_t zejf_lock;
 
 void display_data(uint16_t variable, uint32_t hour_id) {
+    pthread_mutex_lock(&zejf_lock);
     DataHour* hour = datahour_get(hour_id, true, false);
     if(hour == NULL){
         printf("Hour %d doesn´t exist\n", hour_id);
+        pthread_mutex_unlock(&zejf_lock);
         return;
     }
 
@@ -28,6 +30,8 @@ void display_data(uint16_t variable, uint32_t hour_id) {
     for(uint32_t log = 0; log < var->variable_info.samples_per_hour; log++){
         printf("[%d] %f\n", log, var->data[log]);
     }
+
+    pthread_mutex_unlock(&zejf_lock);
 }
 
 bool parse_int(char* str, long* result){
@@ -69,13 +73,15 @@ bool process_command(char *cmd, int argc, char** argv)
 
         return false;
     } else if (strcmp(cmd, "dummy") == 0) {
-        printf("Insert dummy variable\n");
+        printf("Inserting dummy variable\n");
         VariableInfo DUMMY = {
             .id = 42,
             .samples_per_hour = 60
         };
 
         data_log(DUMMY, current_hours(), 69, 42, 0, false);
+
+        return false;
     } else {
         printf("unknown action: %s argc %d\n", cmd, argc);
     }
