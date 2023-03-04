@@ -90,7 +90,7 @@ void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, 
             RoutingEntry *entry = routing_table[i];
             for (uint16_t j = 0; j < entry->provided_count; j++) {
                 VariableInfo provided_variable = entry->provided_variables[j];
-                uint32_t current_log_num = ((double) current_millis_in_hour / HOUR) * (provided_variable.samples_per_hour - 1);
+                uint32_t current_log_num = (uint32_t) (((double) current_millis_in_hour / HOUR) * (provided_variable.samples_per_hour - 1.0));
                 bool wanted = false;
 
                 for (uint16_t k = 0; k < demand_count; k++) {

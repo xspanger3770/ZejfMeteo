@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-void _send_provide(VariableInfo info, TIME_TYPE time)
+void p_send_provide(VariableInfo info, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
 
@@ -33,7 +33,7 @@ bool network_send_provide_info(TIME_TYPE time)
 
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        _send_provide(provided_variables[provide_ptr], time);
+        p_send_provide(provided_variables[provide_ptr], time);
         provide_ptr++;
         provide_ptr %= provide_count;
         if (provide_ptr == 0) {
@@ -45,7 +45,7 @@ bool network_send_provide_info(TIME_TYPE time)
     return true;
 }
 
-void _send_demand(uint16_t var, TIME_TYPE time)
+void p_send_demand(uint16_t var, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
 
@@ -77,7 +77,7 @@ bool network_send_demand_info(TIME_TYPE time)
 
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        _send_demand(demanded_variables[demand_ptr], time);
+        p_send_demand(demanded_variables[demand_ptr], time);
         demand_ptr++;
         demand_ptr %= demand_count;
         if (demand_ptr == 0) {
@@ -177,7 +177,7 @@ void process_data_log(Packet *packet, TIME_TYPE time)
     VariableInfo variable = { 0 };
     uint32_t hour_number = 0;
     uint32_t sample_num = 0;
-    float val = 0.0;
+    float val = 0.0f;
 
     if (sscanf(packet->message, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%f", &variable.id, &variable.samples_per_hour, &hour_number, &sample_num, &val) != 5) {
         return;

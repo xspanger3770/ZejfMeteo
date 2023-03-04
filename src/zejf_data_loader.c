@@ -1,6 +1,5 @@
 #include "zejf_data_loader.h"
 #include "zejf_api.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +68,7 @@ char months[12][10] = { "January\0", "February\0", "March\0", "April\0", "May\0"
 
 void zejf_day_path(char *buff, uint32_t hour_number)
 {
-    time_t now = hour_number * 60 * 60;
+    time_t now = (time_t) hour_number * 60 * 60;
     struct tm *t = localtime(&now);
 
     char time_buff[32];
@@ -143,7 +142,7 @@ size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
     size_t fsize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    if (fsize > HOUR_FILE_MAX_SIZE) {
+    if (fsize > (size_t) HOUR_FILE_MAX_SIZE) {
         fsize = 0;
         goto close;
     }

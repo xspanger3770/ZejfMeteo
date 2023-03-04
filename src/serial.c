@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 // C library headers
 #include <math.h>
 #include <stdbool.h>
@@ -134,20 +132,20 @@ void *run_timer()
             network_send_demand_info(millis);
         }
         if ((count - 5) % 30 == 0 && count >= 5) {
-            int co = allocate_packet_queue(1);
+            size_t co = allocate_packet_queue(1);
             if (co > 0) {
                 time_check();
             }
             data_save();
         }
 
-        if (((count - 20) % (10 * 60)) == 0 && count >= 10) {
+        if (millis % (int64_t)(1000l * 60l * 10l) == 0) {
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
 
-        if (((count - 20) % (60 * 60)) == 0 && count >= 10) {
-            printf("DATA CHEEEEKKK\n");
-            run_data_check(current_hours(), millis % HOUR, 7, millis);
+        if (millis % (int64_t)(1000l * 60l * 60l) == 0 || count == 60) {
+            printf("MASSIVE\n");
+            run_data_check(current_hours(), millis % HOUR, 48, millis);
         }
 
         pthread_mutex_unlock(&zejf_lock);

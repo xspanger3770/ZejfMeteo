@@ -50,9 +50,7 @@ uint32_t packet_checksum(Packet *packet)
 {
     uint32_t result = checksum(&packet->command, sizeof(packet->command));
     result += checksum(&packet->message_size, sizeof(packet->message_size));
-    if (packet->message_size > 0) {
-        result += checksum(packet->message, packet->message_size);
-    }
+    result += checksum(packet->message, packet->message_size);
     result += checksum(&packet->from, sizeof(packet->from));
     result += checksum(&packet->to, sizeof(packet->to));
     result += checksum(&packet->ttl, sizeof(packet->ttl));
@@ -81,10 +79,6 @@ int packet_from_string(Packet *packet, char *data, int length)
 
     if (rv != 8) {
         return 2;
-    }
-
-    if (message == NULL) {
-        return 3;
     }
 
     size_t len = strlen(message);
@@ -124,6 +118,7 @@ bool packet_to_string(Packet *pack, char *buff, size_t max_length)
     } else {
         pack->message_size = strlen(pack->message);
     }
+
     uint32_t checksum = packet_checksum(pack);
 
     if (pack->message != NULL) {
@@ -133,18 +128,18 @@ bool packet_to_string(Packet *pack, char *buff, size_t max_length)
     return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";}", pack->from, pack->to, pack->ttl, pack->tx_id, pack->command, checksum, pack->message_size) > 0;
 }
 
-int main44()
+int main444()
 {
     char buff[128];
     Packet *pack = packet_create();
-    char msg[] = { '\0' };
+    char *msg = NULL;
     pack->message = msg;
     packet_to_string(pack, buff, 128);
 
     printf("[%s]\n", buff);
 
     Packet *pack2 = packet_create();
-    int rv = packet_from_string(pack2, buff, strlen(buff));
+    int rv = packet_from_string(pack2, buff, (int) strlen(buff));
     printf("rv %d\n", rv);
     printf("%d [%s]\n", pack2->message_size, pack2->message);
 

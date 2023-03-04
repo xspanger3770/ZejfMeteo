@@ -11,6 +11,11 @@
 #include "zejf_api.h"
 #include "zejf_meteo.h"
 
+#define COMMAND_ARGS_MAX 5
+#define DUMMY_ID 42
+#define ONE_PER_MINUTE 60
+#define BASE_10 10
+
 pthread_mutex_t zejf_lock;
 
 void display_data(uint16_t variable, uint32_t hour_id)
@@ -41,7 +46,7 @@ bool parse_int(char *str, long *result)
 {
     char *endptr = NULL;
     errno = 0;
-    long val = strtol(str, &endptr, 10);
+    long val = strtol(str, &endptr, BASE_10);
     if (errno != 0 || endptr == str) {
         return false;
     }
@@ -53,7 +58,8 @@ bool process_command(char *cmd, int argc, char **argv)
 {
     if (strcmp(cmd, "exit") == 0) {
         return true;
-    } else if (strcmp(cmd, "data") == 0) {
+    }
+    if (strcmp(cmd, "data") == 0) {
         printf("SO you want to see some data..\n");
         if (argc < 2) {
             printf("usage: data [variable] [hour_id]\n");
@@ -76,19 +82,20 @@ bool process_command(char *cmd, int argc, char **argv)
         display_data(variable, hour_id);
 
         return false;
-    } else if (strcmp(cmd, "dummy") == 0) {
+    }
+    if (strcmp(cmd, "dummy") == 0) {
         printf("Inserting dummy variable\n");
         VariableInfo DUMMY = {
-            .id = 42,
-            .samples_per_hour = 60
+            .id = DUMMY_ID,
+            .samples_per_hour = ONE_PER_MINUTE
         };
 
-        data_log(DUMMY, current_hours(), 69, 42, 0, false);
+        data_log(DUMMY, current_hours(), 0, DUMMY_ID, 0, false);
 
         return false;
-    } else {
-        printf("unknown action: %s argc %d\n", cmd, argc);
     }
+
+    printf("unknown action: %s argc %d\n", cmd, argc);
     return false;
 }
 
@@ -99,7 +106,7 @@ void command_line()
     ssize_t lineSize = 0;
 
     int argc = 0;
-    char *argv[5];
+    char *argv[COMMAND_ARGS_MAX];
     while (true) {
         char *line = NULL;
         lineSize = getline(&line, &len, stdin);
@@ -112,13 +119,13 @@ void command_line()
         argv[0] = line;
 
         for (ssize_t i = 0; i < lineSize; i++) {
-            char ch = line[i];
-            if (ch == ' ' || ch == '\n') {
+            char next_char = line[i];
+            if (next_char == ' ' || next_char == '\n') {
                 line[i] = '\0';
                 if (i < lineSize - 1) {
                     argv[++argc] = &line[i + 1];
                 }
-                if (argc == 5) {
+                if (argc == COMMAND_ARGS_MAX) {
                     break;
                 }
             }

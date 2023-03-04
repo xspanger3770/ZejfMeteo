@@ -56,6 +56,7 @@ bool hour_add_variable(DataHour *hour, VariableInfo variable)
 
     float *data = malloc(variable.samples_per_hour * sizeof(float));
     if (data == NULL) {
+        free(ptr);
         return false;
     }
 
@@ -125,7 +126,7 @@ uint8_t *hour_serialize(DataHour *hour, size_t *size)
     size_t total_size = DATAHOUR_BYTES;
     for (uint32_t i = 0; i < hour->variable_count; i++) {
         total_size += VARIABLE_INFO_BYTES;
-        total_size += hour->variables[i].variable_info.samples_per_hour * 4;
+        total_size += (size_t) (hour->variables[i].variable_info.samples_per_hour) * 4;
     }
 
     uint8_t *data = malloc(total_size);
@@ -307,7 +308,7 @@ DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
         size_t loaded_size = 0;
         result = datahour_load(hour_number, &loaded_size);
         if (result != NULL) {
-            result->flags |= FLAG_MODIFIED;
+            result->flags = 0;
             add = true;
         }
     }
@@ -428,7 +429,7 @@ int mainTES()
     free(data);
 
     if (new_hour != NULL) {
-        printf("new hour has id %d val %f\n", new_hour->hour_id, new_hour->variables[0].data[0]);
+        printf("new hour has id %d", new_hour->hour_id);
     }
 
     hour_destroy(new_hour);

@@ -209,7 +209,7 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
             return false;
         }
 
-        network_send_via(buff, strlen(buff), packet->source_interface, time);
+        network_send_via(buff, (int) strlen(buff), packet->source_interface, time);
     }
 
     return true;
@@ -234,7 +234,7 @@ int prepare_and_send(Packet *packet, Interface *destination_interface, TIME_TYPE
 
     packet->destination_interface = destination_interface;
 
-    return network_send_via(buff, strlen(buff), destination_interface, time);
+    return network_send_via(buff, (int) strlen(buff), destination_interface, time);
 }
 
 bool process_broadcast_packet(Packet *packet)
@@ -271,7 +271,7 @@ void network_send_everywhere(Packet *packet, TIME_TYPE time)
     for (int i = 0; i < count; i++) {
         Interface *interface = interfaces[i];
         if (packet->source_interface == NULL || interface->uid != packet->source_interface->uid) {
-            network_send_via(buff, strlen(buff), interface, time);
+            network_send_via(buff, (int) strlen(buff), interface, time);
         }
     }
 }
@@ -304,7 +304,7 @@ void sync_id(Interface *interface, int back, TIME_TYPE time)
     interface->rx_id = 1;
     interface->tx_id = 0;
 
-    network_send_via(buff, strlen(buff), interface, time);
+    network_send_via(buff, (int) strlen(buff), interface, time);
 }
 
 void network_process_rx(TIME_TYPE time);

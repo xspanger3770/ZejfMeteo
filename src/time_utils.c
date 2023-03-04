@@ -26,7 +26,7 @@ int64_t current_seconds(void)
 
 int32_t current_hours(void)
 {
-    return (int32_t) (current_seconds() / (60 * 60));
+    return (int32_t) (current_seconds() / (int32_t) (60 * 60));
 }
 
 int32_t current_day(void)

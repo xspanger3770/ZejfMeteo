@@ -142,7 +142,7 @@ void data_requests_process(TIME_TYPE time)
 
 int mains()
 {
-    float f = -999.0001;
+    float f = -999.0001f;
     printf("%d\n", (f == VALUE_EMPTY));
     printf("%f\n", FLT_MAX - 100);
 

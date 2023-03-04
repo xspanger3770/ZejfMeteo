@@ -51,7 +51,7 @@ int main44f()
     return 0;
 }
 
-int mainřž()
+int mainqqqqq()
 {
     zejf_init();
 
@@ -62,9 +62,11 @@ int mainřž()
         .samples_per_hour = 12 * 60
     };
 
-    data_log(TST, current_hours(), (current_seconds() % (60 * 60)) / 5, 42.690, current_millis(), false);
+    data_log(TST, current_hours(), (current_seconds() % (uint32_t) (60 * 60)) / 5, 42.690f, current_millis(), false);
 
     zejf_destroy();
+
+    return 0;
 }
 
 int main(int argc, char *argv[])
