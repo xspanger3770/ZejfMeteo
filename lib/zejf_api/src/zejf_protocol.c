@@ -1,31 +1,33 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "zejf_api.h"
 #include "zejf_data.h"
-#include "zejf_routing.h"
 #include "zejf_network.h"
 #include "zejf_protocol.h"
+#include "zejf_routing.h"
 
-Packet* packet_create(void){
-    Packet* pack = calloc(1, sizeof(Packet));
-    if(pack == NULL) {
+Packet *packet_create(void)
+{
+    Packet *pack = calloc(1, sizeof(Packet));
+    if (pack == NULL) {
         return NULL;
     }
 
     return pack;
 }
 
-void* packet_destroy(void* ptr){
-    Packet* pack = (Packet*)ptr;
-    if(pack == NULL){
+void *packet_destroy(void *ptr)
+{
+    Packet *pack = (Packet *) ptr;
+    if (pack == NULL) {
         return NULL;
     }
 
-    if(pack->message != NULL){
+    if (pack->message != NULL) {
         free(pack->message);
     }
 
@@ -34,31 +36,34 @@ void* packet_destroy(void* ptr){
     return NULL;
 }
 
-uint32_t checksum(void* ptr, size_t size){
+uint32_t checksum(void *ptr, size_t size)
+{
     uint32_t result = 5381;
-    for(size_t i = 0; i < size; i++){
-        result = ((result<<5)+result)+((uint8_t*) ptr)[i];
+    for (size_t i = 0; i < size; i++) {
+        result = ((result << 5) + result) + ((uint8_t *) ptr)[i];
     }
     return result;
 }
 
 // note that checksum itself and interfaces are not included
-uint32_t packet_checksum(Packet* packet){
+uint32_t packet_checksum(Packet *packet)
+{
     uint32_t result = checksum(&packet->command, sizeof(packet->command));
-    result+=checksum(&packet->message_size, sizeof(packet->message_size));
-    if(packet->message_size > 0){
-        result+=checksum(packet->message, packet->message_size);
+    result += checksum(&packet->message_size, sizeof(packet->message_size));
+    if (packet->message_size > 0) {
+        result += checksum(packet->message, packet->message_size);
     }
-    result+=checksum(&packet->from, sizeof(packet->from));
-    result+=checksum(&packet->to, sizeof(packet->to));
-    result+=checksum(&packet->ttl, sizeof(packet->ttl));
-    result+=checksum(&packet->tx_id, sizeof(packet->tx_id));
+    result += checksum(&packet->from, sizeof(packet->from));
+    result += checksum(&packet->to, sizeof(packet->to));
+    result += checksum(&packet->ttl, sizeof(packet->ttl));
+    result += checksum(&packet->tx_id, sizeof(packet->tx_id));
     return result;
 }
 
 // fill in packet from string, malloc the message, length is the length from { to }, rv 0 is succes
-int packet_from_string(Packet* packet, char* data, int length){
-    if(data[0] != '{' || data[length - 1] != '}'){
+int packet_from_string(Packet *packet, char *data, int length)
+{
+    if (data[0] != '{' || data[length - 1] != '}') {
         return 1;
     }
 
@@ -72,22 +77,21 @@ int packet_from_string(Packet* packet, char* data, int length){
 
     char message[length];
 
-    int rv = sscanf(data, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNu32";%"SCNu16";%s", 
-                            &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
+    int rv = sscanf(data, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%s", &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
 
-    if(rv != 8){
+    if (rv != 8) {
         return 2;
     }
 
-    if(message == NULL){
+    if (message == NULL) {
         return 3;
     }
 
     size_t len = strlen(message);
-    message[len-1] = '\0';
+    message[len - 1] = '\0';
     len--;
 
-    if(len != message_size){
+    if (len != message_size) {
         return 4;
     }
 
@@ -95,51 +99,51 @@ int packet_from_string(Packet* packet, char* data, int length){
     packet->to = to;
     packet->ttl = ttl;
     packet->tx_id = tx_id;
-    packet->checksum=checksum;
-    packet->command=command;
-    packet->message_size=message_size;
+    packet->checksum = checksum;
+    packet->command = command;
+    packet->message_size = message_size;
     packet->message = message;
 
-    if(checksum != packet_checksum(packet)){
+    if (checksum != packet_checksum(packet)) {
         printf("CHECKSUM FAIL\n");
         packet->message = NULL;
         return 5;
     }
 
-    packet->message=malloc(message_size+1);
+    packet->message = malloc(message_size + 1);
     memcpy(packet->message, message, message_size + 1);
 
     return 0;
 }
 
 // WITH NEWLINE
-bool packet_to_string(Packet* pack, char* buff, size_t max_length){
-    if(pack->message == NULL) {
+bool packet_to_string(Packet *pack, char *buff, size_t max_length)
+{
+    if (pack->message == NULL) {
         pack->message_size = 0;
     } else {
         pack->message_size = strlen(pack->message);
     }
     uint32_t checksum = packet_checksum(pack);
 
-    if(pack->message != NULL){
-        return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNu32";%"SCNu16";%s}", pack->from, pack->to, pack->ttl, pack->tx_id,
-            pack->command, checksum, pack->message_size, pack->message) > 0;
+    if (pack->message != NULL) {
+        return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%s}", pack->from, pack->to, pack->ttl, pack->tx_id, pack->command, checksum, pack->message_size, pack->message) > 0;
     }
 
-     return snprintf(buff, max_length, "{%"SCNu16";%"SCNu16";%"SCNu16";%"SCNu32";%"SCNu16";%"SCNu32";%"SCNu16";}", pack->from, pack->to, pack->ttl, pack->tx_id,
-            pack->command, checksum, pack->message_size) > 0;
+    return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";}", pack->from, pack->to, pack->ttl, pack->tx_id, pack->command, checksum, pack->message_size) > 0;
 }
 
-int main44(){
+int main44()
+{
     char buff[128];
-    Packet* pack = packet_create();
-    char msg[] = {'\0'};
+    Packet *pack = packet_create();
+    char msg[] = { '\0' };
     pack->message = msg;
     packet_to_string(pack, buff, 128);
 
     printf("[%s]\n", buff);
 
-    Packet* pack2 = packet_create();
+    Packet *pack2 = packet_create();
     int rv = packet_from_string(pack2, buff, strlen(buff));
     printf("rv %d\n", rv);
     printf("%d [%s]\n", pack2->message_size, pack2->message);

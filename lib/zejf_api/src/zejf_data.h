@@ -1,8 +1,8 @@
 #ifndef _ZEJF_DATA_H
 #define _ZEJF_DATA_H
 
-#include <stdint.h>
 #include "zejf_defs.h"
+#include <stdint.h>
 
 #define VARIABLE_INFO_BYTES (4 + 2)
 #define DATAHOUR_BYTES (4 + 4 + 2 + 1)

@@ -22,12 +22,13 @@
 #define HOUR_BUFFER_SIZE 128
 #define HOUR_FILE_MAX_SIZE (1024 * 1024 * 8)
 #define SAMPLE_RATE_MAX (60 * 12) //3kb
-#define VARIABLES_MAX 4 //3*4 = 12kb per hour
+#define VARIABLES_MAX 4           //3*4 = 12kb per hour
 
 // REQUESTS
 #define DATA_REQUEST_QUEUE_SIZE 16
 
-enum interface_type_t{
+enum interface_type_t
+{
     USB = 1
 };
 

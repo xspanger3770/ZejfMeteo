@@ -1,5 +1,5 @@
-#include "zejf_api.h"
 #include "zejf_data_loader.h"
+#include "zejf_api.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,26 +58,26 @@ int mkpath(char *file_path, mode_t mode)
     return day;
 }*/
 
-void str_append(char** end_ptr, char* str){
+void str_append(char **end_ptr, char *str)
+{
     size_t len = strlen(str);
     memcpy(*end_ptr, str, len);
     *end_ptr += len;
 }
 
-char months[12][10] = { "January\0", "February\0", "March\0", "April\0", "May\0", "June\0", 
-                        "July\0", "August\0", "September\0", "October\0", "November\0", "December\0" };
+char months[12][10] = { "January\0", "February\0", "March\0", "April\0", "May\0", "June\0", "July\0", "August\0", "September\0", "October\0", "November\0", "December\0" };
 
-void zejf_day_path(char* buff, uint32_t hour_number)
+void zejf_day_path(char *buff, uint32_t hour_number)
 {
     time_t now = hour_number * 60 * 60;
     struct tm *t = localtime(&now);
 
     char time_buff[32];
 
-    char* end_ptr = buff;
+    char *end_ptr = buff;
     str_append(&end_ptr, MAIN_FOLDER);
     str_append(&end_ptr, "data/");
-    
+
     strftime(time_buff, sizeof(time_buff) - 1, "%Y/", t);
 
     str_append(&end_ptr, time_buff);
@@ -89,8 +89,9 @@ void zejf_day_path(char* buff, uint32_t hour_number)
     *end_ptr = '\0';
 }
 
-bool hour_save(uint32_t hour_number, uint8_t* buffer, size_t total_size) {
-    if(buffer == NULL){
+bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
+{
+    if (buffer == NULL) {
         return false;
     }
 
@@ -127,7 +128,8 @@ bool hour_save(uint32_t hour_number, uint8_t* buffer, size_t total_size) {
     return result;
 }
 
-size_t hour_load(uint8_t** data_buffer, uint32_t hour_number) {
+size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
+{
     char path_buff[128];
     zejf_day_path(path_buff, hour_number);
 
@@ -139,9 +141,9 @@ size_t hour_load(uint8_t** data_buffer, uint32_t hour_number) {
 
     fseek(file, 0, SEEK_END);
     size_t fsize = ftell(file);
-    fseek(file, 0, SEEK_SET); 
+    fseek(file, 0, SEEK_SET);
 
-    if(fsize > HOUR_FILE_MAX_SIZE){
+    if (fsize > HOUR_FILE_MAX_SIZE) {
         fsize = 0;
         goto close;
     }
@@ -149,13 +151,13 @@ size_t hour_load(uint8_t** data_buffer, uint32_t hour_number) {
     printf("%ld bytes will be loaded from [%s]\n", fsize, path_buff);
 
     (*data_buffer) = malloc(fsize);
-    if((*data_buffer) == NULL){
+    if ((*data_buffer) == NULL) {
         perror("malloc");
         fsize = 0;
         goto close;
     }
 
-    if(fread(*data_buffer, fsize, 1, file) != 1){
+    if (fread(*data_buffer, fsize, 1, file) != 1) {
         perror("fread");
         free(*data_buffer);
         (*data_buffer) = NULL;
@@ -163,7 +165,7 @@ size_t hour_load(uint8_t** data_buffer, uint32_t hour_number) {
         goto close;
     }
 
-    close:
+close:
     fclose(file);
 
     return fsize;

@@ -1,29 +1,32 @@
 #include "zejf_data.h"
-#include "zejf_api.h"
-#include "linked_list.h"
 #include "data_info.h"
+#include "linked_list.h"
+#include "zejf_api.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef LinkedList Queue;
 
-Queue* data_queue;
+Queue *data_queue;
 
-void* hour_destroy(void* ptr);
+void *hour_destroy(void *ptr);
 
-void data_init(void){
+void data_init(void)
+{
     data_queue = list_create(HOUR_BUFFER_SIZE);
 }
 
-void data_destroy(void){
+void data_destroy(void)
+{
     list_destroy(data_queue, hour_destroy);
 }
 
-DataHour* hour_create(uint32_t hour_id){
-    DataHour* hour = calloc(1, sizeof(DataHour));
-    if(hour == NULL){
+DataHour *hour_create(uint32_t hour_id)
+{
+    DataHour *hour = calloc(1, sizeof(DataHour));
+    if (hour == NULL) {
         return NULL;
     }
 
@@ -35,31 +38,32 @@ DataHour* hour_create(uint32_t hour_id){
     return hour;
 }
 
-bool hour_add_variable(DataHour* hour, VariableInfo variable){
-    if(variable.samples_per_hour == 0 || variable.samples_per_hour > SAMPLE_RATE_MAX || hour->variable_count == VARIABLES_MAX){
+bool hour_add_variable(DataHour *hour, VariableInfo variable)
+{
+    if (variable.samples_per_hour == 0 || variable.samples_per_hour > SAMPLE_RATE_MAX || hour->variable_count == VARIABLES_MAX) {
         return false;
     }
-    for(uint16_t i = 0; i < hour->variable_count; i++){
-        if(hour->variables[i].variable_info.id == variable.id){
+    for (uint16_t i = 0; i < hour->variable_count; i++) {
+        if (hour->variables[i].variable_info.id == variable.id) {
             return false;
         }
     }
 
-    void* ptr = realloc(hour->variables, (hour->variable_count + 1) * sizeof(Variable));
-    if(ptr == NULL){
+    void *ptr = realloc(hour->variables, (hour->variable_count + 1) * sizeof(Variable));
+    if (ptr == NULL) {
         return false;
     }
 
-    float* data = malloc(variable.samples_per_hour * sizeof(float));
-    if(data == NULL){
+    float *data = malloc(variable.samples_per_hour * sizeof(float));
+    if (data == NULL) {
         return false;
     }
 
-    for(uint32_t i = 0; i < variable.samples_per_hour; i++){
+    for (uint32_t i = 0; i < variable.samples_per_hour; i++) {
         data[i] = VALUE_EMPTY;
     }
-   
-    Variable* new_var = &((Variable*)ptr)[hour->variable_count];
+
+    Variable *new_var = &((Variable *) ptr)[hour->variable_count];
     new_var->variable_info.samples_per_hour = variable.samples_per_hour;
     new_var->variable_info.id = variable.id;
     new_var->data = data;
@@ -70,14 +74,15 @@ bool hour_add_variable(DataHour* hour, VariableInfo variable){
     return true;
 }
 
-void* hour_destroy(void* ptr){
-    if(ptr == NULL){
+void *hour_destroy(void *ptr)
+{
+    if (ptr == NULL) {
         return NULL;
     }
 
-    DataHour* hour = (DataHour*) ptr;
+    DataHour *hour = (DataHour *) ptr;
 
-    for(int i = 0; i < hour->variable_count; i++){
+    for (int i = 0; i < hour->variable_count; i++) {
         Variable variable = hour->variables[i];
         free(variable.data);
     }
@@ -88,40 +93,43 @@ void* hour_destroy(void* ptr){
     return NULL;
 }
 
-uint32_t hour_calculate_checksum(DataHour* hour){
+uint32_t hour_calculate_checksum(DataHour *hour)
+{
     uint32_t result = 0;
 
     result += hour->flags;
     result += hour->hour_id;
     result += hour->variable_count;
 
-    for(uint16_t i = 0; i  < hour->variable_count; i++){
+    for (uint16_t i = 0; i < hour->variable_count; i++) {
         Variable var = hour->variables[i];
         result += var.variable_info.id;
         result += var.variable_info.samples_per_hour;
 
-        for(size_t j = 0; j < var.variable_info.samples_per_hour * sizeof(float); j++){
-            result += ((uint8_t*) var.data)[j];
+        for (size_t j = 0; j < var.variable_info.samples_per_hour * sizeof(float); j++) {
+            result += ((uint8_t *) var.data)[j];
         }
     }
 
     return result;
 }
 
-inline void serialize(uint8_t* data, size_t* ptr, void* val, size_t size){
+inline void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
+{
     memcpy(data + *ptr, val, size);
     *ptr += size;
 }
 
-uint8_t* hour_serialize(DataHour* hour, size_t* size){
+uint8_t *hour_serialize(DataHour *hour, size_t *size)
+{
     size_t total_size = DATAHOUR_BYTES;
-    for(uint32_t i = 0; i < hour->variable_count; i++){
+    for (uint32_t i = 0; i < hour->variable_count; i++) {
         total_size += VARIABLE_INFO_BYTES;
         total_size += hour->variables[i].variable_info.samples_per_hour * 4;
     }
 
-    uint8_t* data = malloc(total_size);
-    if(data == NULL){
+    uint8_t *data = malloc(total_size);
+    if (data == NULL) {
         return NULL;
     }
 
@@ -132,8 +140,8 @@ uint8_t* hour_serialize(DataHour* hour, size_t* size){
     serialize(data, size, &hour->variable_count, 2);
     serialize(data, size, &hour->flags, 1);
 
-    for(uint32_t i = 0; i < hour->variable_count; i++){
-        Variable* variable = &hour->variables[i];
+    for (uint32_t i = 0; i < hour->variable_count; i++) {
+        Variable *variable = &hour->variables[i];
         serialize(data, size, &variable->variable_info.samples_per_hour, 4);
         serialize(data, size, &variable->variable_info.id, 2);
         serialize(data, size, variable->data, sizeof(float) * variable->variable_info.samples_per_hour);
@@ -142,23 +150,25 @@ uint8_t* hour_serialize(DataHour* hour, size_t* size){
     return data;
 }
 
-bool deserialize(void* destination, uint8_t* data, size_t* ptr, size_t size, size_t total_size){
-    if(*ptr+size > total_size){
+bool deserialize(void *destination, uint8_t *data, size_t *ptr, size_t size, size_t total_size)
+{
+    if (*ptr + size > total_size) {
         return false;
     }
-  
+
     memcpy(destination, data + *ptr, size);
     *ptr += size;
 
     return true;
 }
 
-DataHour* hour_deserialize(uint8_t* data, size_t total_size) {
-    if(data == NULL){
+DataHour *hour_deserialize(uint8_t *data, size_t total_size)
+{
+    if (data == NULL) {
         return NULL;
     }
-    DataHour* hour = hour_create(0);
-    if(hour == NULL){
+    DataHour *hour = hour_create(0);
+    if (hour == NULL) {
         return NULL;
     }
 
@@ -172,15 +182,15 @@ DataHour* hour_deserialize(uint8_t* data, size_t total_size) {
     result &= deserialize(&hour->hour_id, data, &ptr, 4, total_size);
     result &= deserialize(&total_variable_count, data, &ptr, 2, total_size);
     result &= deserialize(&hour->flags, data, &ptr, 1, total_size);
-    
-    for(uint32_t i = 0; i < total_variable_count; i++){
+
+    for (uint32_t i = 0; i < total_variable_count; i++) {
         uint32_t samples_per_hour = 0;
         uint16_t variable_id = 0;
-        
+
         result &= deserialize(&samples_per_hour, data, &ptr, 4, total_size);
         result &= deserialize(&variable_id, data, &ptr, 2, total_size);
 
-        if(!result){
+        if (!result) {
             goto error;
         }
 
@@ -191,13 +201,13 @@ DataHour* hour_deserialize(uint8_t* data, size_t total_size) {
 
         result &= hour_add_variable(hour, info);
 
-        if(!result){
+        if (!result) {
             goto error;
         }
 
         result &= deserialize(hour->variables[hour->variable_count - 1].data, data, &ptr, sizeof(float) * samples_per_hour, total_size);
 
-        if(!result){
+        if (!result) {
             goto error;
         }
     }
@@ -206,8 +216,8 @@ DataHour* hour_deserialize(uint8_t* data, size_t total_size) {
 
     result &= hour_calculate_checksum(hour) == hour->checksum;
 
-    if(!result){
-        error: 
+    if (!result) {
+    error:
         hour_destroy(hour);
         return NULL;
     }
@@ -215,10 +225,11 @@ DataHour* hour_deserialize(uint8_t* data, size_t total_size) {
     return hour;
 }
 
-Variable* get_variable(DataHour* hour, uint16_t variable_id){
-    for(uint16_t i = 0; i < hour->variable_count; i++){
-        Variable* var = &hour->variables[i];
-        if(var->variable_info.id == variable_id){
+Variable *get_variable(DataHour *hour, uint16_t variable_id)
+{
+    for (uint16_t i = 0; i < hour->variable_count; i++) {
+        Variable *var = &hour->variables[i];
+        if (var->variable_info.id == variable_id) {
             return var;
         }
     }
@@ -226,38 +237,41 @@ Variable* get_variable(DataHour* hour, uint16_t variable_id){
     return NULL;
 }
 
-DataHour* hour_find(uint32_t hour_number){
-    Node* node = data_queue->head;
-    if(node == NULL){
+DataHour *hour_find(uint32_t hour_number)
+{
+    Node *node = data_queue->head;
+    if (node == NULL) {
         return NULL;
     }
-    do{
-        DataHour* hour = (DataHour*)node->item;
-        if(hour->hour_id == hour_number){
+    do {
+        DataHour *hour = (DataHour *) node->item;
+        if (hour->hour_id == hour_number) {
             list_prioritise(data_queue, node);
             return hour;
         }
-        node=node->previous;
-    }while(node != data_queue->head);
+        node = node->previous;
+    } while (node != data_queue->head);
 
     return NULL;
 }
 
-DataHour* datahour_load(uint32_t hour_number, size_t* loaded_size){
-    uint8_t* buffer = NULL;
+DataHour *datahour_load(uint32_t hour_number, size_t *loaded_size)
+{
+    uint8_t *buffer = NULL;
     size_t size = hour_load(&buffer, hour_number);
-    DataHour* result = hour_deserialize(buffer, size);
+    DataHour *result = hour_deserialize(buffer, size);
     free(buffer);
-    if(result != NULL){
+    if (result != NULL) {
         *loaded_size = size;
     }
     return result;
 }
 
-bool datahour_save(DataHour* hour){
+bool datahour_save(DataHour *hour)
+{
     size_t size = 0;
-    uint8_t* buffer = hour_serialize(hour, &size);
-    if(buffer == NULL){
+    uint8_t *buffer = hour_serialize(hour, &size);
+    if (buffer == NULL) {
         return false;
     }
 
@@ -268,9 +282,10 @@ bool datahour_save(DataHour* hour){
     return result;
 }
 
-void hour_add(DataHour* hour){
-    if(list_is_full(data_queue)){
-        DataHour* old = list_pop(data_queue);
+void hour_add(DataHour *hour)
+{
+    if (list_is_full(data_queue)) {
+        DataHour *old = list_pop(data_queue);
         datahour_save(old);
         hour_destroy(hour);
     }
@@ -278,109 +293,114 @@ void hour_add(DataHour* hour){
     list_push(data_queue, hour);
 }
 
-DataHour* datahour_get(uint32_t hour_number, bool load, bool create) {
-    DataHour* hour = hour_find(hour_number);
-    if(hour != NULL){
+DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
+{
+    DataHour *hour = hour_find(hour_number);
+    if (hour != NULL) {
         return hour;
     }
 
-    DataHour* result = NULL;
+    DataHour *result = NULL;
     bool add = false;
 
-    if(result == NULL && load){
+    if (result == NULL && load) {
         size_t loaded_size = 0;
         result = datahour_load(hour_number, &loaded_size);
-        if(result != NULL){
+        if (result != NULL) {
             result->flags |= FLAG_MODIFIED;
             add = true;
         }
     }
 
-    if(result == NULL && create){
+    if (result == NULL && create) {
         result = hour_create(hour_number);
         add = true;
     }
 
-    if(result != NULL && add){
+    if (result != NULL && add) {
         hour_add(result);
     }
-    
+
     return result;
 }
 
-float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number) {
-    DataHour* hour = datahour_get(hour_number, true, true);
-    if(hour == NULL){
+float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number)
+{
+    DataHour *hour = datahour_get(hour_number, true, true);
+    if (hour == NULL) {
         return VALUE_EMPTY;
     }
 
-    Variable* var = get_variable(hour, variable.id);
-    if(var == NULL){
+    Variable *var = get_variable(hour, variable.id);
+    if (var == NULL) {
         return VALUE_EMPTY;
     }
 
-    if(log_number >= var->variable_info.samples_per_hour){
+    if (log_number >= var->variable_info.samples_per_hour) {
         return VALUE_EMPTY;
     }
 
     return var->data[log_number];
 }
 
-void data_save(void){
+void data_save(void)
+{
     printf("Save all\n");
-    Node* node = data_queue->head;
-    if(node == NULL){
+    Node *node = data_queue->head;
+    if (node == NULL) {
         return;
     }
-    do{
-        DataHour* hour = (DataHour*)node->item;
-        if((hour->flags & FLAG_MODIFIED) == 0){
+    do {
+        DataHour *hour = (DataHour *) node->item;
+        if ((hour->flags & FLAG_MODIFIED) == 0) {
             goto next;
         }
-        if(!datahour_save(hour)){
+        if (!datahour_save(hour)) {
             goto next;
         }
         hour->flags = 0;
 
-        next:
-        node=node->previous;
-    }while(node != data_queue->head);
+    next:
+        node = node->previous;
+    } while (node != data_queue->head);
 }
 
-bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_number, float value, TIME_TYPE time, bool announce){
-    DataHour* hour = datahour_get(hour_number, true, true);
-    if(hour == NULL){
+bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_number, float value, TIME_TYPE time, bool announce)
+{
+    DataHour *hour = datahour_get(hour_number, true, true);
+    if (hour == NULL) {
         return false;
     }
-    Variable* existing_variable = get_variable(hour, target_variable.id);
-    if(existing_variable == NULL){
-        if(!hour_add_variable(hour, target_variable)){
+    Variable *existing_variable = get_variable(hour, target_variable.id);
+    if (existing_variable == NULL) {
+        if (!hour_add_variable(hour, target_variable)) {
             return false;
         }
         existing_variable = get_variable(hour, target_variable.id);
     }
-    if(existing_variable->variable_info.samples_per_hour != target_variable.samples_per_hour){
+    if (existing_variable->variable_info.samples_per_hour != target_variable.samples_per_hour) {
         return false;
     }
-    if(sample_number >= existing_variable->variable_info.samples_per_hour){
+    if (sample_number >= existing_variable->variable_info.samples_per_hour) {
         return false;
     }
-    if(existing_variable->data[sample_number] != VALUE_EMPTY && 
-        existing_variable->data[sample_number] != VALUE_NOT_MEASURED &&
-            (value == VALUE_EMPTY || value == VALUE_NOT_MEASURED)){
-                return false; // cannot rewrite wrong value
+    if (existing_variable->data[sample_number] != VALUE_EMPTY &&
+            existing_variable->data[sample_number] != VALUE_NOT_MEASURED &&
+            (value == VALUE_EMPTY || value == VALUE_NOT_MEASURED)) {
+        return false; // cannot rewrite wrong value
     }
     existing_variable->data[sample_number] = value;
     printf("logged %f hour %d ln %d\n", value, hour_number, sample_number);
-    if(announce){
+    if (announce) {
         network_announce_log(target_variable, hour_number, sample_number, value, time);
     }
     hour->flags = 1;
     return true;
 }
 
-int mainTES() {
-    DataHour* hour = hour_create(12345);
+int mainTES()
+{
+    DataHour *hour = hour_create(12345);
     printf("%d\n", hour->variable_count);
 
     VariableInfo TEMP = {
@@ -393,7 +413,7 @@ int mainTES() {
     //printf("%f\n", hour->variables->data[0]);
 
     size_t size = 0;
-    uint8_t* data = hour_serialize(hour, &size);
+    uint8_t *data = hour_serialize(hour, &size);
     printf("size is %ld vs %ld\n", size, sizeof(DataHour));
     printf("old hour has id %d\n", hour->hour_id);
 
@@ -404,13 +424,13 @@ int mainTES() {
 
     hour_destroy(hour);
 
-    DataHour* new_hour = hour_deserialize(data, size);
+    DataHour *new_hour = hour_deserialize(data, size);
     free(data);
 
-    if(new_hour != NULL){
+    if (new_hour != NULL) {
         printf("new hour has id %d val %f\n", new_hour->hour_id, new_hour->variables[0].data[0]);
     }
-    
+
     hour_destroy(new_hour);
     return 0;
 }

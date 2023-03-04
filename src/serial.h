@@ -3,7 +3,7 @@
 
 #include "zejf_meteo.h"
 
-void run_serial(Settings* settings);
+void run_serial(Settings *settings);
 
 void stop_serial();
 

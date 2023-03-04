@@ -9,7 +9,7 @@ int64_t current_micros(void)
 {
     struct timeval time;
     gettimeofday(&time, NULL);
-    int64_t s1 = (int64_t)(time.tv_sec) * 1000000l;
+    int64_t s1 = (int64_t) (time.tv_sec) * 1000000l;
     int64_t s2 = (time.tv_usec);
     return s1 + s2;
 }
@@ -26,9 +26,10 @@ int64_t current_seconds(void)
 
 int32_t current_hours(void)
 {
-    return (int32_t)(current_seconds() / (60 * 60));
+    return (int32_t) (current_seconds() / (60 * 60));
 }
 
-int32_t current_day(void){
+int32_t current_day(void)
+{
     return current_hours() / 24;
 }

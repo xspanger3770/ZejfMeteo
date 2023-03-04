@@ -1,11 +1,11 @@
 #define _GNU_SOURCE
 
 // C library headers
+#include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <stdbool.h>
 
 // Linux headers
 #include <errno.h> // Error integer and strerror() function
@@ -16,11 +16,11 @@
 
 #include <pthread.h>
 
+#include <inttypes.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
-#include <inttypes.h>
 
 #include "zejf_api.h"
 
@@ -44,129 +44,136 @@ Interface usb_interface_1 = {
     .type = USB
 };
 
-Interface* all_interfaces[] = {&usb_interface_1};
+Interface *all_interfaces[] = { &usb_interface_1 };
 
-void network_process_packet(Packet* packet){
-    packet->checksum=packet->checksum;
+void network_process_packet(Packet *packet)
+{
+    packet->checksum = packet->checksum;
 }
 
-void get_all_interfaces(Interface*** interfaces, int* length){
+void get_all_interfaces(Interface ***interfaces, int *length)
+{
     *interfaces = all_interfaces;
     *length = 1;
 }
 
-int network_send_via(char* msg, int length, Interface* interface, TIME_TYPE time){
-    switch(interface->type){
-        case USB:
-            if(!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)){
-                perror("write");
-            }else{
-                printf("%s\n", msg);
-            }
-            return SEND_SUCCES;
-        default:
-            printf("Unknown interaface: %d time %d\n", interface->type, time);
-            return SEND_UNABLE;
+int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
+{
+    switch (interface->type) {
+    case USB:
+        if (!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)) {
+            perror("write");
+        } else {
+            printf("%s\n", msg);
+        }
+        return SEND_SUCCES;
+    default:
+        printf("Unknown interaface: %d time %d\n", interface->type, time);
+        return SEND_UNABLE;
     }
 }
 
-bool time_check(){
+bool time_check()
+{
     char msg[PACKET_MAX_LENGTH];
 
     int64_t seconds = current_seconds();
-    if(snprintf(msg, 32, "%"SCNd64, seconds) < 0){
+    if (snprintf(msg, 32, "%" SCNd64, seconds) < 0) {
         return false;
     }
 
-
-    Packet* packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
-    if(packet == NULL){
+    Packet *packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
+    if (packet == NULL) {
         return false;
     }
 
-    
-    if(!network_send_packet(packet, current_millis())){
+    if (!network_send_packet(packet, current_millis())) {
         return false;
     }
 
     return true;
 }
 
-void process_packet(Packet* pack){
-    switch(pack->command){
-        case MESSAGE:
-            printf("Message from uC: [%s]\n", pack->message);
-            break;
-        default:
-            printf("Weird packet, command=%d\n", pack->command);
+void process_packet(Packet *pack)
+{
+    switch (pack->command) {
+    case MESSAGE:
+        printf("Message from uC: [%s]\n", pack->message);
+        break;
+    default:
+        printf("Weird packet, command=%d\n", pack->command);
     }
 }
 
-uint16_t demand[] = {ALL_VARIABLES};
+uint16_t demand[] = { ALL_VARIABLES };
 
-void get_provided_variables(uint16_t* provide_count, VariableInfo** provided_variables){
+void get_provided_variables(uint16_t *provide_count, VariableInfo **provided_variables)
+{
     *provide_count = 0;
     *provided_variables = NULL;
 }
 
-void get_demanded_variables(uint16_t* demand_count, uint16_t** demanded_variables){
+void get_demanded_variables(uint16_t *demand_count, uint16_t **demanded_variables)
+{
     *demand_count = 1;
     *demanded_variables = demand;
 }
 
-void* run_timer(){
+void *run_timer()
+{
     int count = 0;
-    while(true){
+    while (true) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
-        
+
         int64_t millis = current_millis();
 
-        if(count % 10 == 0){
+        if (count % 10 == 0) {
             network_send_routing_info(millis);
             routing_table_check(millis);
             network_send_demand_info(millis);
         }
-        if((count-5) % 30 == 0 && count >= 5){
+        if ((count - 5) % 30 == 0 && count >= 5) {
             int co = allocate_packet_queue(1);
-            if(co > 0){
+            if (co > 0) {
                 time_check();
             }
             data_save();
         }
 
-        if((count - 10) % (10 * 60) == 0 && count >= 10) {
+        if (((count - 20) % (10 * 60)) == 0 && count >= 10) {
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
-        
-        if((count - 10) % (60 * 60) == 0 && count >= 10) {
+
+        if (((count - 20) % (60 * 60)) == 0 && count >= 10) {
+            printf("DATA CHEEEEKKK\n");
             run_data_check(current_hours(), millis % HOUR, 7, millis);
         }
-        
+
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-        usleep(1000 * 1000);
+        sleep(1);
         count++;
     }
 }
 
-
-void* packet_sender_start(){
+void *packet_sender_start()
+{
     sleep(5);
-    while(true){
+    while (true) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
-        
+
         network_process_packets(current_millis());
-        
+
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-        
+
         usleep(1000 * 1);
     }
 }
 
-void run_reader(int port_fd, char* serial)
+void run_reader(int port_fd, char *serial)
 {
     usb_interface_1.handle = port_fd;
     printf("waiting for serial device\n");
@@ -178,48 +185,47 @@ void run_reader(int port_fd, char* serial)
 
     printf("serial port running fd %d\n", port_fd);
 
-    char buffer[BUFFER_SIZE] = {0};
-    char line_buffer[LINE_BUFFER_SIZE] = {0};
+    char buffer[BUFFER_SIZE] = { 0 };
+    char line_buffer[LINE_BUFFER_SIZE] = { 0 };
     int line_buffer_ptr = 0;
 
     struct stat stats;
-    
-    while(true){
+
+    while (true) {
         ssize_t count = read(port_fd, buffer, BUFFER_SIZE);
-        if(count <= 0){
-            if(stat(serial, &stats) == -1){
+        if (count <= 0) {
+            if (stat(serial, &stats) == -1) {
                 printf("Serial reader end, count %ld\n", count);
                 break;
             }
         }
-        for(ssize_t i = 0; i < count; i++){
+        for (ssize_t i = 0; i < count; i++) {
             line_buffer[line_buffer_ptr] = buffer[i];
-            if(buffer[i] == '\n'){
-                line_buffer[line_buffer_ptr-1] = '\0';
+            if (buffer[i] == '\n') {
+                line_buffer[line_buffer_ptr - 1] = '\0';
                 printf("            %s\n", line_buffer);
-                 if(line_buffer[0] == '{'){
+                if (line_buffer[0] == '{') {
                     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
                     pthread_mutex_lock(&zejf_lock);
-                    int64_t millis= current_millis();
-                    network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, millis );
+                    int64_t millis = current_millis();
+                    network_accept(line_buffer, line_buffer_ptr - 1, &usb_interface_1, millis);
                     pthread_mutex_unlock(&zejf_lock);
                     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
                 }
                 line_buffer_ptr = 0;
                 continue;
             }
-            
+
             line_buffer_ptr++;
-            if(line_buffer_ptr == LINE_BUFFER_SIZE - 1){
+            if (line_buffer_ptr == LINE_BUFFER_SIZE - 1) {
                 printf("ERR SERIAL READER BUFF OVERFLOW\n");
                 line_buffer_ptr = 0;
             }
         }
-        
     }
 
     close(port_fd);
-    
+
     time_threads_running = false;
     pthread_cancel(rip_thread);
     pthread_join(rip_thread, NULL);
@@ -228,13 +234,14 @@ void run_reader(int port_fd, char* serial)
     printf("serial reader thread finish\n");
 }
 
-void open_serial(char* serial){
+void open_serial(char *serial)
+{
     printf("trying to open port %s\n", serial);
     // Open the serial port. Change device path as needed (currently set to an
     // standard FTDI USB-UART cable type device)
     int port_fd = open(serial, O_RDWR);
-    
-    if(port_fd == -1){
+
+    if (port_fd == -1) {
         perror("open");
         return;
     }
@@ -277,7 +284,7 @@ void open_serial(char* serial){
     // (0x004) in output (NOT PRESENT ON LINUX)
 
     tty.c_cc[VTIME] = 100; // Wait for up to 1s (10 deciseconds), returning as soon
-                          // as any data is received.
+                           // as any data is received.
     tty.c_cc[VMIN] = 0;
 
     // Set in/out baud rate to be 38400
@@ -294,22 +301,25 @@ void open_serial(char* serial){
     run_reader(port_fd, serial);
 }
 
-void *start_serial(void* arg){
-    while(true){
-        open_serial((char*)arg);
+void *start_serial(void *arg)
+{
+    while (true) {
+        open_serial((char *) arg);
         printf("Next attempt in 5s\n");
         sleep(5);
     }
 }
 
-void run_serial(Settings* settings){
+void run_serial(Settings *settings)
+{
     pthread_create(&serial_reader_thread, NULL, &start_serial, settings->serial);
 }
 
-void stop_serial() {
+void stop_serial()
+{
     pthread_cancel(serial_reader_thread);
     pthread_join(serial_reader_thread, NULL);
-    if(time_threads_running){
+    if (time_threads_running) {
         pthread_cancel(rip_thread);
         pthread_join(rip_thread, NULL);
         pthread_cancel(packet_sender_thread);

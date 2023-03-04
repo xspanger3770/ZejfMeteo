@@ -14,6 +14,6 @@ void network_init(void);
 // Free all resources
 void network_destroy(void);
 
-void network_send_everywhere(Packet* packet, TIME_TYPE time);
+void network_send_everywhere(Packet *packet, TIME_TYPE time);
 
 #endif

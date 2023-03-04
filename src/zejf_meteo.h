@@ -3,16 +3,17 @@
 
 #include <pthread.h>
 
-typedef struct settings_t{
-    char* ip;
+typedef struct settings_t
+{
+    char *ip;
     int tcp_port;
-    char* serial;
+    char *serial;
 } Settings;
 
 extern Settings settings;
 
 extern pthread_mutex_t zejf_lock;
 
-void meteo_start(Settings* settings);
+void meteo_start(Settings *settings);
 
 #endif

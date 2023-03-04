@@ -1,26 +1,27 @@
 #include <getopt.h>
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
 
 #include "serial.h"
 
-#include "zejf_meteo.h"
-#include "zejf_api.h"
 #include "time_utils.h"
+#include "zejf_api.h"
+#include "zejf_meteo.h"
 
 void print_usage(void)
 {
     printf("Usage: -s <serial port> -i <ip address> -p <port number>\n");
 }
 
-int main2(){
+int main2()
+{
     uint32_t val = UINT32_MAX;
-    printf("%"SCNu32"\n", val);
-    uint32_t val2 = val+10;
-    printf("%"SCNu32"\n", val2);
-    printf("%"SCNu32"\n", (val2-val));
+    printf("%" SCNu32 "\n", val);
+    uint32_t val2 = val + 10;
+    printf("%" SCNu32 "\n", val2);
+    printf("%" SCNu32 "\n", (val2 - val));
     printf("packet=%ldb\n", sizeof(Packet));
     printf("routing=%ldb\n", sizeof(RoutingEntry));
 
@@ -37,8 +38,9 @@ int main2(){
     return 0;
 }
 
-int main44f(){
-    char kill_me[16][128] = {0};
+int main44f()
+{
+    char kill_me[16][128] = { 0 };
     snprintf(kill_me[0], 128, "this is a very important message");
     kill_me[0][127] = '\0';
     printf("%s\n", kill_me[0]);
@@ -49,7 +51,8 @@ int main44f(){
     return 0;
 }
 
-int mainřž(){
+int mainřž()
+{
     zejf_init();
 
     printf("hello\n");
@@ -64,7 +67,8 @@ int mainřž(){
     zejf_destroy();
 }
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[])
+{
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
     int port = 1955;

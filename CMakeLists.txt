@@ -8,6 +8,8 @@ set(ALL_FLAGS "-O2 -g -std=gnu99 -Wall -Wextra -Wpedantic")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_FLAGS}")
 
+set(CMAKE_C_CLANG_TIDY "clang-tidy")
+
 set(EXECUTABLE zejfmeteo_beta_1.0.0)
 
 # Project configuration
