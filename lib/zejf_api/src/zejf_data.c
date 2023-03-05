@@ -123,6 +123,9 @@ inline void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
 
 uint8_t *hour_serialize(DataHour *hour, size_t *size)
 {
+    if(hour == NULL || size == NULL){
+        return NULL;
+    }
     size_t total_size = DATAHOUR_BYTES;
     for (uint32_t i = 0; i < hour->variable_count; i++) {
         total_size += VARIABLE_INFO_BYTES;
@@ -288,7 +291,7 @@ void hour_add(DataHour *hour)
     if (list_is_full(data_queue)) {
         DataHour *old = list_pop(data_queue);
         datahour_save(old);
-        hour_destroy(hour);
+        hour_destroy(old);
     }
 
     list_push(data_queue, hour);
