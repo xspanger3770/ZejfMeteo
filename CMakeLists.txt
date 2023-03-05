@@ -8,7 +8,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_FLAGS}")
 set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=/home/jakublinux/Desktop/All/CProjects/ZejfMeteo/.clang-tidy")
 set(CMAKE_C_CPPCHECK "cppcheck")
 
-set(EXECUTABLE zejfmeteo_beta_1.1.0)
+set(EXECUTABLE zejfmeteo_beta_1.1.2)
 
 # Project configuration
 project(zejfmeteo)

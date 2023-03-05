@@ -158,7 +158,9 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
     }
 
     if (packet->command == ACK) {
-        ack_packet(packet->source_interface, packet->tx_id);
+        #if ACK_REQUIRED 
+            ack_packet(packet->source_interface, packet->tx_id);
+        #endif
 
         packet_destroy(packet);
         return true;
@@ -191,8 +193,6 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
         packet->source_interface->rx_id++;
     }
 
-    uint32_t id_to_ack = packet->tx_id;
-
     packet->time_received = time; // time when it entered the queue
     packet->time_sent = 0;        // last send attempt
     packet->tx_id = 0;            // not determined yet
@@ -202,15 +202,17 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
         // fun fact: it happened
     }
 
+    #if ACK_REQUIRED 
     // SEND ACK BACK TO EVERY NON-SPECIAL PACKET
     if (packet->from != DEVICE_ID) { // if it came from outside it will have source_interface set
         char buff[PACKET_MAX_LENGTH];
-        if (!prepare_ack_message(buff, id_to_ack)) {
+        if (!prepare_ack_message(buff, packet->tx_id)) {
             return false;
         }
 
         network_send_via(buff, (int) strlen(buff), packet->source_interface, time);
     }
+    #endif
 
     return true;
 }
@@ -329,6 +331,7 @@ void network_process_rx(TIME_TYPE time)
     }
 }
 
+// WARNING: spaghetti code!!
 void network_send_tx(TIME_TYPE time)
 {
     if (list_is_empty(tx_queue)) {
@@ -403,10 +406,18 @@ void network_send_tx(TIME_TYPE time)
         goto remove;
     }
 
+    #if !ACK_REQUIRED
+        goto remove;
+    #endif
+
 next_one:
-
     next_packet = next_packet->next;
+    goto finally;
 
+remove:
+    packet_remove(next_packet);
+
+finally:
     // toggle reset flag to all routing entries
     if (next_packet == tx_queue->tail) {
         for (size_t i = 0; i < routing_table_top; i++) {
@@ -414,11 +425,6 @@ next_one:
             entry->paused = 0;
         }
     }
-
-    return;
-
-remove:
-    packet_remove(next_packet);
 }
 
 Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg)

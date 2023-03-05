@@ -9,6 +9,7 @@
 #define PACKET_MAX_TTL 8
 #define RX_QUEUE_SIZE 256
 #define TX_QUEUE_SIZE 256
+#define ACK_REQUIRED false
 
 #define PACKET_RETRY_TIMEOUT 400
 #define PACKET_RESET_TIMEOUT (1000 * 2)
