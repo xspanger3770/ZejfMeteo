@@ -20,7 +20,6 @@ void interfaces_init(void) {
 
 void interfaces_destroy(void) {
     for(size_t i = 0; i < interface_count; i++){
-        printf("Destroy uid %d\n", all_interfaces[i]->uid);
         all_interfaces[i] = NULL;
     }
 }
@@ -66,26 +65,4 @@ void get_all_interfaces(Interface ***interfaces, size_t *length)
 {
     *interfaces = (Interface**)all_interfaces;
     *length = interface_count;
-}
-
-int main(){
-    interfaces_init();
-
-    Interface ifcs[10];
-
-    for(int i = 0; i < 10; i++){
-        Interface* tst = &ifcs[i];
-        tst->handle = 5;
-        tst->type = USB;
-
-        printf("%p\n", (void*)tst);
-
-        interface_add(tst);
-    }
-
-    interface_remove(5);
-
-    interfaces_destroy();
-
-    return 0;
 }

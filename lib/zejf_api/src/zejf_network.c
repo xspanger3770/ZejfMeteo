@@ -27,7 +27,7 @@ bool network_push_packet(Packet *packet);
 
 bool process_rip_packet(Packet *packet, TIME_TYPE now);
 
-void sync_id(Interface *entry, int back, TIME_TYPE time);
+void sync_id(Interface *interface, int back, TIME_TYPE time);
 
 bool network_catch_packet(Packet *packet, TIME_TYPE time);
 

@@ -11,6 +11,7 @@
 #include "zejf_api.h"
 #include "zejf_meteo.h"
 #include "interface_manager.h"
+#include "server.h"
 
 #define COMMAND_ARGS_MAX 5
 #define DUMMY_ID 42
@@ -146,6 +147,8 @@ void meteo_stop()
 
     zejf_destroy();
 
+    server_destroy();
+
     interfaces_destroy();
 
     pthread_mutex_destroy(&zejf_lock);
@@ -158,6 +161,8 @@ void meteo_start(Settings *settings)
     interfaces_init();
 
     zejf_init();
+
+    server_init(settings);
 
     run_serial(settings);
 

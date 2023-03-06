@@ -69,7 +69,7 @@ int mainqqqqq()
     return 0;
 }
 
-int mainb(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     char *serial = "/dev/ttyUSB0";
     char *ip = "0.0.0.0";
