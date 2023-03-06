@@ -70,7 +70,7 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
 
 // fills the pointers with all available inerfaces on target device
 // target platform defines this
-void get_all_interfaces(Interface ***interfaces, int *length);
+void get_all_interfaces(Interface ***interfaces, size_t *length);
 
 void get_provided_variables(uint16_t *provide_count, VariableInfo **provided_variables);
 

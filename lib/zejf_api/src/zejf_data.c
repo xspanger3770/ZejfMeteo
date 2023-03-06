@@ -115,7 +115,7 @@ uint32_t hour_calculate_checksum(DataHour *hour)
     return result;
 }
 
-inline void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
+void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
 {
     memcpy(data + *ptr, val, size);
     *ptr += size;

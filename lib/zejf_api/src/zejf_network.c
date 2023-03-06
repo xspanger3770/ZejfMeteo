@@ -266,11 +266,11 @@ void network_send_everywhere(Packet *packet, TIME_TYPE time)
         return;
     }
     Interface **interfaces = NULL;
-    int count = 0;
+    size_t count = 0;
 
     get_all_interfaces(&interfaces, &count);
 
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         Interface *interface = interfaces[i];
         if (packet->source_interface == NULL || interface->uid != packet->source_interface->uid) {
             network_send_via(buff, (int) strlen(buff), interface, time);

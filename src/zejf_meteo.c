@@ -10,6 +10,7 @@
 #include "time_utils.h"
 #include "zejf_api.h"
 #include "zejf_meteo.h"
+#include "interface_manager.h"
 
 #define COMMAND_ARGS_MAX 5
 #define DUMMY_ID 42
@@ -145,12 +146,16 @@ void meteo_stop()
 
     zejf_destroy();
 
+    interfaces_destroy();
+
     pthread_mutex_destroy(&zejf_lock);
 }
 
 void meteo_start(Settings *settings)
 {
     pthread_mutex_init(&zejf_lock, NULL);
+
+    interfaces_init();
 
     zejf_init();
 

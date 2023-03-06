@@ -25,6 +25,7 @@
 #include "serial.h"
 #include "time_utils.h"
 #include "zejf_meteo.h"
+#include "interface_manager.h"
 
 #define BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 128
@@ -36,23 +37,9 @@ pthread_t packet_sender_thread;
 volatile bool serial_running = false;
 volatile bool time_threads_running = false;
 
-Interface usb_interface_1 = {
-    .uid = 1,
-    .handle = 0,
-    .type = USB
-};
-
-Interface *all_interfaces[] = { &usb_interface_1 };
-
 void network_process_packet(Packet *packet)
 {
     packet->checksum = packet->checksum;
-}
-
-void get_all_interfaces(Interface ***interfaces, int *length)
-{
-    *interfaces = all_interfaces;
-    *length = 1;
 }
 
 int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)

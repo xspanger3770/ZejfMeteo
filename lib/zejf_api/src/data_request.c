@@ -107,7 +107,7 @@ bool data_request_receive(Packet *packet)
     return data_request_add(packet->from, variable, hour_number, start_log, end_log);
 }
 
-inline bool request_finished(DataRequest *request)
+bool request_finished(DataRequest *request)
 {
     return request->current_log > request->end_log;
 }
