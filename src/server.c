@@ -1,4 +1,5 @@
 #include "server.h"
+#include "time_utils.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -8,14 +9,62 @@
 #include <sys/socket.h>
 
 #include <stdbool.h>
-
+#include <unistd.h>
 #include <pthread.h>
 
 static pthread_t server_thread;
+static pthread_t server_watchdog;
 volatile bool server_running = false;
 
-void client_connect(int client_fd){
-    printf("CLIENT\n");
+LinkedList* clients;
+
+int next_client_uid;
+
+Client* client_create(int fd) {
+    Client* client = malloc(sizeof(Client));
+    if(client == NULL){
+        return NULL;
+    }
+
+    client->fd = fd;
+    client->last_seen = 0;
+    client->uid = next_client_uid++;
+
+    return client;
+}
+
+void* client_destroy(void* ptr) {
+    free(ptr);
+    return NULL; 
+}
+
+void client_connect(int client_fd) {
+    Client* client = client_create(client_fd);
+    if(client == NULL){
+        return;
+    }
+
+    client->last_seen = current_millis();
+
+    if(!list_push(clients, client)){
+        return;
+    }
+
+    printf("CLIENT #%d added\n", client->uid);
+}
+
+void client_remove(Node* node)
+{
+    Client* cl = node->item;
+    if(close(cl->fd) != 0){
+        perror("close");
+    }
+
+    // disconnect
+    list_remove(clients, node);
+    
+    printf("Client #%d timeout\n", cl->uid);
+    free(cl);
 }
 
 void* server_run(void* arg){
@@ -77,14 +126,57 @@ void* server_run(void* arg){
     return NULL;
 }
 
-void server_init(Settings* settings) {
-    server_running = true;
-    pthread_create(&server_thread, NULL, server_run, settings);
+void* watchdog_run(void* arg){
+    while(true){
+        if(!server_running){
+            server_running = true;
+            pthread_create(&server_thread, NULL, server_run, arg);
+        }
+        
+        sleep(10);
+
+        int64_t millis = current_millis();
+
+        if(server_running) {
+            Node* node = clients->head;
+            if(node == NULL){
+                continue;
+            }
+            do{
+                Node* tmp = node;
+                node = node->next;
+
+                Client* client = tmp->item;
+                if(millis - client->last_seen > 10 * 1000){
+                    client_remove(tmp);
+                    node = clients->head;
+                }
+            } while(node != NULL && node != clients->head);
+        }
+    }
+    
 }
 
-void server_destroy(void){
+void server_init(Settings* settings) {
+    pthread_create(&server_watchdog, NULL, watchdog_run, settings);
+
+    clients = list_create(64);
+    next_client_uid = 0;
+}
+
+void server_close() {
     if(server_running){
         pthread_cancel(server_thread);
         pthread_join(server_thread, NULL);
+        server_running = false;
     }
+}
+
+void server_destroy(void){
+    pthread_cancel(server_watchdog);
+    pthread_join(server_watchdog, NULL);
+
+    server_close();
+
+    list_destroy(clients, client_destroy);
 }

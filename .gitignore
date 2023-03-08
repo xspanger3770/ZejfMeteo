@@ -56,6 +56,7 @@ dkms.conf
 
 # Other
 build/
+release/
 experiments/
 old.txt
 CMakeFiles/
