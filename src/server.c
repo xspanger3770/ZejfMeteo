@@ -24,8 +24,8 @@ volatile bool server_running = false;
 LinkedList* clients;
 int next_client_uid;
 
-FILE* tmp_file = NULL;
-int temp_fd;
+// [0] for read, [1] for write
+int pipe_fds[2];
 
 Client* client_create(int fd) {
     Client* client = malloc(sizeof(Client));
@@ -62,6 +62,11 @@ void client_connect(int client_fd) {
 
     interface_add(&client->interface);
 
+    char buff = 'a';
+    if(write(pipe_fds[1], &buff, 1) == -1){
+        perror("write");
+    }
+
     printf("CLIENT #%d added\n", client->uid);
 }
 
@@ -81,10 +86,60 @@ void client_remove(Node* node)
     free(cl);
 }
 
+void prepare_fds(struct pollfd *fds){
+    (fds)[0].fd = pipe_fds[0];
+    (fds)[0].events = POLLIN;
+
+    Node* node = clients->head;
+    for(int i = 0; i < clients->item_count; i++){
+        (fds)[i + 1].fd = ((Client*)(node->item))->fd;
+        (fds)[i + 1].events = POLLIN;
+        node = node->next;
+    }
+}
+
+void read_client(int fd){
+    size_t size = 128;
+    char buff[size];
+    int rv = read(fd, buff, size);
+    printf("read %d bytes from fd %d\n", rv, fd);
+}
+
+void read_dummy(int fd){
+    char buff[16];
+    int rv = -1;
+    do{
+        rv = read(fd, buff, 16);
+    } while(rv == 16);
+}
+
 void* poll_run(){
     while(true) {
-        struct pollfd fds[clients->item_count];
-        sleep(1); // todo
+        int nfds = clients->item_count + 1;
+        struct pollfd fds[nfds];
+
+        prepare_fds(fds);
+
+        printf("POLLING %d fds\n", nfds);
+        if(poll(fds, nfds, -1) == -1){
+            perror("poll");
+            break;
+        }
+
+        printf("polled\n");
+
+        if(fds[0].revents & POLLIN) {
+            printf("DUMMYYY\n");
+            read_dummy(fds[0].fd);
+            printf("dum\n");
+            continue; // just a signal that change in clients have occured
+        }
+
+        for(int i = 0; i < nfds - 1; i++){
+            if(fds[i + 1].revents & POLLIN){
+                read_client(fds[i + 1].fd);
+            }
+        }
     }
     return NULL;
 }
@@ -186,13 +241,10 @@ void* watchdog_run(void* arg){
 }
 
 void server_init(Settings* settings) {
-    tmp_file = tmpfile();
-    if(tmp_file == NULL){
+    if(pipe(pipe_fds) == -1){
+        perror("pipe");
         return;
     }
-
-    
-    temp_fd = fileno(tmp_file);
     
     pthread_create(&server_watchdog, NULL, watchdog_run, settings);
 
@@ -218,9 +270,4 @@ void server_destroy(void){
     server_close();
 
     list_destroy(clients, client_destroy);
-
-    if(tmp_file != NULL){
-        fclose(tmp_file);
-        tmp_file = NULL;
-    }
 }
