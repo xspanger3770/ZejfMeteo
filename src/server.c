@@ -1,6 +1,7 @@
 #include "server.h"
 #include "time_utils.h"
 #include "interface_manager.h"
+#include "zejf_api.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -28,12 +29,14 @@ int next_client_uid;
 int pipe_fds[2];
 
 Client* client_create(int fd) {
-    Client* client = malloc(sizeof(Client));
+    Client* client = calloc(1, sizeof(Client));
     if(client == NULL){
         return NULL;
     }
 
     client->fd = fd;
+    client->buffer_ptr = 0;
+    client->buffer_parse_ptr = 0;
     client->last_seen = 0;
     client->uid = next_client_uid++;
     Interface* interface = &client->interface;
@@ -86,6 +89,18 @@ void client_remove(Node* node)
     free(cl);
 }
 
+Client* client_get(int fd){
+    Node* node = clients->head;
+    for(int i = 0; i < clients->item_count; i++){
+        Client* client = (Client*)(node->item);
+        if(client->fd == fd){
+            return client;
+        }
+        node = node->next;
+    }
+    return NULL;
+}
+
 void prepare_fds(struct pollfd *fds){
     (fds)[0].fd = pipe_fds[0];
     (fds)[0].events = POLLIN;
@@ -97,14 +112,6 @@ void prepare_fds(struct pollfd *fds){
         node = node->next;
     }
 }
-
-void read_client(int fd){
-    size_t size = 128;
-    char buff[size];
-    int rv = read(fd, buff, size);
-    printf("read %d bytes from fd %d\n", rv, fd);
-}
-
 void read_dummy(int fd){
     char buff[16];
     int rv = -1;
@@ -112,6 +119,48 @@ void read_dummy(int fd){
         rv = read(fd, buff, 16);
     } while(rv == 16);
 }
+
+void read_client(int fd) {
+    Client* client = client_get(fd);
+    if(client == NULL){
+        read_dummy(fd);
+        return;
+    }
+
+    int64_t millis = current_millis();
+    int rv;
+
+    do{
+        rv = read(fd, &client->buffer[client->buffer_ptr], CLIENT_BUFFER_SIZE - client->buffer_ptr);
+        if(rv < 0){
+            perror("read");
+            break;
+        }
+
+        client->buffer_ptr += rv;
+
+        printf("read %d bytes from fd %d\n", rv, fd);
+
+        for(;client->buffer_parse_ptr < CLIENT_BUFFER_SIZE; client->buffer_parse_ptr++){
+            if(client->buffer[client->buffer_parse_ptr] == '\n'){
+                client->buffer[client->buffer_parse_ptr] = '\0';
+
+                pthread_mutex_lock(&zejf_lock);
+                network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
+                pthread_mutex_unlock(&zejf_lock);
+
+                memcpy(client->buffer, &client->buffer[client->buffer_parse_ptr], client->buffer_ptr - client->buffer_parse_ptr);
+
+                client->buffer_parse_ptr = 0;
+            }
+        }
+
+        if(client->buffer_ptr >= CLIENT_BUFFER_SIZE){
+            client->buffer_ptr = 0;
+        }
+    } while(rv == CLIENT_BUFFER_SIZE - client->buffer_ptr);
+}
+
 
 void* poll_run(){
     while(true) {
