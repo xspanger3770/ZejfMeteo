@@ -30,7 +30,8 @@
 
 enum interface_type_t
 {
-    USB = 1
+    USB = 1,
+    TCP = 2
 };
 
 /*  ===== USAGE ====  

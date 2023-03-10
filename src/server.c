@@ -1,5 +1,6 @@
 #include "server.h"
 #include "time_utils.h"
+#include "interface_manager.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -29,6 +30,9 @@ Client* client_create(int fd) {
     client->fd = fd;
     client->last_seen = 0;
     client->uid = next_client_uid++;
+    Interface* interface = &client->interface;
+    interface->handle = fd;
+    interface->type = TCP;
 
     return client;
 }
@@ -50,6 +54,8 @@ void client_connect(int client_fd) {
         return;
     }
 
+    interface_add(&client->interface);
+
     printf("CLIENT #%d added\n", client->uid);
 }
 
@@ -62,6 +68,8 @@ void client_remove(Node* node)
 
     // disconnect
     list_remove(clients, node);
+
+    interface_remove(cl->interface.uid);
     
     printf("Client #%d timeout\n", cl->uid);
     free(cl);
@@ -132,7 +140,7 @@ void* watchdog_run(void* arg){
             server_running = true;
             pthread_create(&server_thread, NULL, server_run, arg);
         }
-        
+
         sleep(10);
 
         int64_t millis = current_millis();
