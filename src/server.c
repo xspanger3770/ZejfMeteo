@@ -13,13 +13,19 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include <poll.h>
+
 static pthread_t server_thread;
 static pthread_t server_watchdog;
+static pthread_t server_poll_thread;
+
 volatile bool server_running = false;
 
 LinkedList* clients;
-
 int next_client_uid;
+
+FILE* tmp_file = NULL;
+int temp_fd;
 
 Client* client_create(int fd) {
     Client* client = malloc(sizeof(Client));
@@ -75,6 +81,14 @@ void client_remove(Node* node)
     free(cl);
 }
 
+void* poll_run(){
+    while(true) {
+        struct pollfd fds[clients->item_count];
+        sleep(1); // todo
+    }
+    return NULL;
+}
+
 void* server_run(void* arg){
     Settings* settings = (Settings*) arg;
 
@@ -110,25 +124,31 @@ void* server_run(void* arg){
         pthread_exit(0);
     }
 
+    pthread_create(&server_poll_thread, NULL, poll_run, NULL);
+
     printf("Server is open\n");
 
     while(true){
         if (listen(server_fd, 3) < 0) {
             perror("listen");
-            server_running = false;
-            pthread_exit(0);
+            break;
         }
+
         int client_fd = -1;
         printf("accept\n");
         if ((client_fd = accept(server_fd, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0) {
             perror("accept");
-            server_running = false;
-            pthread_exit(0);
+            break;
         }
+
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         client_connect(client_fd);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
+
+    pthread_cancel(server_poll_thread);
+    pthread_join(server_poll_thread, NULL);
+
     server_running = false;
     pthread_exit(0);
     return NULL;
@@ -166,6 +186,14 @@ void* watchdog_run(void* arg){
 }
 
 void server_init(Settings* settings) {
+    tmp_file = tmpfile();
+    if(tmp_file == NULL){
+        return;
+    }
+
+    
+    temp_fd = fileno(tmp_file);
+    
     pthread_create(&server_watchdog, NULL, watchdog_run, settings);
 
     clients = list_create(64);
@@ -174,6 +202,9 @@ void server_init(Settings* settings) {
 
 void server_close() {
     if(server_running){
+        pthread_cancel(server_poll_thread);
+        pthread_join(server_poll_thread, NULL);
+        
         pthread_cancel(server_thread);
         pthread_join(server_thread, NULL);
         server_running = false;
@@ -187,4 +218,9 @@ void server_destroy(void){
     server_close();
 
     list_destroy(clients, client_destroy);
+
+    if(tmp_file != NULL){
+        fclose(tmp_file);
+        tmp_file = NULL;
+    }
 }
