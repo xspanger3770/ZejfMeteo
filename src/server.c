@@ -10,6 +10,9 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -89,12 +92,12 @@ void client_remove(Node* node)
     free(cl);
 }
 
-Client* client_get(int fd){
+Node* client_get(int fd){
     Node* node = clients->head;
     for(int i = 0; i < clients->item_count; i++){
         Client* client = (Client*)(node->item);
         if(client->fd == fd){
-            return client;
+            return node;
         }
         node = node->next;
     }
@@ -121,27 +124,36 @@ void read_dummy(int fd){
 }
 
 void read_client(int fd) {
-    Client* client = client_get(fd);
+    Node* node = client_get(fd);
+    Client* client = (Client*)node->item;
     if(client == NULL){
         read_dummy(fd);
         return;
     }
 
     int64_t millis = current_millis();
-    int rv;
+    int rv = -1;
+    size_t n_bytes = -1;
+
+    struct stat stats;
+    if(fstat(fd, &stats) == -1){
+        printf("EEEEEEEEE\n");
+    }
 
     do{
-        rv = read(fd, &client->buffer[client->buffer_ptr], CLIENT_BUFFER_SIZE - client->buffer_ptr);
-        if(rv < 0){
+        n_bytes = CLIENT_BUFFER_SIZE - client->buffer_ptr;
+        rv = read(fd, &client->buffer[client->buffer_ptr], n_bytes);
+        printf("read %d/%d bytes from fd %d\n", rv, n_bytes, fd);
+        if(rv <= 0){
             perror("read");
+            client_remove(node);
             break;
         }
 
         client->buffer_ptr += rv;
 
-        printf("read %d bytes from fd %d\n", rv, fd);
-
-        for(;client->buffer_parse_ptr < CLIENT_BUFFER_SIZE; client->buffer_parse_ptr++){
+       
+        for(;client->buffer_parse_ptr < client->buffer_ptr; client->buffer_parse_ptr++){
             if(client->buffer[client->buffer_parse_ptr] == '\n'){
                 client->buffer[client->buffer_parse_ptr] = '\0';
 
@@ -158,7 +170,8 @@ void read_client(int fd) {
         if(client->buffer_ptr >= CLIENT_BUFFER_SIZE){
             client->buffer_ptr = 0;
         }
-    } while(rv == CLIENT_BUFFER_SIZE - client->buffer_ptr);
+
+    } while(rv == n_bytes);
 }
 
 
@@ -170,12 +183,13 @@ void* poll_run(){
         prepare_fds(fds);
 
         printf("POLLING %d fds\n", nfds);
-        if(poll(fds, nfds, -1) == -1){
+        int rv = -1;
+        if((rv = poll(fds, nfds, -1)) == -1){
             perror("poll");
             break;
         }
 
-        printf("polled\n");
+        printf("polled %d\n", rv);
 
         if(fds[0].revents & POLLIN) {
             printf("DUMMYYY\n");
@@ -185,6 +199,7 @@ void* poll_run(){
         }
 
         for(int i = 0; i < nfds - 1; i++){
+            printf("REV %d\n", fds[i + 1].revents);
             if(fds[i + 1].revents & POLLIN){
                 read_client(fds[i + 1].fd);
             }

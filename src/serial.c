@@ -46,6 +46,7 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
 {
     switch (interface->type) {
     case USB:
+    case TCP:
         if (!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)) {
             perror("write");
         } else {
