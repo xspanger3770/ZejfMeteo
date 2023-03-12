@@ -16,6 +16,10 @@ uint32_t calculate_data_check(VariableInfo variable, uint32_t hour_num, uint32_t
     }
 
     Variable *current_variable = get_variable(hour, variable.id);
+    if(current_variable == NULL) {
+        return 0;
+    }
+    
     if (variable.samples_per_hour != current_variable->variable_info.samples_per_hour) {
         return 0;
     }

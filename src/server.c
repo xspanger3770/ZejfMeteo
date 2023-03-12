@@ -101,11 +101,7 @@ void client_remove(Node *node)
     }
 
     // disconnect
-
-    pthread_rwlock_wrlock(&clients_lock);
     list_remove(clients, node);
-    pthread_rwlock_unlock(&clients_lock);
-
 #if !ZEJF_HIDE_PRINTS
     printf("Client #%d timeout\n", cl->uid);
 #endif
@@ -245,7 +241,8 @@ void *poll_run()
                 printf("remove because %d\n", fds[i + 1].revents);
 #endif
                 pthread_rwlock_wrlock(&clients_lock);
-                client_remove(client_get(fds[i + 1].fd));
+                Node* node = client_get(fds[i + 1].fd);
+                client_remove(node);
                 pthread_rwlock_unlock(&clients_lock);
             }
         }
@@ -335,7 +332,7 @@ void *watchdog_run(void *arg)
         int64_t millis = current_millis();
 
         if (server_running) {
-            pthread_rwlock_rdlock(&clients_lock);
+            pthread_rwlock_wrlock(&clients_lock);
             Node *node = clients->head;
             if (node == NULL) {
                 pthread_rwlock_unlock(&clients_lock);
@@ -350,9 +347,7 @@ void *watchdog_run(void *arg)
 #if !ZEJF_HIDE_PRINTS
                     printf("Someone timedout after %ld\n", millis - client->last_seen);
 #endif
-                    pthread_rwlock_unlock(&clients_lock);
                     client_remove(tmp);
-                    pthread_rwlock_rdlock(&clients_lock);
                     node = clients->head;
                 }
             } while (node != NULL && node != clients->head);

@@ -35,7 +35,6 @@ pthread_t serial_reader_thread;
 pthread_t packet_sender_thread;
 
 volatile bool serial_running = false;
-volatile bool time_threads_running = false;
 
 #define UNUSED(x) (void) (x)
 
@@ -132,19 +131,16 @@ void *run_timer()
             network_send_demand_info(millis);
         }
         if ((count - 5) % 30 == 0 && count >= 5) {
-            size_t co = allocate_packet_queue(1);
-            if (co > 0) {
-                time_check();
-            }
+            time_check();
             data_save();
         }
 
-        if (millis % (int64_t) (1000l * 60l * 1l) == 0) {
+        if (count % (60l * 10l) == 0) {
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
 
-        if (/*millis % (int64_t) (1000l * 60l * 60l) == 0 ||*/ count % 40 == 0) {
-            run_data_check(current_hours(), millis % HOUR, 48, millis);
+        if (count % (60l * 60l) == 0 || count == 40) {
+            run_data_check(current_hours(), millis % HOUR, 36, millis);
         }
 
         pthread_mutex_unlock(&zejf_lock);
@@ -172,11 +168,12 @@ void *packet_sender_start()
 
 void run_reader(int port_fd, char *serial)
 {
+    pthread_mutex_lock(&zejf_lock);
     usb_interface_1.handle = port_fd;
+    pthread_mutex_unlock(&zejf_lock);
+    
     printf("waiting for serial device\n");
     sleep(2);
-
-    time_threads_running = true;
 
     printf("serial port running fd %d\n", port_fd);
 
@@ -221,7 +218,6 @@ void run_reader(int port_fd, char *serial)
 
     close(port_fd);
 
-    time_threads_running = false;
     printf("serial reader thread finish\n");
 }
 
@@ -321,11 +317,4 @@ void stop_serial()
     pthread_join(serial_reader_thread, NULL);
     pthread_cancel(packet_sender_thread);
     pthread_join(packet_sender_thread, NULL);
-    if (time_threads_running) {
-        pthread_cancel(rip_thread);
-        pthread_join(rip_thread, NULL);
-        pthread_cancel(packet_sender_thread);
-        pthread_join(packet_sender_thread, NULL);
-        time_threads_running = false;
-    }
 }
