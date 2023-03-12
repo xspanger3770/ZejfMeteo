@@ -16,4 +16,6 @@ void network_destroy(void);
 
 void network_send_everywhere(Packet *packet, TIME_TYPE time);
 
+void network_interface_removed(Interface *interface);
+
 #endif

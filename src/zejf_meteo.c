@@ -103,9 +103,9 @@ bool process_command(char *cmd, int argc, char **argv)
 
 void command_line()
 {
-    #if !ZEJF_HIDE_PRINTS
-        printf("command line active\n");
-    #endif
+#if !ZEJF_HIDE_PRINTS
+    printf("command line active\n");
+#endif
     size_t len = 0;
     ssize_t lineSize = 0;
 

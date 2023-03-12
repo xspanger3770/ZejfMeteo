@@ -73,8 +73,8 @@ void client_connect(int client_fd)
     }
 
     pthread_rwlock_unlock(&clients_lock);
-    
-    if(!interface_add(&client->interface)){
+
+    if (!interface_add(&client->interface)) {
         client_destroy(client);
         return;
     }
@@ -84,9 +84,9 @@ void client_connect(int client_fd)
         perror("write");
     }
 
-    #if !ZEJF_HIDE_PRINTS
-        printf("CLIENT #%d added\n", client->uid);
-    #endif
+#if !ZEJF_HIDE_PRINTS
+    printf("CLIENT #%d added\n", client->uid);
+#endif
 }
 
 void client_remove(Node *node)
@@ -106,12 +106,16 @@ void client_remove(Node *node)
     list_remove(clients, node);
     pthread_rwlock_unlock(&clients_lock);
 
-    interface_remove(cl->interface.uid);
+#if !ZEJF_HIDE_PRINTS
+    printf("Client #%d timeout\n", cl->uid);
+#endif
 
-    #if !ZEJF_HIDE_PRINTS
-        printf("Client #%d timeout\n", cl->uid);
-    #endif
+    pthread_mutex_lock(&zejf_lock);
+
+    interface_remove(cl->interface.uid);
     free(cl);
+
+    pthread_mutex_unlock(&zejf_lock);
 }
 
 Node *client_get(int fd)
@@ -138,7 +142,6 @@ void prepare_fds(struct pollfd *fds)
         (fds)[i + 1].events = POLLIN;
         node = node->next;
     }
-
 }
 void read_dummy(int fd)
 {
@@ -165,7 +168,10 @@ void read_client(int fd)
     do {
         n_bytes = CLIENT_BUFFER_SIZE - client->buffer_ptr;
         rv = read(fd, &client->buffer[client->buffer_ptr], n_bytes);
+
+#if !ZEJF_HIDE_PRINTS
         printf("read %d/%zu bytes from fd %d\n", rv, n_bytes, fd);
+#endif
         if (rv <= 0) {
             perror("read");
             client_remove(node);
@@ -184,14 +190,14 @@ void read_client(int fd)
                 network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
                 pthread_mutex_unlock(&zejf_lock);
 
-                #if ZEJF_DEBUG
-                    printf("ACCEPTING [%s]\n", client->buffer);
-                #endif
+#if ZEJF_DEBUG
+                printf("ACCEPTING [%s]\n", client->buffer);
+#endif
 
-                if(client->buffer_parse_ptr < CLIENT_BUFFER_SIZE) {
+                if (client->buffer_parse_ptr < CLIENT_BUFFER_SIZE) {
                     memcpy(client->buffer, &client->buffer[client->buffer_parse_ptr + 1], client->buffer_ptr - client->buffer_parse_ptr - 1);
                 }
-                
+
                 client->buffer_ptr -= client->buffer_parse_ptr + 1;
                 client->buffer_parse_ptr = 0;
             }
@@ -235,8 +241,12 @@ void *poll_run()
             }
 
             if (fds[i + 1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+#if !ZEJF_HIDE_PRINTS
                 printf("remove because %d\n", fds[i + 1].revents);
+#endif
+                pthread_rwlock_wrlock(&clients_lock);
                 client_remove(client_get(fds[i + 1].fd));
+                pthread_rwlock_unlock(&clients_lock);
             }
         }
     }
@@ -247,9 +257,9 @@ void *server_run(void *arg)
 {
     Settings *settings = (Settings *) arg;
 
-    #if !ZEJF_HIDE_PRINTS
-        printf("starting server... %s:%d\n", settings->ip, settings->tcp_port);
-    #endif
+#if !ZEJF_HIDE_PRINTS
+    printf("starting server... %s:%d\n", settings->ip, settings->tcp_port);
+#endif
 
     int opt = 1;
     int server_fd;
@@ -283,9 +293,9 @@ void *server_run(void *arg)
 
     pthread_create(&server_poll_thread, NULL, poll_run, NULL);
 
-    #if !ZEJF_HIDE_PRINTS
-        printf("Server is open\n");
-    #endif
+#if !ZEJF_HIDE_PRINTS
+    printf("Server is open\n");
+#endif
 
     while (true) {
         if (listen(server_fd, 3) < 0) {
@@ -325,7 +335,7 @@ void *watchdog_run(void *arg)
         int64_t millis = current_millis();
 
         if (server_running) {
-            pthread_rwlock_wrlock(&clients_lock);
+            pthread_rwlock_rdlock(&clients_lock);
             Node *node = clients->head;
             if (node == NULL) {
                 pthread_rwlock_unlock(&clients_lock);
@@ -337,8 +347,12 @@ void *watchdog_run(void *arg)
 
                 Client *client = tmp->item;
                 if (millis - client->last_seen > 10 * 1000) {
+#if !ZEJF_HIDE_PRINTS
                     printf("Someone timedout after %ld\n", millis - client->last_seen);
+#endif
+                    pthread_rwlock_unlock(&clients_lock);
                     client_remove(tmp);
+                    pthread_rwlock_rdlock(&clients_lock);
                     node = clients->head;
                 }
             } while (node != NULL && node != clients->head);
@@ -355,10 +369,10 @@ void server_init(Settings *settings)
         perror("pipe");
         return;
     }
-    
+
     clients = list_create(64);
     next_client_uid = 0;
-    
+
     pthread_create(&server_watchdog, NULL, watchdog_run, settings);
 }
 

@@ -100,9 +100,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    #if !ZEJF_HIDE_PRINTS
+#if !ZEJF_HIDE_PRINTS
     printf("Starting with serial port %s, ip %s:%d\n", serial, ip, port);
-    #endif
+#endif
 
     Settings settings;
     settings.ip = ip;

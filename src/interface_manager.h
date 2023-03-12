@@ -11,7 +11,7 @@ void interfaces_init(void);
 
 void interfaces_destroy(void);
 
-bool interface_add(Interface* interface);
+bool interface_add(Interface *interface);
 
 bool interface_remove(int uid);
 

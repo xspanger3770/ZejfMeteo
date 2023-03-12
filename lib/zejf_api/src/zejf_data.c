@@ -123,7 +123,7 @@ void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
 
 uint8_t *hour_serialize(DataHour *hour, size_t *size)
 {
-    if(hour == NULL || size == NULL){
+    if (hour == NULL || size == NULL) {
         return NULL;
     }
     size_t total_size = DATAHOUR_BYTES;
@@ -349,9 +349,9 @@ float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_num
 
 void data_save(void)
 {
-    #if ZEJF_DEBUG
+#if ZEJF_DEBUG
     printf("Save all\n");
-    #endif
+#endif
     Node *node = data_queue->head;
     if (node == NULL) {
         return;

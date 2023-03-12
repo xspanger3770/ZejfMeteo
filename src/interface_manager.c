@@ -1,6 +1,7 @@
 #include "interface_manager.h"
 #include "pthread.h"
 #include "stddef.h"
+#include "zejf_api.h"
 #include "zejf_meteo.h"
 
 Interface usb_interface_1 = {
@@ -45,11 +46,10 @@ bool interface_add(Interface *interface)
 
 bool interface_remove(int uid)
 {
-    pthread_mutex_lock(&zejf_lock);
-
     bool found = false;
     for (size_t i = 0; i < interface_count; i++) {
         Interface *interface = all_interfaces[i];
+        interface_removed(interface);
         found |= interface->uid == uid;
         if (found && i != interface_count - 1) {
             all_interfaces[i] = all_interfaces[i + 1];
@@ -60,8 +60,6 @@ bool interface_remove(int uid)
         interface_count--;
         all_interfaces[interface_count] = NULL;
     }
-
-    pthread_mutex_unlock(&zejf_lock);
     return false;
 }
 

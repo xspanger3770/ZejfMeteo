@@ -100,6 +100,25 @@ void packet_remove(Node *node)
     packet_destroy(list_remove(tx_queue, node));
 }
 
+void network_interface_removed(Interface *interface)
+{
+    Node *node = tx_queue->tail;
+    if (node == NULL) {
+        return;
+    }
+    do {
+        Packet *packet = node->item;
+        if (packet->destination_interface == interface || packet->source_interface == interface) {
+            Node *tmp = node->next;
+            packet_remove(node);
+            node = tmp;
+            continue;
+        }
+
+        node = node->next;
+    } while (node != tx_queue->tail);
+}
+
 void ack_packet(Interface *interface, uint32_t id)
 {
     Node *node = tx_queue->tail;
@@ -158,9 +177,9 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
     }
 
     if (packet->command == ACK) {
-        #if ACK_REQUIRED 
-            ack_packet(packet->source_interface, packet->tx_id);
-        #endif
+#if ACK_REQUIRED
+        ack_packet(packet->source_interface, packet->tx_id);
+#endif
 
         packet_destroy(packet);
         return true;
@@ -168,9 +187,9 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
 
     if (list_is_full(packet->to == DEVICE_ID ? rx_queue : tx_queue)) {
         packet_destroy(packet);
-        #if ZEJF_DEBUG
+#if ZEJF_DEBUG
         printf("WARN: queue full\n");
-        #endif
+#endif
         return false;
     }
 
@@ -198,13 +217,13 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
     packet->tx_id = 0;            // not determined yet
 
     if (!network_push_packet(packet)) {
-        #if ZEJF_DEBUG
+#if ZEJF_DEBUG
         printf("THIS SHOULD HAVE NEVER HAPPENED\n");
-        #endif
+#endif
         // fun fact: it happened
     }
 
-    #if ACK_REQUIRED 
+#if ACK_REQUIRED
     // SEND ACK BACK TO EVERY NON-SPECIAL PACKET
     if (packet->from != DEVICE_ID) { // if it came from outside it will have source_interface set
         char buff[PACKET_MAX_LENGTH];
@@ -214,7 +233,7 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
 
         network_send_via(buff, (int) strlen(buff), packet->source_interface, time);
     }
-    #endif
+#endif
 
     return true;
 }
@@ -347,17 +366,17 @@ void network_send_tx(TIME_TYPE time)
     Packet *packet = next_packet->item;
 
     if (packet == NULL) {
-        #if ZEJF_DEBUG
+#if ZEJF_DEBUG
         printf("FATALLLLLLLL NULKLLLLLLLL\n");
-        #endif
+#endif
         goto next_one;
     }
 
     if ((time - packet->time_received) >= PACKET_DELETE_TIMEOUT) {
-        #if ZEJF_DEBUG
+#if ZEJF_DEBUG
         printf("timeout hard of packed command %d txid %d from %d to %d after %" SCNu32 "ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
         printf("times were %d %d\n", time, packet->time_received);
-        #endif
+#endif
         goto remove;
     }
 
@@ -389,9 +408,9 @@ void network_send_tx(TIME_TYPE time)
         entry->interface->tx_id = 0;
         entry->interface->rx_id = 0;
         entry->paused = 1;
-        #if ZEJF_DEBUG
-            printf("reset at entry for device %d packet command %d\n", entry->device_id, packet->command);
-        #endif
+#if ZEJF_DEBUG
+        printf("reset at entry for device %d packet command %d\n", entry->device_id, packet->command);
+#endif
         // no goto here!
     }
 
@@ -402,9 +421,9 @@ void network_send_tx(TIME_TYPE time)
     // 0,1 = not initialised, waiting for returning sync packet
     // 1,1 = ready
     if (entry->interface->tx_id == 0) {
-        #if ZEJF_DEBUG
+#if ZEJF_DEBUG
         printf("cannot send %d to %d\n", packet->command, packet->to);
-        #endif
+#endif
         if (entry->interface->rx_id == 0) {
             sync_id(entry->interface, 1, time);
         }
@@ -416,9 +435,9 @@ void network_send_tx(TIME_TYPE time)
         goto remove;
     }
 
-    #if !ACK_REQUIRED
-        goto remove;
-    #endif
+#if !ACK_REQUIRED
+    goto remove;
+#endif
 
 next_one:
     next_packet = next_packet->next;
