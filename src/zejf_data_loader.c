@@ -118,7 +118,9 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
         return false;
     }
 
+    #if !ZEJF_HIDE_PRINTS
     printf("%ld bytes will be written to [%s]\n", total_size, path_buff);
+    #endif
 
     bool result = fwrite(buffer, total_size, 1, actual_file);
 
@@ -147,7 +149,9 @@ size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
         goto close;
     }
 
+    #if !ZEJF_HIDE_PRINTS
     printf("%ld bytes will be loaded from [%s]\n", fsize, path_buff);
+    #endif
 
     (*data_buffer) = malloc(fsize);
     if ((*data_buffer) == NULL) {

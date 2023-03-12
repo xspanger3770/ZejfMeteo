@@ -72,8 +72,6 @@ bool data_request_add(uint16_t to, VariableInfo variable, uint32_t hour_number, 
     request->target_device = to;
     request->variable = variable;
 
-    printf("adding now hour %d total %ld\n", hour_number, data_requests_queue->item_count);
-
     return list_push(data_requests_queue, request);
 }
 

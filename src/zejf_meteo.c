@@ -6,12 +6,12 @@
 #include <sys/types.h>
 
 #include "errno.h"
+#include "interface_manager.h"
 #include "serial.h"
+#include "server.h"
 #include "time_utils.h"
 #include "zejf_api.h"
 #include "zejf_meteo.h"
-#include "interface_manager.h"
-#include "server.h"
 
 #define COMMAND_ARGS_MAX 5
 #define DUMMY_ID 42
@@ -103,7 +103,9 @@ bool process_command(char *cmd, int argc, char **argv)
 
 void command_line()
 {
-    printf("command line active\n");
+    #if !ZEJF_HIDE_PRINTS
+        printf("command line active\n");
+    #endif
     size_t len = 0;
     ssize_t lineSize = 0;
 

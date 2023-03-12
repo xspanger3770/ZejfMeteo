@@ -349,7 +349,9 @@ float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_num
 
 void data_save(void)
 {
+    #if ZEJF_DEBUG
     printf("Save all\n");
+    #endif
     Node *node = data_queue->head;
     if (node == NULL) {
         return;

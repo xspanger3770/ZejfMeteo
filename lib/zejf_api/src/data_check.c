@@ -66,7 +66,9 @@ bool data_check_receive(Packet *packet)
 
     uint32_t our_check_number = calculate_data_check(variable, hour_num, log_num);
 
+    #if ZEJF_DEBUG
     printf("DATA CHECK hour %d [our %d vs their %d]\n", hour_num, our_check_number, check_number);
+    #endif
 
     if (our_check_number > check_number) {
         data_request_add(packet->from, variable, hour_num, 0, log_num);

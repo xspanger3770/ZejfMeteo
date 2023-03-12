@@ -22,10 +22,10 @@
 
 #include "zejf_api.h"
 
+#include "interface_manager.h"
 #include "serial.h"
 #include "time_utils.h"
 #include "zejf_meteo.h"
-#include "interface_manager.h"
 
 #define BUFFER_SIZE 1024
 #define LINE_BUFFER_SIZE 128
@@ -37,6 +37,8 @@ pthread_t packet_sender_thread;
 volatile bool serial_running = false;
 volatile bool time_threads_running = false;
 
+#define UNUSED(x) (void)(x)
+
 void network_process_packet(Packet *packet)
 {
     packet->checksum = packet->checksum;
@@ -44,15 +46,21 @@ void network_process_packet(Packet *packet)
 
 int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
 {
+    UNUSED(length);
     switch (interface->type) {
     case USB:
     case TCP:
-        if (!write(interface->handle, msg, length) || !write(usb_interface_1.handle, "\n", 1)) {
+    {
+        char msg2[PACKET_MAX_LENGTH];
+        snprintf(msg2, PACKET_MAX_LENGTH, "%s\n", msg);
+
+        if (!write(interface->handle, msg2, strlen(msg2))) {
             perror("write");
         } else {
-            printf("%s\n", msg);
+            //printf("%s\n", msg);
         }
         return SEND_SUCCES;
+    }
     default:
         printf("Unknown interaface: %d time %d\n", interface->type, time);
         return SEND_UNABLE;
@@ -84,10 +92,15 @@ void process_packet(Packet *pack)
 {
     switch (pack->command) {
     case MESSAGE:
-        printf("Message from uC: [%s]\n", pack->message);
+        #if !ZEJF_HIDE_PRINTS
+            printf("Message from uC: [%s]\n", pack->message);
+        #endif
         break;
     default:
-        printf("Weird packet, command=%d\n", pack->command);
+        #if !ZEJF_HIDE_PRINTS
+            printf("Weird packet, command=%d\n", pack->command);
+        #endif
+        break;
     }
 }
 
@@ -117,7 +130,6 @@ void *run_timer()
         if (count % 10 == 0) {
             network_send_routing_info(millis);
             routing_table_check(millis);
-            network_send_demand_info(millis);
         }
         if ((count - 5) % 30 == 0 && count >= 5) {
             size_t co = allocate_packet_queue(1);
@@ -127,12 +139,11 @@ void *run_timer()
             data_save();
         }
 
-        if (millis % (int64_t)(1000l * 60l * 10l) == 0) {
+        if (millis % (int64_t) (1000l * 60l * 10l) == 0) {
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
 
-        if (millis % (int64_t)(1000l * 60l * 60l) == 0 || count == 60) {
-            printf("MASSIVE\n");
+        if (millis % (int64_t) (1000l * 60l * 60l) == 0 || count == 60) {
             run_data_check(current_hours(), millis % HOUR, 48, millis);
         }
 
@@ -166,9 +177,7 @@ void run_reader(int port_fd, char *serial)
     sleep(2);
 
     time_threads_running = true;
-    pthread_create(&rip_thread, NULL, &run_timer, &port_fd);
-    pthread_create(&packet_sender_thread, NULL, &packet_sender_start, &port_fd);
-
+    
     printf("serial port running fd %d\n", port_fd);
 
     char buffer[BUFFER_SIZE] = { 0 };
@@ -213,16 +222,15 @@ void run_reader(int port_fd, char *serial)
     close(port_fd);
 
     time_threads_running = false;
-    pthread_cancel(rip_thread);
-    pthread_join(rip_thread, NULL);
-    pthread_cancel(packet_sender_thread);
-    pthread_join(packet_sender_thread, NULL);
     printf("serial reader thread finish\n");
 }
 
 void open_serial(char *serial)
 {
+    #if !ZEJF_HIDE_PRINTS
     printf("trying to open port %s\n", serial);
+    #endif
+    
     // Open the serial port. Change device path as needed (currently set to an
     // standard FTDI USB-UART cable type device)
     int port_fd = open(serial, O_RDWR);
@@ -291,20 +299,28 @@ void *start_serial(void *arg)
 {
     while (true) {
         open_serial((char *) arg);
+        #if !ZEJF_HIDE_PRINTS
         printf("Next attempt in 5s\n");
+        #endif
         sleep(5);
     }
 }
 
 void run_serial(Settings *settings)
 {
+    pthread_create(&packet_sender_thread, NULL, &packet_sender_start, NULL);
     pthread_create(&serial_reader_thread, NULL, &start_serial, settings->serial);
+    pthread_create(&rip_thread, NULL, &run_timer, NULL);
 }
 
 void stop_serial()
 {
+    pthread_cancel(rip_thread);
+    pthread_join(rip_thread, NULL);
     pthread_cancel(serial_reader_thread);
     pthread_join(serial_reader_thread, NULL);
+    pthread_cancel(packet_sender_thread);
+    pthread_join(packet_sender_thread, NULL);
     if (time_threads_running) {
         pthread_cancel(rip_thread);
         pthread_join(rip_thread, NULL);

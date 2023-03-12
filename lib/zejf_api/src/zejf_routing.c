@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "zejf_api.h"
 #include "zejf_data.h"
@@ -22,8 +23,11 @@ void routing_entry_destroy(RoutingEntry *entry);
 
 void routing_entry_remove(size_t index);
 
+pthread_rwlock_t routing_lock;
+
 void routing_init(void)
 {
+    pthread_rwlock_init(&routing_lock, NULL);
     routing_table_top = 0;
 
     for (int i = 0; i < ROUTING_TABLE_SIZE; i++) {
@@ -33,9 +37,13 @@ void routing_init(void)
 
 void routing_destroy(void)
 {
+    pthread_rwlock_wrlock(&routing_lock);
     for (size_t i = 0; i < routing_table_top; i++) {
         routing_entry_destroy(routing_table[i]);
     }
+    pthread_rwlock_unlock(&routing_lock);
+
+    pthread_rwlock_destroy(&routing_lock);
 }
 
 RoutingEntry *routing_entry_create()
@@ -139,9 +147,13 @@ RoutingEntry *routing_entry_find_by_interface(int uid)
 
 int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
 {
+
+    pthread_rwlock_rdlock(&routing_lock);
     if (routing_table_top >= ROUTING_TABLE_SIZE) {
         return UPDATE_FAIL;
     }
+    pthread_rwlock_unlock(&routing_lock);
+    
     RoutingEntry *entry = routing_entry_create();
     entry->device_id = device_id;
     entry->distance = distance;
@@ -150,8 +162,10 @@ int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t dista
     entry->interface = interface;
     entry->last_seen = time;
 
+    pthread_rwlock_wrlock(&routing_lock);
     routing_table[routing_table_top] = entry;
     routing_table_top++;
+    pthread_rwlock_unlock(&routing_lock);
 
     return UPDATE_SUCCESS;
 }

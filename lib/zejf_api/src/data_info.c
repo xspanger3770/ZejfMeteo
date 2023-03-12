@@ -45,20 +45,20 @@ bool network_send_provide_info(TIME_TYPE time)
     return true;
 }
 
-void p_send_demand(uint16_t var, TIME_TYPE time)
+bool p_send_demand(uint16_t var, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16, var) <= 0) {
-        return;
+        return false;
     }
 
     Packet *packet = network_prepare_packet(BROADCAST, DATA_DEMAND, msg);
     if (packet == NULL) {
-        return;
+        return false;
     }
 
-    network_send_packet(packet, time);
+    return network_send_packet(packet, time);
 }
 
 bool network_send_demand_info(TIME_TYPE time)
@@ -75,9 +75,11 @@ bool network_send_demand_info(TIME_TYPE time)
         demand_ptr = 0;
     }
 
+    bool res = true;
+
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        p_send_demand(demanded_variables[demand_ptr], time);
+        res &= p_send_demand(demanded_variables[demand_ptr], time);
         demand_ptr++;
         demand_ptr %= demand_count;
         if (demand_ptr == 0) {
@@ -86,7 +88,7 @@ bool network_send_demand_info(TIME_TYPE time)
         max_count--;
     }
 
-    return true;
+    return res;
 }
 
 void process_data_demand(Packet *packet)
