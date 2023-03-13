@@ -175,7 +175,6 @@ void read_client(int fd)
         }
 
         client->last_seen = millis;
-
         client->buffer_ptr += rv;
 
         for (; client->buffer_parse_ptr < client->buffer_ptr; client->buffer_parse_ptr++) {

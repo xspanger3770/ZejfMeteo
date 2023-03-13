@@ -88,7 +88,7 @@ bool data_request_send(uint16_t to, VariableInfo variable, uint32_t hour_number,
         return NULL;
     }
 
-    return network_send_packet(packet, time);
+    return network_send_packet(packet, time) == 0;
 }
 
 bool data_request_receive(Packet *packet)

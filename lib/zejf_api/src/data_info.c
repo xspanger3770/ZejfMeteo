@@ -58,7 +58,7 @@ bool p_send_demand(uint16_t var, TIME_TYPE time)
         return false;
     }
 
-    return network_send_packet(packet, time);
+    return network_send_packet(packet, time) == 0;
 }
 
 bool network_send_demand_info(TIME_TYPE time)
@@ -143,8 +143,8 @@ bool data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uin
     if (packet == NULL) {
         return false;
     }
-
-    return network_send_packet(packet, time);
+    
+    return network_send_packet(packet, time) == 0;
 }
 
 bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
@@ -165,7 +165,7 @@ bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, ui
             continue;
         }
 
-        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+        return data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
     }
     return true;
 }

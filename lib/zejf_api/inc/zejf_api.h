@@ -43,10 +43,10 @@ bool network_send_routing_info(TIME_TYPE time);
 size_t allocate_packet_queue(int priority);
 
 // Packet received
-bool network_accept(char *msg, int length, Interface *interface, TIME_TYPE time);
+int network_accept(char *msg, int length, Interface *interface, TIME_TYPE time);
 
 // Sending packet - adds to the queue
-bool network_send_packet(Packet *packet, TIME_TYPE time);
+int network_send_packet(Packet *packet, TIME_TYPE time);
 
 // Iterate the queue
 void network_process_packets(TIME_TYPE time);

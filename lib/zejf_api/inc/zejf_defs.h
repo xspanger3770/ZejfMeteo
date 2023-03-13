@@ -31,6 +31,15 @@
 
 #define HOUR (1000l * 60 * 60l)
 
+#define ZEJF_ERR_NULL 1
+#define ZEJF_ERR_PACKET_FORMAT 2
+#define ZEJF_ERR_CHECKSUM 3
+#define ZEJF_ERR_ITSELF 4
+#define ZEJF_ERR_QUEUE_FULL 5
+#define ZEJF_ERR_TXID 6
+#define ZEJF_ERR_RXID 7
+#define ZEJF_ERR_TTL 8
+
 /* =======  DATA ============ */
 
 typedef struct interface_t

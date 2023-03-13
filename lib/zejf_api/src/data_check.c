@@ -53,7 +53,7 @@ bool data_check_send(uint16_t to, VariableInfo variable, uint32_t hour_num, uint
         return false;
     }
 
-    return network_send_packet(packet, time);
+    return network_send_packet(packet, time) == 0;
 }
 
 bool data_check_receive(Packet *packet)

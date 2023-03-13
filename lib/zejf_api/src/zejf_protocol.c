@@ -62,7 +62,7 @@ uint32_t packet_checksum(Packet *packet)
 int packet_from_string(Packet *packet, char *data, int length)
 {
     if (data[0] != '{' || data[length - 1] != '}') {
-        return 1;
+        return ZEJF_ERR_PACKET_FORMAT;
     }
 
     uint16_t from = 0;
@@ -78,7 +78,7 @@ int packet_from_string(Packet *packet, char *data, int length)
     int rv = sscanf(data, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%s", &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
 
     if (rv != 8) {
-        return 2;
+        return ZEJF_ERR_PACKET_FORMAT;
     }
 
     size_t len = strlen(message);
@@ -86,7 +86,7 @@ int packet_from_string(Packet *packet, char *data, int length)
     len--;
 
     if (len != message_size) {
-        return 4;
+        return ZEJF_ERR_PACKET_FORMAT;
     }
 
     packet->from = from;
@@ -103,7 +103,7 @@ int packet_from_string(Packet *packet, char *data, int length)
         printf("CHECKSUM FAIL\n");
 #endif
         packet->message = NULL;
-        return 5;
+        return ZEJF_ERR_CHECKSUM;
     }
 
     packet->message = malloc(message_size + 1);

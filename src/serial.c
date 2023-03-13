@@ -139,7 +139,7 @@ void *run_timer()
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
 
-        if (count % (60l * 60l) == 0 || count == 40) {
+        if (count % (60l * 60l) == 0 || count % 40 == 0) {
             run_data_check(current_hours(), millis % HOUR, 36, millis);
         }
 
@@ -171,7 +171,7 @@ void run_reader(int port_fd, char *serial)
     pthread_mutex_lock(&zejf_lock);
     usb_interface_1.handle = port_fd;
     pthread_mutex_unlock(&zejf_lock);
-    
+
     printf("waiting for serial device\n");
     sleep(2);
 

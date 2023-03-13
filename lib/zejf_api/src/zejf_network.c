@@ -53,18 +53,18 @@ void network_destroy(void)
 }
 
 // ALL PACKETS FROM OUTSIDE MUST PASS THIS FUNCTION
-bool network_accept(char *msg, int length, Interface *interface, TIME_TYPE time)
+int network_accept(char *msg, int length, Interface *interface, TIME_TYPE time)
 {
     Packet *packet = packet_create();
     if (packet == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
     int rv = packet_from_string(packet, msg, length);
 
     if (rv != 0) {
         packet_destroy(packet);
-        return false;
+        return rv;
     }
 
     packet->source_interface = interface;
@@ -72,7 +72,7 @@ bool network_accept(char *msg, int length, Interface *interface, TIME_TYPE time)
 
     if (packet->ttl >= PACKET_MAX_TTL) {
         packet_destroy(packet);
-        return false;
+        return ZEJF_ERR_TTL;
     }
 
     return network_send_packet(packet, time);
@@ -137,32 +137,32 @@ void ack_packet(Interface *interface, uint32_t id)
 
 // EVERY PACKET THAT ENDS UP IN THE QUEUE MUST PASS THIS FUNCTION
 // PACKET MUST BE ALLOCATED
-bool network_send_packet(Packet *packet, TIME_TYPE time)
+int network_send_packet(Packet *packet, TIME_TYPE time)
 {
     // HANDLE SPECIAL PACKETS
 
     if (packet == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
     if (packet->from == DEVICE_ID && packet->to == DEVICE_ID) {
         packet_destroy(packet); // CANNOT SEND TO ITSELF
-        return false;
+        return ZEJF_ERR_ITSELF;
     }
 
     if (packet->command == RIP) { // always from outside
         if (!process_rip_packet(packet, time)) {
             packet_destroy(packet);
-            return false;
+            return 99;
         }
         packet_destroy(packet);
-        return true;
+        return 0;
     }
 
     if (packet->command == ID_SYNC) {
         if (packet->source_interface == NULL) {
             packet_destroy(packet);
-            return true;
+            return 0;
         }
 
         if (packet->tx_id == 1) { // back
@@ -173,7 +173,7 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
         packet->source_interface->tx_id = 1;
 
         packet_destroy(packet);
-        return true;
+        return 0;
     }
 
     if (packet->command == ACK) {
@@ -182,7 +182,7 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
 #endif
 
         packet_destroy(packet);
-        return true;
+        return 0;
     }
 
     if (list_is_full(packet->to == DEVICE_ID ? rx_queue : tx_queue)) {
@@ -190,24 +190,28 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
 #if ZEJF_DEBUG
         printf("WARN: queue full\n");
 #endif
-        return false;
+        return ZEJF_ERR_QUEUE_FULL;
     }
 
     if (packet->from != DEVICE_ID && packet->command != RIP) {
         if (packet->source_interface == NULL) {
             packet_destroy(packet);
-            return true;
+            return 0;
         }
+
+#if ACK_REQUIRED
 
         if (packet->source_interface->tx_id == 0) {
             packet_destroy(packet);
-            return false; // waiting for sync
+            return ZEJF_ERR_TXID; // waiting for sync
         }
 
         if (packet->source_interface->rx_id != packet->tx_id) {
             packet_destroy(packet);
-            return false; // wriong txid
+            return ZEJF_ERR_RXID; // wriong txid
         }
+
+#endif
 
         packet->source_interface->rx_id++;
     }
@@ -228,14 +232,14 @@ bool network_send_packet(Packet *packet, TIME_TYPE time)
     if (packet->from != DEVICE_ID) { // if it came from outside it will have source_interface set
         char buff[PACKET_MAX_LENGTH];
         if (!prepare_ack_message(buff, packet->tx_id)) {
-            return false;
+            return 99;
         }
 
         network_send_via(buff, (int) strlen(buff), packet->source_interface, time);
     }
 #endif
 
-    return true;
+    return 0;
 }
 
 bool network_push_packet(Packet *packet)
@@ -394,6 +398,8 @@ void network_send_tx(TIME_TYPE time)
         goto remove;
     }
 
+#if ACK_REQUIRED
+
     if (entry->paused == 1) {
         goto next_one;
     }
@@ -414,8 +420,11 @@ void network_send_tx(TIME_TYPE time)
         // no goto here!
     }
 
+#endif
+
     packet->time_sent = time;
 
+#if ACK_REQUIRED
     // tx,rx
     // 0,0 = not initialised
     // 0,1 = not initialised, waiting for returning sync packet
@@ -430,6 +439,8 @@ void network_send_tx(TIME_TYPE time)
         goto next_one;
     }
 
+#endif
+
     int rv = prepare_and_send(packet, entry->interface, time);
     if (rv == SEND_UNABLE) {
         goto remove;
@@ -441,11 +452,16 @@ void network_send_tx(TIME_TYPE time)
 
 next_one:
     next_packet = next_packet->next;
+#if ACK_REQUIRED
     goto finally;
+#else
+    return;
+#endif
 
 remove:
     packet_remove(next_packet);
 
+#if ACK_REQUIRED
 finally:
     // toggle reset flag to all routing entries
     if (next_packet == tx_queue->tail) {
@@ -454,6 +470,7 @@ finally:
             entry->paused = 0;
         }
     }
+#endif
 }
 
 Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg)
