@@ -191,7 +191,6 @@ void routing_table_check(TIME_TYPE time)
     while (i < routing_table_top) {
         RoutingEntry *entry = routing_table[i];
         if (time - entry->last_seen > ROUTING_ENTRY_TIMEOUT) {
-            printf("Routing entry %d timeout\n", entry->device_id);
             routing_entry_remove(i);
         }
         i++;

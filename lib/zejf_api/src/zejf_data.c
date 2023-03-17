@@ -396,7 +396,7 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
         return false; // cannot rewrite wrong value
     }
     existing_variable->data[sample_number] = value;
-    printf("logged %f hour %d ln %d\n", value, hour_number, sample_number);
+    printf("logged %f hour %d ln %d variable %x\n", value, hour_number, sample_number, target_variable.id);
     if (announce) {
         network_announce_log(target_variable, hour_number, sample_number, value, time);
     }

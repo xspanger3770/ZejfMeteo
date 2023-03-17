@@ -139,7 +139,7 @@ void *run_timer()
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
 
-        if (count % (60l * 60l) == 0 || count % 40 == 0) {
+        if (count % (60l * 60l) == 0 || count == 120) {
             run_data_check(current_hours(), millis % HOUR, 36, millis);
         }
 

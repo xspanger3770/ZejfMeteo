@@ -9,7 +9,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} ${DEBUG_FLAGS}")
 set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=/home/jakublinux/Desktop/All/CProjects/ZejfMeteo/.clang-rockai")
 set(CMAKE_C_CPPCHECK "cppcheck")
 
-set(EXECUTABLE zejfmeteo_beta_1.2.0)
+set(EXECUTABLE zejfmeteo_beta_1.2.1)
 
 # Project configuration
 project(zejfmeteo)
