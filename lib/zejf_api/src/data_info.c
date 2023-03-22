@@ -20,7 +20,7 @@ void p_send_provide(VariableInfo info, TIME_TYPE time)
 bool network_send_provide_info(TIME_TYPE time)
 {
     uint16_t provide_count;
-    VariableInfo *provided_variables;
+    const VariableInfo *provided_variables;
     get_provided_variables(&provide_count, &provided_variables);
 
     if (provide_count == 0 || provided_variables == NULL) {

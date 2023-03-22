@@ -38,7 +38,8 @@ void display_data(uint16_t variable, uint32_t hour_id)
     }
 
     for (uint32_t log = 0; log < var->variable_info.samples_per_hour; log++) {
-        printf("[%d] %f\n", log, var->data[log]);
+        float val = var->data[log];
+        printf("[%d] %f\n", log, val);
     }
 
     pthread_mutex_unlock(&zejf_lock);
@@ -61,6 +62,7 @@ bool process_command(char *cmd, int argc, char **argv)
     if (strcmp(cmd, "exit") == 0) {
         return true;
     }
+    
     if (strcmp(cmd, "data") == 0) {
         printf("SO you want to see some data..\n");
         if (argc < 2) {

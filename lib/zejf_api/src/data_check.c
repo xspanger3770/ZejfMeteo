@@ -81,9 +81,16 @@ bool data_check_receive(Packet *packet)
     return true;
 }
 
-// warning: you may vomit after seeing this function
 void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, uint32_t hours, TIME_TYPE time)
 {
+
+    // to avoid sending entire hour when just one recent log is missing
+    if(current_millis_in_hour <= DATA_CHECK_DELAY){
+        current_millis_in_hour  = 0;
+    } else {
+        current_millis_in_hour -= DATA_CHECK_DELAY;
+    }
+
     if (hours > 24 * 5) {
         hours = 24 * 5;
     }

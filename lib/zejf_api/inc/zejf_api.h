@@ -74,7 +74,7 @@ void get_all_interfaces(Interface ***interfaces, size_t *length);
 
 void interface_removed(Interface* interface);
 
-void get_provided_variables(uint16_t *provide_count, VariableInfo **provided_variables);
+void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables);
 
 void get_demanded_variables(uint16_t *demand_count, uint16_t **demanded_variables);
 

@@ -113,6 +113,7 @@ bool request_finished(DataRequest *request)
 void data_requests_process(TIME_TYPE time)
 {
     size_t remaining_slots = allocate_packet_queue(PRIORITY_HIGH);
+    int request_count = 1;
     while (remaining_slots > 0 && !list_is_empty(data_requests_queue)) {
         DataRequest *request = list_peek(data_requests_queue)->item;
         if (request == NULL) {
@@ -122,6 +123,10 @@ void data_requests_process(TIME_TYPE time)
         if (request_finished(request)) {
             data_request_destroy(list_pop(data_requests_queue));
             request = NULL;
+            request_count++;
+            if(request_count == 3) {
+                break; // so that this function doesn't take too long 
+            }
             goto next;
         }
 

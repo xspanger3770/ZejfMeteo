@@ -104,7 +104,7 @@ void process_packet(Packet *pack)
 
 uint16_t demand[] = { ALL_VARIABLES };
 
-void get_provided_variables(uint16_t *provide_count, VariableInfo **provided_variables)
+void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables)
 {
     *provide_count = 0;
     *provided_variables = NULL;
