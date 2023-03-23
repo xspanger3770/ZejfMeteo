@@ -143,7 +143,7 @@ bool data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uin
     if (packet == NULL) {
         return false;
     }
-    
+
     return network_send_packet(packet, time) == 0;
 }
 

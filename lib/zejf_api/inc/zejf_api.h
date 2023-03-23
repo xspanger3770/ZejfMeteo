@@ -72,7 +72,7 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
 // target platform defines this
 void get_all_interfaces(Interface ***interfaces, size_t *length);
 
-void interface_removed(Interface* interface);
+void interface_removed(Interface *interface);
 
 void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables);
 

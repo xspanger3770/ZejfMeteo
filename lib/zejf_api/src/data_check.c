@@ -16,10 +16,10 @@ uint32_t calculate_data_check(VariableInfo variable, uint32_t hour_num, uint32_t
     }
 
     Variable *current_variable = get_variable(hour, variable.id);
-    if(current_variable == NULL) {
+    if (current_variable == NULL) {
         return 0;
     }
-    
+
     if (variable.samples_per_hour != current_variable->variable_info.samples_per_hour) {
         return 0;
     }
@@ -83,10 +83,9 @@ bool data_check_receive(Packet *packet)
 
 void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, uint32_t hours, TIME_TYPE time)
 {
-
     // to avoid sending entire hour when just one recent log is missing
-    if(current_millis_in_hour <= DATA_CHECK_DELAY){
-        current_millis_in_hour  = 0;
+    if (current_millis_in_hour <= DATA_CHECK_DELAY) {
+        current_millis_in_hour = 0;
     } else {
         current_millis_in_hour -= DATA_CHECK_DELAY;
     }

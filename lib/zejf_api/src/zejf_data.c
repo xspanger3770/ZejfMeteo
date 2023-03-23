@@ -3,6 +3,7 @@
 #include "linked_list.h"
 #include "zejf_api.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -396,47 +397,14 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
         return false; // cannot rewrite wrong value
     }
     existing_variable->data[sample_number] = value;
-    printf("logged %f hour %d ln %d variable %x\n", value, hour_number, sample_number, target_variable.id);
+
+#if ZEJF_API_PRINTS
+    printf("logged %f hour " SCNu32 " ln " SCNu32 " variable " SCNx16 "\n", value, hour_number, sample_number, target_variable.id);
+#endif
+
     if (announce) {
         network_announce_log(target_variable, hour_number, sample_number, value, time);
     }
     hour->flags = 1;
     return true;
-}
-
-int mainTES()
-{
-    DataHour *hour = hour_create(12345);
-    printf("%d\n", hour->variable_count);
-
-    VariableInfo TEMP = {
-        .id = 42,
-        .samples_per_hour = (60 * 12)
-    };
-
-    hour_add_variable(hour, TEMP);
-    printf("%d\n", hour->variable_count);
-    //printf("%f\n", hour->variables->data[0]);
-
-    size_t size = 0;
-    uint8_t *data = hour_serialize(hour, &size);
-    printf("size is %ld vs %ld\n", size, sizeof(DataHour));
-    printf("old hour has id %d\n", hour->hour_id);
-
-    /*for(size_t i = 0; i < size; i++){
-        printf("%x ", data[i]);
-    }*/
-    printf("\n");
-
-    hour_destroy(hour);
-
-    DataHour *new_hour = hour_deserialize(data, size);
-    free(data);
-
-    if (new_hour != NULL) {
-        printf("new hour has id %d", new_hour->hour_id);
-    }
-
-    hour_destroy(new_hour);
-    return 0;
 }

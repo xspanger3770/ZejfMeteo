@@ -124,8 +124,8 @@ void data_requests_process(TIME_TYPE time)
             data_request_destroy(list_pop(data_requests_queue));
             request = NULL;
             request_count++;
-            if(request_count == 3) {
-                break; // so that this function doesn't take too long 
+            if (request_count == 3) {
+                break; // so that this function doesn't take too long
             }
             goto next;
         }

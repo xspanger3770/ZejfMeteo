@@ -240,7 +240,7 @@ void *poll_run()
                 printf("remove because %d\n", fds[i + 1].revents);
 #endif
                 pthread_rwlock_wrlock(&clients_lock);
-                Node* node = client_get(fds[i + 1].fd);
+                Node *node = client_get(fds[i + 1].fd);
                 client_remove(node);
                 pthread_rwlock_unlock(&clients_lock);
             }

@@ -62,7 +62,7 @@ bool process_command(char *cmd, int argc, char **argv)
     if (strcmp(cmd, "exit") == 0) {
         return true;
     }
-    
+
     if (strcmp(cmd, "data") == 0) {
         printf("SO you want to see some data..\n");
         if (argc < 2) {
