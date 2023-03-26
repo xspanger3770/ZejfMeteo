@@ -84,11 +84,6 @@ bool data_check_receive(Packet *packet)
 void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, uint32_t hours, TIME_TYPE time)
 {
     // to avoid sending entire hour when just one recent log is missing
-    if (current_millis_in_hour <= DATA_CHECK_DELAY) {
-        current_millis_in_hour = 0;
-    } else {
-        current_millis_in_hour -= DATA_CHECK_DELAY;
-    }
 
     if (hours > 24 * 5) {
         hours = 24 * 5;
@@ -103,6 +98,15 @@ void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, 
             for (uint16_t j = 0; j < entry->provided_count; j++) {
                 VariableInfo provided_variable = entry->provided_variables[j];
                 uint32_t current_log_num = (uint32_t) (((double) current_millis_in_hour / HOUR) * (provided_variable.samples_per_hour - 1.0));
+
+                if(hour_num == current_hour_num){
+                    if(current_log_num < DATA_CHECK_DELAY){
+                        continue;
+                    }
+
+                    current_log_num -= DATA_CHECK_DELAY;
+                }
+
                 bool wanted = false;
 
                 for (uint16_t k = 0; k < demand_count; k++) {

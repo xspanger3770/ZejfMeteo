@@ -2,7 +2,7 @@
 #define _DATA_CHECK_H
 
 #define ENTIRE_HOUR UINT32_MAX
-#define DATA_CHECK_DELAY (1000 * 65)
+#define DATA_CHECK_DELAY 5ul
 
 #include "zejf_defs.h"
 

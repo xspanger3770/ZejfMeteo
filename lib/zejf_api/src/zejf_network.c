@@ -443,7 +443,7 @@ void network_send_tx(TIME_TYPE time)
 
     int rv = prepare_and_send(packet, entry->interface, time);
     if (rv == SEND_UNABLE) {
-        goto remove;
+        goto next_one;
     }
 
 #if !ACK_REQUIRED
