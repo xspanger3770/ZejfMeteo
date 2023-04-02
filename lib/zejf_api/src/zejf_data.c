@@ -400,7 +400,7 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
     existing_variable->data[sample_number] = value;
 
 #if ZEJF_API_PRINTS
-    printf("logged %f hour %" SCNu32 " ln %" SCNu32 " variable %" SCNu16 "\n", value, hour_number, sample_number, target_variable.id);
+    printf("logged %f hour %" SCNu32 " ln %" SCNu32 " variable %" SCNu16 " time %"SCNu32"\n", value, hour_number, sample_number, target_variable.id, time);
 #endif
 
     if (announce) {

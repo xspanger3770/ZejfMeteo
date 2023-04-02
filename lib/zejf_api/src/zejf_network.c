@@ -378,8 +378,8 @@ void network_send_tx(TIME_TYPE time)
 
     if ((time - packet->time_received) >= PACKET_DELETE_TIMEOUT) {
 #if ZEJF_DEBUG
-        printf("timeout hard of packed command %d txid %d from %d to %d after %" SCNu32 "ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
-        printf("times were %d %d\n", time, packet->time_received);
+        printf("timeout hard of packed command %"SCNu16" txid %"SCNu32" from %"SCNu16" to %"SCNu16" after %" SCNu32 "ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
+        printf("times were %"SCNu32" %"SCNu32"\n", time, packet->time_received);
 #endif
         goto remove;
     }

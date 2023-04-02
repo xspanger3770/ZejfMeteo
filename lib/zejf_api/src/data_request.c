@@ -71,6 +71,7 @@ bool data_request_add(uint16_t to, VariableInfo variable, uint32_t hour_number, 
     request->end_log = end_log;
     request->target_device = to;
     request->variable = variable;
+    request->errors = 0;
 
     return list_push(data_requests_queue, request);
 }
@@ -132,7 +133,11 @@ void data_requests_process(TIME_TYPE time)
 
         float val = data_get_val(request->variable, request->hour_number, request->current_log);
 
-        if (!data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time)) {
+        if (data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time) != 0) {
+            request->errors++;
+            if(request->errors > 50){
+                goto next;
+            }
             break;
         }
 

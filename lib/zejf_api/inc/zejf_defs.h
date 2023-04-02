@@ -80,6 +80,7 @@ typedef struct data_request_t
     uint32_t start_log;
     uint32_t end_log;
     uint32_t current_log;
+    uint16_t errors;
 } DataRequest;
 
 /* =======  NETWORK ============ */

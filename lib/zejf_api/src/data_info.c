@@ -130,21 +130,21 @@ void process_data_provide(Packet *packet)
     routing_entry_add_provided_variable(entry, var_info);
 }
 
-bool data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
+int data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%.4f", variable.id, variable.samples_per_hour, hour_number, sample_num, val) <= 0) {
-        return false;
+        return ZEJF_ERR_PACKET_FORMAT;
     }
 
     Packet *packet = network_prepare_packet(to, DATA_LOG, msg);
 
     if (packet == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
-    return network_send_packet(packet, time) == 0;
+    return network_send_packet(packet, time);
 }
 
 bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
@@ -165,7 +165,7 @@ bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, ui
             continue;
         }
 
-        return data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
     }
     return true;
 }

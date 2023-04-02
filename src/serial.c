@@ -122,7 +122,7 @@ void *run_timer()
     while (true) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
-
+        
         int64_t millis = current_millis();
 
         if (count % 10 == 0) {
@@ -135,11 +135,11 @@ void *run_timer()
             data_save();
         }
 
-        if (count % (60l * 10l) == 0) {
+        if (count % (60l * 30l) == 0) {
             run_data_check(current_hours(), millis % HOUR, 1, millis);
         }
 
-        if (count % (60l * 60l) == 0 || count == 120) {
+        if (count % (6l * 60l * 60l) == 0 || count == 30 || count == 120) {
             run_data_check(current_hours(), millis % HOUR, 36, millis);
         }
 

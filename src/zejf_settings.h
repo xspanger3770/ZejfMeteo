@@ -28,7 +28,7 @@
 // REQUESTS
 #define DATA_REQUEST_QUEUE_SIZE 32
 
-#define ZEJF_API_PRINTS true
+#define ZEJF_API_PRINTS false
 
 enum interface_type_t
 {

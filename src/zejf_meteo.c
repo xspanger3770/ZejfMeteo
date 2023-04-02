@@ -167,7 +167,7 @@ void meteo_start(Settings *settings)
     zejf_init();
 
     server_init(settings);
-
+    
     run_serial(settings);
 
     command_line();
