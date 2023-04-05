@@ -53,9 +53,7 @@ bool data_check_send(uint16_t to, VariableInfo variable, uint32_t hour_num, uint
         return false;
     }
 
-#if ZEJF_API_PRINTS
-    printf("Sending data check hour %"SCNu32" var %"SCNu16"\n", hour_num, variable.id);
-#endif
+    ZEJF_DEBUG(0, "Sending data check hour %"SCNu32" var %"SCNu16"\n", hour_num, variable.id);
 
     return network_send_packet(packet, time) == 0;
 }
@@ -74,9 +72,7 @@ bool data_check_receive(Packet *packet)
 
     uint32_t our_check_number = calculate_data_check(variable, hour_num, log_num);
 
-#if ZEJF_API_PRINTS
-    printf("DATA CHECK hour %"SCNu32" [our %"SCNu32" vs their %"SCNu32"]\n", hour_num, our_check_number, check_number);
-#endif
+    ZEJF_DEBUG(1, "DATA CHECK hour %"SCNu32" [our %"SCNu32" vs their %"SCNu32"]\n", hour_num, our_check_number, check_number);
 
     if (our_check_number > check_number) {
         data_request_add(packet->from, variable, hour_num, 0, log_num);

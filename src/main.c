@@ -15,60 +15,6 @@ void print_usage(void)
     printf("Usage: -s <serial port> -i <ip address> -p <port number>\n");
 }
 
-int main2()
-{
-    uint32_t val = UINT32_MAX;
-    printf("%" SCNu32 "\n", val);
-    uint32_t val2 = val + 10;
-    printf("%" SCNu32 "\n", val2);
-    printf("%" SCNu32 "\n", (val2 - val));
-    printf("packet=%ldb\n", sizeof(Packet));
-    printf("routing=%ldb\n", sizeof(RoutingEntry));
-
-    int i = 0;
-    int A = 2 << 0;
-    int B = 2 << 1;
-
-    i |= B;
-
-    printf("%d\n", i);
-    printf("%d\n", (i | B));
-    printf("%d\n", (i | A));
-
-    return 0;
-}
-
-int main44f()
-{
-    char kill_me[16][128] = { 0 };
-    snprintf(kill_me[0], 128, "this is a very important message");
-    kill_me[0][127] = '\0';
-    printf("%s\n", kill_me[0]);
-    snprintf(kill_me[15], 128, "asdasdasdasd");
-    printf("%s\n", kill_me[0]);
-    printf("%s\n", kill_me[1]);
-
-    return 0;
-}
-
-int mainqqqqq()
-{
-    zejf_init();
-
-    printf("hello\n");
-
-    VariableInfo TST = {
-        .id = 42,
-        .samples_per_hour = 12 * 60
-    };
-
-    data_log(TST, current_hours(), (current_seconds() % (uint32_t) (60 * 60)) / 5, 42.690f, current_millis(), false);
-
-    zejf_destroy();
-
-    return 0;
-}
-
 int main(int argc, char *argv[])
 {
     char *serial = "/dev/ttyUSB0";
@@ -100,9 +46,7 @@ int main(int argc, char *argv[])
         }
     }
 
-#if !ZEJF_HIDE_PRINTS
-    printf("Starting with serial port %s, ip %s:%d\n", serial, ip, port);
-#endif
+    ZEJF_DEBUG(0, "Starting with serial port %s, ip %s:%d\n", serial, ip, port);
 
     Settings settings;
     settings.ip = ip;

@@ -3,8 +3,6 @@
 
 #include <pthread.h>
 
-#define ZEJF_HIDE_PRINTS true
-
 typedef struct settings_t
 {
     char *ip;

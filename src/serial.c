@@ -48,19 +48,22 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
     UNUSED(length);
     switch (interface->type) {
     case USB:
+        {
+            if(interface->handle == STDIN_FILENO){
+                return SEND_SUCCES;
+            }
+        }
     case TCP: {
         char msg2[PACKET_MAX_LENGTH];
         snprintf(msg2, PACKET_MAX_LENGTH, "%s\n", msg);
 
         if (!write(interface->handle, msg2, strlen(msg2))) {
             perror("write");
-        } else {
-            //printf("write %s", msg2);
         }
         return SEND_SUCCES;
     }
     default:
-        printf("Unknown interaface: %d time %d\n", interface->type, time);
+        ZEJF_DEBUG(1, "Unknown interaface: %d time %d\n", interface->type, time);
         return SEND_UNABLE;
     }
 }
@@ -90,14 +93,10 @@ void process_packet(Packet *pack)
 {
     switch (pack->command) {
     case MESSAGE:
-#if !ZEJF_HIDE_PRINTS
-        printf("Message from uC: [%s]\n", pack->message);
-#endif
+        ZEJF_DEBUG(0, "Message from uC: [%s]\n", pack->message);
         break;
     default:
-#if !ZEJF_HIDE_PRINTS
-        printf("Weird packet, command=%d\n", pack->command);
-#endif
+        ZEJF_DEBUG(0, "Weird packet, command=%d\n", pack->command);
         break;
     }
 }
@@ -172,10 +171,10 @@ void run_reader(int port_fd, char *serial)
     usb_interface_1.handle = port_fd;
     pthread_mutex_unlock(&zejf_lock);
 
-    printf("waiting for serial device\n");
+    ZEJF_DEBUG(0, "waiting for serial device\n");
     sleep(2);
 
-    printf("serial port running fd %d\n", port_fd);
+    ZEJF_DEBUG(0, "serial port running fd %d\n", port_fd);
 
     char buffer[BUFFER_SIZE] = { 0 };
     char line_buffer[LINE_BUFFER_SIZE] = { 0 };
@@ -187,7 +186,7 @@ void run_reader(int port_fd, char *serial)
         ssize_t count = read(port_fd, buffer, BUFFER_SIZE);
         if (count <= 0) {
             if (stat(serial, &stats) == -1) {
-                printf("Serial reader end, count %ld\n", count);
+                ZEJF_DEBUG(0, "Serial reader end, count %ld\n", count);
                 break;
             }
         }
@@ -195,7 +194,7 @@ void run_reader(int port_fd, char *serial)
             line_buffer[line_buffer_ptr] = buffer[i];
             if (buffer[i] == '\n') {
                 line_buffer[line_buffer_ptr - 1] = '\0';
-                printf("            %s\n", line_buffer);
+                ZEJF_DEBUG(0, "            %s\n", line_buffer);
                 if (line_buffer[0] == '{') {
                     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
                     pthread_mutex_lock(&zejf_lock);
@@ -210,7 +209,7 @@ void run_reader(int port_fd, char *serial)
 
             line_buffer_ptr++;
             if (line_buffer_ptr == LINE_BUFFER_SIZE - 1) {
-                printf("ERR SERIAL READER BUFF OVERFLOW\n");
+                ZEJF_DEBUG(2, "ERR SERIAL READER BUFF OVERFLOW\n");
                 line_buffer_ptr = 0;
             }
         }
@@ -218,21 +217,19 @@ void run_reader(int port_fd, char *serial)
 
     close(port_fd);
 
-    printf("serial reader thread finish\n");
+    ZEJF_DEBUG(0, "serial reader thread finish\n");
 }
 
 void open_serial(char *serial)
 {
-#if !ZEJF_HIDE_PRINTS
-    printf("trying to open port %s\n", serial);
-#endif
+    ZEJF_DEBUG(0, "trying to open port %s\n", serial);
 
     // Open the serial port. Change device path as needed (currently set to an
     // standard FTDI USB-UART cable type device)
     int port_fd = open(serial, O_RDWR);
 
     if (port_fd == -1) {
-        perror("open");
+        ZEJF_DEBUG(1, "Cannot open %s: %s\n", serial, strerror(errno));
         return;
     }
 
@@ -241,7 +238,7 @@ void open_serial(char *serial)
 
     // Read in existing settings, and handle any error
     if (tcgetattr(port_fd, &tty) != 0) {
-        printf("error %i from tcgetattr: %s\n", errno, strerror(errno));
+        ZEJF_DEBUG(2, "error %i from tcgetattr: %s\n", errno, strerror(errno));
         close(port_fd);
         return;
     }
@@ -283,7 +280,7 @@ void open_serial(char *serial)
 
     // Save tty settings, also checking for error
     if (tcsetattr(port_fd, TCSANOW, &tty) != 0) {
-        printf("error %i from tcsetattr: %s\n", errno, strerror(errno));
+        ZEJF_DEBUG(2, "error %i from tcsetattr: %s\n", errno, strerror(errno));
         close(port_fd);
         return;
     }
@@ -295,9 +292,7 @@ void *start_serial(void *arg)
 {
     while (true) {
         open_serial((char *) arg);
-#if !ZEJF_HIDE_PRINTS
-        printf("Next attempt in 5s\n");
-#endif
+        ZEJF_DEBUG(0, "Next attempt in 5s\n");
         sleep(5);
     }
 }

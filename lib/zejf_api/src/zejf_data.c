@@ -351,9 +351,7 @@ float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_num
 
 void data_save(void)
 {
-#if ZEJF_DEBUG
-    printf("Save all\n");
-#endif
+    ZEJF_DEBUG(0, "Save all\n");
     Node *node = data_queue->head;
     if (node == NULL) {
         return;
@@ -399,9 +397,7 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
     }
     existing_variable->data[sample_number] = value;
 
-#if ZEJF_API_PRINTS
-    printf("logged %f hour %" SCNu32 " ln %" SCNu32 " variable %" SCNu16 " time %"SCNu32"\n", value, hour_number, sample_number, target_variable.id, time);
-#endif
+    ZEJF_DEBUG(1, "logged %f hour %" SCNu32 " ln %" SCNu32 " variable %" SCNu16 " time %"SCNu32"\n", value, hour_number, sample_number, target_variable.id, time);
 
     if (announce) {
         network_announce_log(target_variable, hour_number, sample_number, value, time);
