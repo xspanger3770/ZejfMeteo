@@ -1,7 +1,0 @@
-0x01 - Sea level pressure - hPa - 5 seconds
-0x02 - Basement temperature - ˚C - 60 seconds
-0x03 - Wind speed - km/h - 60 seconds average
-0x04 - Wind gust - km/h - 60 seconds - 1s max
-0x05 - Wind direction - deg - 60 seconds average
-0x06 - SLP backup
-0x07 - Attic temp

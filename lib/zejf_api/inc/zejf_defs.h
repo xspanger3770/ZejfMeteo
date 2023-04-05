@@ -97,6 +97,7 @@ enum commands
     DATA_CHECK = 0x08,
     TIME_CHECK = 0x09,
     MESSAGE = 0x0a,
+    TIME_REQUEST = 0x0b,
 };
 
 typedef struct routing_table_entry_t

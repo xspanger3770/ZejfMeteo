@@ -6,7 +6,7 @@ set(DEBUG_FLAGS "-O2 -g -std=gnu11 -Wall -Wextra -Wpedantic")
 set(RELEASE_FLAGS "-O2 -g -std=gnu11")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} ${RELEASE_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} ${DEBUG_FLAGS}")
-set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=/home/jakublinux/Desktop/All/CProjects/ZejfMeteo/.clang-rockai")
+set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=.clang-tidy")
 set(CMAKE_C_CPPCHECK "cppcheck")
 
 set(EXECUTABLE zejfmeteo_beta_1.3.0)

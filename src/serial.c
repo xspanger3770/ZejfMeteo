@@ -38,21 +38,44 @@ volatile bool serial_running = false;
 
 #define UNUSED(x) (void) (x)
 
+bool time_request(uint16_t to)
+{
+    char msg[PACKET_MAX_LENGTH];
+
+    int64_t seconds = current_seconds();
+    if (snprintf(msg, 32, "%" SCNd64, seconds) < 0) {
+        return false;
+    }
+
+    Packet *packet = network_prepare_packet(to, TIME_CHECK, msg);
+    if (packet == NULL) {
+        return false;
+    }
+
+    if (!network_send_packet(packet, current_millis())) {
+        return false;
+    }
+
+    return true;
+}
+
 void network_process_packet(Packet *packet)
 {
-    packet->checksum = packet->checksum;
+    if (packet->command == TIME_REQUEST) {
+        time_request(packet->from);
+    }
 }
 
 int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
 {
     UNUSED(length);
     switch (interface->type) {
-    case USB:
-        {
-            if(interface->handle == STDIN_FILENO){
-                return SEND_SUCCES;
-            }
+    case USB: {
+        if (interface->handle == STDIN_FILENO) {
+            return SEND_SUCCES;
         }
+    }
+        // intentionaly no break here
     case TCP: {
         char msg2[PACKET_MAX_LENGTH];
         snprintf(msg2, PACKET_MAX_LENGTH, "%s\n", msg);
@@ -66,27 +89,6 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
         ZEJF_DEBUG(1, "Unknown interaface: %d time %d\n", interface->type, time);
         return SEND_UNABLE;
     }
-}
-
-bool time_check()
-{
-    char msg[PACKET_MAX_LENGTH];
-
-    int64_t seconds = current_seconds();
-    if (snprintf(msg, 32, "%" SCNd64, seconds) < 0) {
-        return false;
-    }
-
-    Packet *packet = network_prepare_packet(BROADCAST, TIME_CHECK, msg);
-    if (packet == NULL) {
-        return false;
-    }
-
-    if (!network_send_packet(packet, current_millis())) {
-        return false;
-    }
-
-    return true;
 }
 
 void process_packet(Packet *pack)
@@ -121,7 +123,7 @@ void *run_timer()
     while (true) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
-        
+
         int64_t millis = current_millis();
 
         if (count % 10 == 0) {
@@ -130,7 +132,6 @@ void *run_timer()
             network_send_demand_info(millis);
         }
         if ((count - 5) % 30 == 0 && count >= 5) {
-            time_check();
             data_save();
         }
 
