@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <inttypes.h>
 
 #include "errno.h"
 #include "interface_manager.h"
@@ -45,6 +46,45 @@ void display_data(uint16_t variable, uint32_t hour_id)
     pthread_mutex_unlock(&zejf_lock);
 }
 
+void print_info(Settings* settings) {
+    printf("\n==== ZejfMeteo ====\n");
+    printf("Serial port: %s\n", settings->serial);
+    printf("Server ip: %s\n", settings->ip);
+    printf("Server port: %d\n\n", settings->tcp_port);
+
+    printf("Serial port running: %d\n", serial_running);
+    printf("Server running: %d\n\n", server_running);
+
+    pthread_mutex_lock(&zejf_lock);
+
+    printf("Interfaces: %ld/%d\n", interface_count, INTERFACES_MAX);
+    for(size_t i = 0; i < interface_count; i++){
+        Interface* interace = all_interfaces[i];
+        printf("    Interface #%d\n", interace->uid);
+        printf("        handle: %d\n", interace->handle);
+        printf("        rx_id: %"SCNu32"\n", interace->rx_id);
+        printf("        tx_id: %"SCNu32"\n", interace->tx_id);
+        printf("        type: %d\n", interace->type);
+    }
+
+    printf("\nClients: %ld/%ld\n", clients->item_count, clients->capacity);
+    Node* node = clients->tail;
+    while(node != NULL){
+        Client* client = (Client*)node->item;
+        
+        printf("    Client #%d\n", client->uid);
+        printf("        last_seen: %"SCNd64, client->last_seen);
+        printf("        fd: %d", client->fd);
+        printf("        interface_uid: %d", client->interface.uid);
+
+        node = node->next;
+    }
+
+    pthread_mutex_unlock(&zejf_lock);
+
+    printf("===================\n");
+}
+
 bool parse_int(char *str, long *result)
 {
     char *endptr = NULL;
@@ -57,10 +97,15 @@ bool parse_int(char *str, long *result)
     return true;
 }
 
-bool process_command(char *cmd, int argc, char **argv)
+bool process_command(char *cmd, int argc, char **argv, Settings* settings)
 {
     if (strcmp(cmd, "exit") == 0) {
         return true;
+    }
+
+    if(strcmp(cmd, "info") == 0){
+        print_info(settings);
+        return false;
     }
 
     if (strcmp(cmd, "data") == 0) {
@@ -103,7 +148,7 @@ bool process_command(char *cmd, int argc, char **argv)
     return false;
 }
 
-void command_line()
+void command_line(Settings* settings)
 {
     ZEJF_DEBUG(0, "command line active\n");
     size_t len = 0;
@@ -135,7 +180,7 @@ void command_line()
             }
         }
 
-        bool result = process_command(argv[0], argc, argv);
+        bool result = process_command(argv[0], argc, argv, settings);
         free(line);
         if (result) {
             break;
@@ -168,7 +213,7 @@ void meteo_start(Settings *settings)
     
     run_serial(settings);
 
-    command_line();
+    command_line(settings);
 
     meteo_stop();
 }

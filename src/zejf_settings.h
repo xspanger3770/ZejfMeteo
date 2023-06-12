@@ -33,7 +33,7 @@
 #define ZEJF_DEBUG_CRITICAL 2
 #define ZEJF_DEBUG_DISABLED 99
 
-#define ZEJF_DEBUG_LEVEL 0
+#define ZEJF_DEBUG_LEVEL 4
 #define ZEJF_DEBUG(p, x, ...)  \
     do { if(p >= ZEJF_DEBUG_LEVEL) printf(x, ##__VA_ARGS__); } while(0)
 

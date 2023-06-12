@@ -8,8 +8,8 @@ Interface usb_interface_1 = {
     .type = USB
 };
 
-static Interface *all_interfaces[INTERFACES_MAX];
-static size_t interface_count;
+Interface *all_interfaces[INTERFACES_MAX];
+size_t interface_count;
 static int next_uid;
 
 void interfaces_init(void)

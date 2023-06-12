@@ -7,6 +7,9 @@
 
 extern Interface usb_interface_1;
 
+extern Interface *all_interfaces[INTERFACES_MAX];
+extern size_t interface_count;
+
 void interfaces_init(void);
 
 void interfaces_destroy(void);

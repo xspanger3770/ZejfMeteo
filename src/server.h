@@ -9,6 +9,7 @@
 #define CLIENT_BUFFER_SIZE 256
 
 extern LinkedList *clients;
+extern volatile bool server_running;
 
 typedef struct client_t
 {
