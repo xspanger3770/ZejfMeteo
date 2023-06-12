@@ -77,9 +77,9 @@ void print_info(Settings* settings) {
         Client* client = (Client*)node->item;
         
         printf("    Client #%d\n", client->uid);
-        printf("        last_seen: %"SCNd64, client->last_seen);
-        printf("        fd: %d", client->fd);
-        printf("        interface_uid: %d", client->interface.uid);
+        printf("        last_seen: %"SCNd64" ms ago\n", (current_millis() - client->last_seen));
+        printf("        fd: %d\n", client->fd);
+        printf("        interface_uid: %d\n", client->interface.uid);
 
         if(node == clients->head){
             break;
@@ -88,6 +88,10 @@ void print_info(Settings* settings) {
     }
 
     pthread_rwlock_unlock(&clients_lock);
+
+    pthread_mutex_lock(&zejf_lock);
+    print_routing_table(current_millis());
+    pthread_mutex_unlock(&zejf_lock);
 
     printf("===================\n");
 }

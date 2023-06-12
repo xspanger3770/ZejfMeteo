@@ -49,9 +49,11 @@ bool interface_remove(int uid)
     bool found = false;
     for (size_t i = 0; i < interface_count; i++) {
         Interface *interface = all_interfaces[i];
-        interface_removed(interface);
-        found |= interface->uid == uid;
-        if (found && i != interface_count - 1) {
+        if (interface->uid == uid) {
+            found = true;
+            interface_removed(interface);
+        }
+        if (found && i < interface_count - 1) {
             all_interfaces[i] = all_interfaces[i + 1];
         }
     }

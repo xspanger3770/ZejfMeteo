@@ -78,4 +78,6 @@ void get_provided_variables(uint16_t *provide_count, const VariableInfo **provid
 
 void get_demanded_variables(uint16_t *demand_count, uint16_t **demanded_variables);
 
+void print_routing_table(uint32_t time);
+
 #endif

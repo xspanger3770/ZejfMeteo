@@ -223,6 +223,7 @@ void run_reader(int port_fd, char *serial)
 
 void open_serial(char *serial)
 {
+    serial_running = false;
     ZEJF_DEBUG(0, "trying to open port %s\n", serial);
 
     // Open the serial port. Change device path as needed (currently set to an
@@ -286,7 +287,9 @@ void open_serial(char *serial)
         return;
     }
 
+    serial_running = true;
     run_reader(port_fd, serial);
+    serial_running = false;
 }
 
 void *start_serial(void *arg)

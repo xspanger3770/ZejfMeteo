@@ -20,6 +20,4 @@ bool routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t demanded_
 
 bool routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provided_variable);
 
-void print_table(void);
-
 #endif

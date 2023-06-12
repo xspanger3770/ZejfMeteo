@@ -100,6 +100,7 @@ void packet_remove(Node *node)
     packet_destroy(list_remove(tx_queue, node));
 }
 
+// destroy packets that are going to the removed interface
 void network_interface_removed(Interface *interface)
 {
     Node *node = tx_queue->tail;
@@ -108,7 +109,7 @@ void network_interface_removed(Interface *interface)
     }
     do {
         Packet *packet = node->item;
-        if (packet->destination_interface == interface || packet->source_interface == interface) {
+        if (packet->destination_interface->uid == interface->uid || packet->source_interface->uid == interface->uid) {
             Node *tmp = node->next;
             packet_remove(node);
             node = tmp;
