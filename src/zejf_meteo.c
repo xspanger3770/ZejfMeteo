@@ -67,6 +67,10 @@ void print_info(Settings* settings) {
         printf("        type: %d\n", interace->type);
     }
 
+    pthread_mutex_unlock(&zejf_lock);
+
+    pthread_rwlock_rdlock(&clients_lock);
+
     printf("\nClients: %ld/%ld\n", clients->item_count, clients->capacity);
     Node* node = clients->tail;
     while(node != NULL){
@@ -77,10 +81,13 @@ void print_info(Settings* settings) {
         printf("        fd: %d", client->fd);
         printf("        interface_uid: %d", client->interface.uid);
 
+        if(node == clients->head){
+            break;
+        }
         node = node->next;
     }
 
-    pthread_mutex_unlock(&zejf_lock);
+    pthread_rwlock_unlock(&clients_lock);
 
     printf("===================\n");
 }

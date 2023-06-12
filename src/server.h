@@ -10,6 +10,7 @@
 
 extern LinkedList *clients;
 extern volatile bool server_running;
+extern pthread_rwlock_t clients_lock;
 
 typedef struct client_t
 {
