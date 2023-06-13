@@ -210,7 +210,7 @@ void run_reader(int port_fd, char *serial)
 
             line_buffer_ptr++;
             if (line_buffer_ptr == LINE_BUFFER_SIZE - 1) {
-                ZEJF_LOG(ZEJF_LOG_CRITICAL, "ERR SERIAL READER BUFF OVERFLOW\n");
+                ZEJF_LOG(0, "ERR SERIAL READER BUFF OVERFLOW\n");
                 line_buffer_ptr = 0;
             }
         }

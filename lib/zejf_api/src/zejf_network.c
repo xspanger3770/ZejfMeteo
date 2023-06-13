@@ -109,7 +109,7 @@ void network_interface_removed(Interface *interface)
     }
     do {
         Packet *packet = node->item;
-        if (packet->destination_interface->uid == interface->uid || packet->source_interface->uid == interface->uid) {
+        if (packet->destination_interface == interface || packet->source_interface == interface) {
             Node *tmp = node->next;
             packet_remove(node);
             node = tmp;
