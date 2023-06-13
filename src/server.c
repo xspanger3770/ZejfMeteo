@@ -84,7 +84,7 @@ void client_connect(int client_fd)
         perror("write");
     }
 
-    ZEJF_DEBUG(0, "CLIENT #%d added\n", client->uid);
+    ZEJF_DEBUG(999, "Client #%d joined\n", client->uid);
 }
 
 void client_remove(Node *node)
@@ -100,7 +100,7 @@ void client_remove(Node *node)
 
     // disconnect
     list_remove(clients, node);
-    ZEJF_DEBUG(1, "Client #%d timeout\n", cl->uid);
+    ZEJF_DEBUG(999, "Client #%d disconnected\n", cl->uid);
 
     pthread_mutex_lock(&zejf_lock);
 

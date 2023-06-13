@@ -154,6 +154,8 @@ int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t dista
     routing_table[routing_table_top] = entry;
     routing_table_top++;
 
+    ZEJF_DEBUG(999, "Device #%d added\n", device_id);
+
     return UPDATE_SUCCESS;
 }
 
@@ -197,10 +199,9 @@ void routing_table_check(TIME_TYPE time)
     }
 }
 
-#include <assert.h>
-
 void routing_entry_remove(size_t index)
 {
+    ZEJF_DEBUG(999, "Device #%d removed\n", routing_table[index]->device_id);
     routing_entry_destroy(routing_table[index]);
     for (size_t i = index; i < routing_table_top - 1; i++) {
         routing_table[i] = routing_table[i + 1];
@@ -250,11 +251,17 @@ void print_routing_table(uint32_t time)
         printf("        paused: %"SCNu8"\n", entry->paused);
         printf("        provided variables: %" SCNu16" [", entry->provided_count);
         for(size_t i = 0; i < entry->provided_count; i++){
-            printf("%d@%d, ", entry->provided_variables[i].id, entry->provided_variables[i].samples_per_hour);
+            printf("%d@%d", entry->provided_variables[i].id, entry->provided_variables[i].samples_per_hour);
+            if(i < entry->provided_count - 1){
+                printf(", ");
+            }
         }
         printf("]\n        demanded variables: %" SCNu16 " [", entry->demand_count);
         for(size_t i = 0; i < entry->demand_count; i++){
             printf("%"SCNu16", ", entry->demanded_variables[i]);
+            if(i < entry->demand_count - 1){
+                printf(", ");
+            }
         }
         printf("]\n");
     }

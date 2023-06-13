@@ -87,6 +87,8 @@ void print_info(Settings* settings) {
         node = node->next;
     }
 
+    printf("\n");
+
     pthread_rwlock_unlock(&clients_lock);
 
     pthread_mutex_lock(&zejf_lock);
