@@ -106,7 +106,7 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
     struct stat st = { 0 };
 
     if (stat(path_only, &st) == -1) {
-        ZEJF_DEBUG(1, "Creating path %s\n", path_only);
+        ZEJF_LOG(1, "Creating path %s\n", path_only);
         if (mkpath(path_only, 0700) != 0) {
             perror("mkdir");
             return false;
@@ -119,7 +119,7 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
         return false;
     }
 
-    ZEJF_DEBUG(1, "%ld bytes will be written to [%s]\n", total_size, path_buff);
+    ZEJF_LOG(0, "%ld bytes will be written to [%s]\n", total_size, path_buff);
 
     bool result = fwrite(buffer, total_size, 1, actual_file);
 
@@ -148,7 +148,7 @@ size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
         goto close;
     }
 
-    ZEJF_DEBUG(1, "%ld bytes will be loaded from [%s]\n", fsize, path_buff);
+    ZEJF_LOG(0, "%ld bytes will be loaded from [%s]\n", fsize, path_buff);
 
     (*data_buffer) = malloc(fsize);
     if ((*data_buffer) == NULL) {

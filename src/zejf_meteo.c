@@ -163,7 +163,7 @@ bool process_command(char *cmd, int argc, char **argv, Settings* settings)
 
 void command_line(Settings* settings)
 {
-    ZEJF_DEBUG(0, "command line active\n");
+    ZEJF_LOG(0, "command line active\n");
     size_t len = 0;
     ssize_t lineSize = 0;
 

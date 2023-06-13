@@ -86,7 +86,7 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
         return SEND_SUCCES;
     }
     default:
-        ZEJF_DEBUG(1, "Unknown interaface: %d time %d\n", interface->type, time);
+        ZEJF_LOG(0, "Unknown interaface: %d time %d\n", interface->type, time);
         return SEND_UNABLE;
     }
 }
@@ -95,10 +95,10 @@ void process_packet(Packet *pack)
 {
     switch (pack->command) {
     case MESSAGE:
-        ZEJF_DEBUG(0, "Message from uC: [%s]\n", pack->message);
+        ZEJF_LOG(0, "Message from uC: [%s]\n", pack->message);
         break;
     default:
-        ZEJF_DEBUG(0, "Weird packet, command=%d\n", pack->command);
+        ZEJF_LOG(0, "Weird packet, command=%d\n", pack->command);
         break;
     }
 }
@@ -172,10 +172,10 @@ void run_reader(int port_fd, char *serial)
     usb_interface_1.handle = port_fd;
     pthread_mutex_unlock(&zejf_lock);
 
-    ZEJF_DEBUG(0, "waiting for serial device\n");
+    ZEJF_LOG(0, "Waiting for serial device\n");
     sleep(2);
 
-    ZEJF_DEBUG(0, "serial port running fd %d\n", port_fd);
+    ZEJF_LOG(0, "Serial port running fd %d\n", port_fd);
 
     char buffer[BUFFER_SIZE] = { 0 };
     char line_buffer[LINE_BUFFER_SIZE] = { 0 };
@@ -187,7 +187,7 @@ void run_reader(int port_fd, char *serial)
         ssize_t count = read(port_fd, buffer, BUFFER_SIZE);
         if (count <= 0) {
             if (stat(serial, &stats) == -1) {
-                ZEJF_DEBUG(0, "Serial reader end, count %ld\n", count);
+                ZEJF_LOG(0, "Serial reader end, count %ld\n", count);
                 break;
             }
         }
@@ -195,7 +195,7 @@ void run_reader(int port_fd, char *serial)
             line_buffer[line_buffer_ptr] = buffer[i];
             if (buffer[i] == '\n') {
                 line_buffer[line_buffer_ptr - 1] = '\0';
-                ZEJF_DEBUG(0, "            %s\n", line_buffer);
+                ZEJF_LOG(0, "            %s\n", line_buffer);
                 if (line_buffer[0] == '{') {
                     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
                     pthread_mutex_lock(&zejf_lock);
@@ -210,7 +210,7 @@ void run_reader(int port_fd, char *serial)
 
             line_buffer_ptr++;
             if (line_buffer_ptr == LINE_BUFFER_SIZE - 1) {
-                ZEJF_DEBUG(2, "ERR SERIAL READER BUFF OVERFLOW\n");
+                ZEJF_LOG(ZEJF_LOG_CRITICAL, "ERR SERIAL READER BUFF OVERFLOW\n");
                 line_buffer_ptr = 0;
             }
         }
@@ -218,20 +218,20 @@ void run_reader(int port_fd, char *serial)
 
     close(port_fd);
 
-    ZEJF_DEBUG(0, "serial reader thread finish\n");
+    ZEJF_LOG(0, "Serial reader thread finish\n");
 }
 
 void open_serial(char *serial)
 {
     serial_running = false;
-    ZEJF_DEBUG(0, "trying to open port %s\n", serial);
+    ZEJF_LOG(0, "Trying to open port %s\n", serial);
 
     // Open the serial port. Change device path as needed (currently set to an
     // standard FTDI USB-UART cable type device)
     int port_fd = open(serial, O_RDWR);
 
     if (port_fd == -1) {
-        ZEJF_DEBUG(1, "Cannot open %s: %s\n", serial, strerror(errno));
+        ZEJF_LOG(1, "Cannot open %s: %s\n", serial, strerror(errno));
         return;
     }
 
@@ -240,7 +240,7 @@ void open_serial(char *serial)
 
     // Read in existing settings, and handle any error
     if (tcgetattr(port_fd, &tty) != 0) {
-        ZEJF_DEBUG(2, "error %i from tcgetattr: %s\n", errno, strerror(errno));
+        ZEJF_LOG(2, "error %i from tcgetattr: %s\n", errno, strerror(errno));
         close(port_fd);
         return;
     }
@@ -282,7 +282,7 @@ void open_serial(char *serial)
 
     // Save tty settings, also checking for error
     if (tcsetattr(port_fd, TCSANOW, &tty) != 0) {
-        ZEJF_DEBUG(2, "error %i from tcsetattr: %s\n", errno, strerror(errno));
+        ZEJF_LOG(2, "error %i from tcsetattr: %s\n", errno, strerror(errno));
         close(port_fd);
         return;
     }
@@ -296,7 +296,7 @@ void *start_serial(void *arg)
 {
     while (true) {
         open_serial((char *) arg);
-        ZEJF_DEBUG(0, "Next attempt in 5s\n");
+        ZEJF_LOG(0, "Next attempt in 5s\n");
         sleep(5);
     }
 }

@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    ZEJF_DEBUG(0, "Starting with serial port %s, ip %s:%d\n", serial, ip, port);
+    ZEJF_LOG(1, "Starting with serial port %s, ip %s:%d\n", serial, ip, port);
 
     Settings settings;
     settings.ip = ip;

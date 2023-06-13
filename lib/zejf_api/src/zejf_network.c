@@ -188,7 +188,7 @@ int network_send_packet(Packet *packet, TIME_TYPE time)
 
     if (list_is_full(packet->to == DEVICE_ID ? rx_queue : tx_queue)) {
         packet_destroy(packet);
-        ZEJF_DEBUG(1, "WARN: queue full\n");
+        ZEJF_LOG(0, "WARN: queue full\n");
         return ZEJF_ERR_QUEUE_FULL;
     }
 
@@ -220,7 +220,7 @@ int network_send_packet(Packet *packet, TIME_TYPE time)
     packet->tx_id = 0;            // not determined yet
 
     if (!network_push_packet(packet)) {
-        ZEJF_DEBUG(2, "THIS SHOULD HAVE NEVER HAPPENED\n");
+        ZEJF_LOG(0, "THIS SHOULD HAVE NEVER HAPPENED\n");
         // fun fact: it happened
     }
 
@@ -367,13 +367,13 @@ void network_send_tx(TIME_TYPE time)
     Packet *packet = next_packet->item;
 
     if (packet == NULL) {
-        ZEJF_DEBUG(2, "Fatal error: NULL packet\n");
+        ZEJF_LOG(0, "Fatal error: NULL packet\n");
         goto next_one;
     }
 
     if ((time - packet->time_received) >= PACKET_DELETE_TIMEOUT) {
-        ZEJF_DEBUG(2, "timeout hard of packed command %"SCNu16" txid %"SCNu32" from %"SCNu16" to %"SCNu16" after %" SCNu32 "ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
-        ZEJF_DEBUG(2, "times were %"SCNu32" %"SCNu32"\n", time, packet->time_received);
+        ZEJF_LOG(0, "timeout hard of packed command %"SCNu16" txid %"SCNu32" from %"SCNu16" to %"SCNu16" after %" SCNu32 "ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
+        ZEJF_LOG(0, "times were %"SCNu32" %"SCNu32"\n", time, packet->time_received);
         goto remove;
     }
 
@@ -407,7 +407,7 @@ void network_send_tx(TIME_TYPE time)
         entry->interface->tx_id = 0;
         entry->interface->rx_id = 0;
         entry->paused = 1;
-        ZEJF_DEBUG(1, "reset at entry for device %d packet command %d\n", entry->device_id, packet->command);
+        ZEJF_LOG(0, "Reset at entry for device %d packet command %d\n", entry->device_id, packet->command);
         // no goto here!
     }
 
@@ -421,7 +421,7 @@ void network_send_tx(TIME_TYPE time)
     // 0,1 = not initialised, waiting for returning sync packet
     // 1,1 = ready
     if (entry->interface->tx_id == 0) {
-        ZEJF_DEBUG(1, "cannot send %d to %d\n", packet->command, packet->to);
+        ZEJF_LOG(0, "Cannot send %d to %d\n", packet->command, packet->to);
         if (entry->interface->rx_id == 0) {
             sync_id(entry->interface, 1, time);
         }

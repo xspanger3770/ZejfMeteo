@@ -154,7 +154,7 @@ int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t dista
     routing_table[routing_table_top] = entry;
     routing_table_top++;
 
-    ZEJF_DEBUG(999, "Device #%d added\n", device_id);
+    ZEJF_LOG(1, "Device #%d added\n", device_id);
 
     return UPDATE_SUCCESS;
 }
@@ -201,7 +201,7 @@ void routing_table_check(TIME_TYPE time)
 
 void routing_entry_remove(size_t index)
 {
-    ZEJF_DEBUG(999, "Device #%d removed\n", routing_table[index]->device_id);
+    ZEJF_LOG(1, "Device #%d removed\n", routing_table[index]->device_id);
     routing_entry_destroy(routing_table[index]);
     for (size_t i = index; i < routing_table_top - 1; i++) {
         routing_table[i] = routing_table[i + 1];

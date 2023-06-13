@@ -99,7 +99,7 @@ int packet_from_string(Packet *packet, char *data, int length)
     packet->message = message;
 
     if (checksum != packet_checksum(packet)) {
-        ZEJF_DEBUG(2, "CHECKSUM FAIL\n");
+        ZEJF_LOG(0, "CHECKSUM FAIL\n");
         packet->message = NULL;
         return ZEJF_ERR_CHECKSUM;
     }

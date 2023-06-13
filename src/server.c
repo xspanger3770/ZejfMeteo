@@ -84,7 +84,7 @@ void client_connect(int client_fd)
         perror("write");
     }
 
-    ZEJF_DEBUG(999, "Client #%d joined\n", client->uid);
+    ZEJF_LOG(ZEJF_LOG_INFO, "Client #%d joined\n", client->uid);
 }
 
 void client_remove(Node *node)
@@ -100,7 +100,7 @@ void client_remove(Node *node)
 
     // disconnect
     list_remove(clients, node);
-    ZEJF_DEBUG(999, "Client #%d disconnected\n", cl->uid);
+    ZEJF_LOG(ZEJF_LOG_INFO, "Client #%d disconnected\n", cl->uid);
 
     pthread_mutex_lock(&zejf_lock);
 
@@ -161,7 +161,7 @@ void read_client(int fd)
         n_bytes = CLIENT_BUFFER_SIZE - client->buffer_ptr;
         rv = read(fd, &client->buffer[client->buffer_ptr], n_bytes);
 
-        ZEJF_DEBUG(0, "read %d/%zu bytes from fd %d\n", rv, n_bytes, fd);
+        ZEJF_LOG(ZEJF_LOG_DEBUG, "read %d/%zu bytes from fd %d\n", rv, n_bytes, fd);
         if (rv <= 0) {
             perror("read");
             client_remove(node);
@@ -179,7 +179,7 @@ void read_client(int fd)
                 network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
                 pthread_mutex_unlock(&zejf_lock);
 
-                ZEJF_DEBUG(0, "ACCEPTING [%s]\n", client->buffer);
+                ZEJF_LOG(ZEJF_LOG_DEBUG, "ACCEPTING [%s]\n", client->buffer);
 
                 if (client->buffer_parse_ptr < CLIENT_BUFFER_SIZE) {
                     memcpy(client->buffer, &client->buffer[client->buffer_parse_ptr + 1], client->buffer_ptr - client->buffer_parse_ptr - 1);
@@ -228,7 +228,7 @@ void *poll_run()
             }
 
             if (fds[i + 1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                ZEJF_DEBUG(0, "remove because %d\n", fds[i + 1].revents);
+                ZEJF_LOG(ZEJF_LOG_DEBUG, "remove because %d\n", fds[i + 1].revents);
                 pthread_rwlock_wrlock(&clients_lock);
                 Node *node = client_get(fds[i + 1].fd);
                 client_remove(node);
@@ -243,7 +243,7 @@ void *server_run(void *arg)
 {
     Settings *settings = (Settings *) arg;
 
-    ZEJF_DEBUG(1, "starting server... %s:%d\n", settings->ip, settings->tcp_port);
+    ZEJF_LOG(ZEJF_LOG_INFO, "Starting server... %s:%d\n", settings->ip, settings->tcp_port);
 
     int opt = 1;
     int server_fd;
@@ -277,7 +277,7 @@ void *server_run(void *arg)
 
     pthread_create(&server_poll_thread, NULL, poll_run, NULL);
 
-    ZEJF_DEBUG(1, "Server is open\n");
+    ZEJF_LOG(ZEJF_LOG_INFO, "Server is open\n");
 
     while (true) {
         if (listen(server_fd, 3) < 0) {
@@ -329,7 +329,7 @@ void *watchdog_run(void *arg)
 
                 Client *client = tmp->item;
                 if (millis - client->last_seen > 10 * 1000) {
-                    ZEJF_DEBUG(1, "Someone timedout after %ld\n", millis - client->last_seen);
+                    ZEJF_LOG(ZEJF_LOG_DEBUG, "Someone timedout after %ld\n", millis - client->last_seen);
                     client_remove(tmp);
                     node = clients->head;
                 }
