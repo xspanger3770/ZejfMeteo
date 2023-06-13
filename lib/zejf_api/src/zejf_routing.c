@@ -241,25 +241,25 @@ bool network_send_routing_info(TIME_TYPE time)
 
 void print_routing_table(uint32_t time)
 {
-    printf("Routing table entries: %ld/%d\n", routing_table_top, ROUTING_TABLE_SIZE);
+    printf("Routing table entries: %d/%d\n", (int)routing_table_top, ROUTING_TABLE_SIZE);
     for (size_t i = 0; i < routing_table_top; i++) {
         RoutingEntry *entry = routing_table[i];
-        printf("    Device %" SCNx16 "\n", entry->device_id);
-        printf("        distance: %"SCNu8"\n", entry->distance);
-        printf("        interface_id: %"SCNu8"\n", entry->interface->uid);
-        printf("        last_seen: %"SCNu8" ms ago\n", (time - entry->last_seen));
-        printf("        paused: %"SCNu8"\n", entry->paused);
-        printf("        provided variables: %" SCNu16" [", entry->provided_count);
+        printf("    Device %d\n", entry->device_id);
+        printf("        distance: %d\n", entry->distance);
+        printf("        interface_id: %d\n", entry->interface->uid);
+        printf("        last_seen: %ld ms ago\n", (long int)(time - entry->last_seen));
+        printf("        paused: %d\n", entry->paused);
+        printf("        provided variables: %d [", entry->provided_count);
         for(size_t i = 0; i < entry->provided_count; i++){
-            printf("%d@%d", entry->provided_variables[i].id, entry->provided_variables[i].samples_per_hour);
-            if(i < entry->provided_count - 1){
+            printf("%d@%ld", entry->provided_variables[i].id, (long int)entry->provided_variables[i].samples_per_hour);
+            if((int)i < entry->provided_count - 1){
                 printf(", ");
             }
         }
         printf("]\n        demanded variables: %" SCNu16 " [", entry->demand_count);
         for(size_t i = 0; i < entry->demand_count; i++){
             printf("%"SCNu16", ", entry->demanded_variables[i]);
-            if(i < entry->demand_count - 1){
+            if((int)i < entry->demand_count - 1){
                 printf(", ");
             }
         }
