@@ -63,6 +63,10 @@ void network_process_packet(Packet *packet)
 {
     if (packet->command == TIME_REQUEST) {
         time_request(packet->from);
+    } else if (packet->command == MESSAGE){
+        printf("%s\n", packet->message);
+    } else {
+        ZEJF_LOG(0, "Weird packet from device %d command %d\n", packet->from, packet->command);
     }
 }
 
@@ -91,6 +95,7 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
     }
 }
 
+/* WTF EVEN IS THIS?!??
 void process_packet(Packet *pack)
 {
     switch (pack->command) {
@@ -101,7 +106,7 @@ void process_packet(Packet *pack)
         ZEJF_LOG(0, "Weird packet, command=%d\n", pack->command);
         break;
     }
-}
+}*/
 
 uint16_t demand[] = { ALL_VARIABLES };
 

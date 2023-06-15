@@ -9,7 +9,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} ${DEBUG_FLAGS}")
 #set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=/.clang-tidy")
 set(CMAKE_C_CPPCHECK "cppcheck")
 
-set(EXECUTABLE zejfmeteo_beta_1.3.2)
+set(EXECUTABLE zejfmeteo_beta_1.3.3)
 
 # Project configuration
 project(zejfmeteo)

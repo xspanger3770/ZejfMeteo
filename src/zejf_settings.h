@@ -32,7 +32,7 @@
 #define ZEJF_LOG_INFO 1
 #define ZEJF_LOG_CRITICAL 2
 
-#define ZEJF_LOG_LEVEL 1
+#define ZEJF_LOG_LEVEL 0
 #define ZEJF_LOG(p, x, ...)  \
     do { if(p >= ZEJF_LOG_LEVEL) printf(x, ##__VA_ARGS__); } while(0)
 

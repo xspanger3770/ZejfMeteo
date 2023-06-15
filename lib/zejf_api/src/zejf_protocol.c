@@ -58,11 +58,23 @@ uint32_t packet_checksum(Packet *packet)
     return result;
 }
 
+void replace_character(char* str, char target, char replacement) {
+    if (str == NULL) {
+        return;  // Check if the string is valid
+    }
+
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == target) {
+            str[i] = replacement;
+        }
+    }
+}
+
 // fill in packet from string, malloc the message, length is the length from { to }, rv 0 is succes
 int packet_from_string(Packet *packet, char *data, int length)
 {
     if (data[0] != '{' || data[length - 1] != '}') {
-        return ZEJF_ERR_PACKET_FORMAT;
+        return ZEJF_ERR_PACKET_FORMAT_BRACKETS;
     }
 
     uint16_t from = 0;
@@ -75,10 +87,10 @@ int packet_from_string(Packet *packet, char *data, int length)
 
     char message[length];
 
-    int rv = sscanf(data, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%s", &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
+    int rv = sscanf(data, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%[^\t\n]", &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
 
     if (rv != 8) {
-        return ZEJF_ERR_PACKET_FORMAT;
+        return ZEJF_ERR_PACKET_FORMAT_ITEMS;
     }
 
     size_t len = strlen(message);
@@ -86,7 +98,7 @@ int packet_from_string(Packet *packet, char *data, int length)
     len--;
 
     if (len != message_size) {
-        return ZEJF_ERR_PACKET_FORMAT;
+        return ZEJF_ERR_PACKET_FORMAT_LENGTH;
     }
 
     packet->from = from;
@@ -106,6 +118,7 @@ int packet_from_string(Packet *packet, char *data, int length)
 
     packet->message = malloc(message_size + 1);
     memcpy(packet->message, message, message_size + 1);
+    replace_character(packet->message, (char)2, '\n');
 
     return 0;
 }
@@ -117,6 +130,7 @@ bool packet_to_string(Packet *pack, char *buff, size_t max_length)
         pack->message_size = 0;
     } else {
         pack->message_size = strlen(pack->message);
+        replace_character(pack->message, '\n', (char)2);
     }
 
     uint32_t checksum = packet_checksum(pack);
