@@ -87,17 +87,17 @@ typedef struct data_request_t
 
 enum commands
 {
-    RIP = 0x01,
-    ACK = 0x02,
-    ID_SYNC = 0x03,
-    DATA_PROVIDE = 0x04,
-    DATA_DEMAND = 0x05,
-    DATA_LOG = 0x06,
-    DATA_REQUEST = 0x07,
-    DATA_CHECK = 0x08,
-    TIME_CHECK = 0x09,
-    MESSAGE = 0x0a,
-    TIME_REQUEST = 0x0b,
+    RIP = 0x01, // ?
+    ACK = 0x02, // acknowledgement
+    ID_SYNC = 0x03, // ?
+    DATA_PROVIDE = 0x04, // send info about variables that device provides
+    DATA_DEMAND = 0x05, // send info about variables that device wants to receive
+    DATA_LOG = 0x06, // send data log
+    DATA_REQUEST = 0x07, // send specific data request
+    DATA_CHECK = 0x08, // check if one device has all data, otherwise data request is created
+    TIME_CHECK = 0x09, // send time
+    MESSAGE = 0x0a, // msg
+    TIME_REQUEST = 0x0b, // send request for time
 };
 
 typedef struct routing_table_entry_t

@@ -172,15 +172,15 @@ int routing_table_update(uint16_t device_id, Interface *interface, uint8_t dista
 
     int result = UPDATE_NO_CHANGE;
 
-    if ((existing_entry)->distance > distance) {
-        (existing_entry)->distance = distance;
-        (existing_entry)->interface = interface;
-        (existing_entry)->interface->tx_id = 0;
+    if (existing_entry->distance > distance) {
+        existing_entry->distance = distance;
+        existing_entry->interface = interface;
+        existing_entry->interface->tx_id = 0;
         result = UPDATE_SUCCESS;
     }
 
-    if ((existing_entry)->distance == distance) {
-        (existing_entry)->last_seen = time;
+    if (existing_entry->distance == distance) {
+        existing_entry->last_seen = time;
         result = UPDATE_SUCCESS;
     }
 
