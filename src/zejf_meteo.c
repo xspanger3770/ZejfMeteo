@@ -116,6 +116,30 @@ bool process_command(char *cmd, int argc, char **argv, Settings* settings)
         return true;
     }
 
+    if(strcmp(cmd, "status") == 0){
+        if (argc < 1) {
+            printf("usage: status [device_id]\n");
+            return false;
+        }
+
+        long device_id = 0;
+        if (!parse_int(argv[1], &device_id)) {
+            printf("cannot parse device id\n");
+            return false;
+        }
+
+        pthread_mutex_lock(&zejf_lock);
+        Packet* packet = network_prepare_packet(device_id, STATUS_REQUEST, NULL);
+        int rv = network_send_packet(packet, current_millis());
+        pthread_mutex_unlock(&zejf_lock);
+        if(rv == 0){
+            printf("Status request sent.\n");
+        } else{
+            printf("Failed to send status request with error code %d.\n", rv);
+        }
+        return false;
+    }
+
     if(strcmp(cmd, "info") == 0){
         print_info(settings);
         return false;
@@ -131,7 +155,7 @@ bool process_command(char *cmd, int argc, char **argv, Settings* settings)
         long variable = 0;
         long hour_id = 0;
         if (!parse_int(argv[1], &variable) || !parse_int(argv[2], &hour_id)) {
-            printf("cannot parse variable\n");
+            printf("cannot parse input\n");
             return false;
         }
 

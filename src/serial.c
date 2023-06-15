@@ -95,7 +95,7 @@ void process_packet(Packet *pack)
 {
     switch (pack->command) {
     case MESSAGE:
-        ZEJF_LOG(0, "Message from uC: [%s]\n", pack->message);
+        printf("Message from device #%d:\n    %s\n", pack->from, pack->message);
         break;
     default:
         ZEJF_LOG(0, "Weird packet, command=%d\n", pack->command);

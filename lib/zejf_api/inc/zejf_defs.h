@@ -39,6 +39,7 @@
 #define ZEJF_ERR_TXID 6
 #define ZEJF_ERR_RXID 7
 #define ZEJF_ERR_TTL 8
+#define ZEJF_ERR_NO_SUCH_DEVICE 9
 
 /* =======  DATA ============ */
 
@@ -98,6 +99,7 @@ enum commands
     TIME_CHECK = 0x09, // send time
     MESSAGE = 0x0a, // msg
     TIME_REQUEST = 0x0b, // send request for time
+    STATUS_REQUEST = 0x0c, // request status
 };
 
 typedef struct routing_table_entry_t

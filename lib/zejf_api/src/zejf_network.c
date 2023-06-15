@@ -146,6 +146,11 @@ int network_send_packet(Packet *packet, TIME_TYPE time)
         return ZEJF_ERR_NULL;
     }
 
+    if(packet->to != BROADCAST && routing_entry_find(packet->to) == NULL){
+        packet_destroy(packet);
+        return ZEJF_ERR_NO_SUCH_DEVICE;
+    }
+
     if (packet->from == DEVICE_ID && packet->to == DEVICE_ID) {
         packet_destroy(packet); // CANNOT SEND TO ITSELF
         return ZEJF_ERR_ITSELF;
