@@ -133,7 +133,7 @@ bool process_command(char *cmd, int argc, char **argv, Settings* settings)
         int rv = network_send_packet(packet, current_millis());
         pthread_mutex_unlock(&zejf_lock);
         if(rv == 0){
-            printf("Status request sent to device #%d\n", device_id);
+            printf("Status request sent to device #%ld\n", device_id);
         } else{
             printf("Failed to send status request with error code %d\n", rv);
         }

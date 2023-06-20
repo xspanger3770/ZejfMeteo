@@ -510,6 +510,9 @@ bool network_catch_packet(Packet *packet, TIME_TYPE time)
     case DATA_CHECK:
         data_check_receive(packet);
         break;
+    case VARIABLES_REQUEST:
+        variables_request_receive(packet, time);
+        break;
     default:
         return false;
     }

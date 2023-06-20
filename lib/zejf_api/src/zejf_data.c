@@ -405,3 +405,37 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
     hour->flags = 1;
     return true;
 }
+
+static bool variables_request_process(uint16_t device_id, uint32_t hour_number, TIME_TYPE time){
+    DataHour* hour = datahour_get(hour_number, true, false);
+    if(hour == NULL){
+        return true;
+    }
+
+    uint16_t variable_count = hour->variable_count;
+    if(allocate_packet_queue(PRIORITY_MEDIUM) < variable_count){
+        return false;
+    }
+
+    for(uint16_t i = 0; i < variable_count; i++){
+        VariableInfo* variable_info = &hour->variables[i].variable_info;
+        char msg[PACKET_MAX_LENGTH];
+
+        if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 ",%" SCNu32 ",%" SCNu32, variable_info->id, variable_info->samples_per_hour, hour_number) <= 0) {
+            return false;
+        }
+
+        Packet* packet = network_prepare_packet(device_id, VARIABLE_INFO, msg);
+        network_send_packet(packet, time);
+    }
+}
+
+bool variables_request_receive(Packet* packet, TIME_TYPE time) {
+    uint32_t hour_number;
+
+    if (sscanf(packet->message, "%" SCNu32, &hour_number) != 1) {
+        return false;
+    }
+
+    return variables_request_process(packet->from, hour_number, time);
+}

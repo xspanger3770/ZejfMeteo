@@ -87,11 +87,11 @@ typedef struct data_request_t
     uint16_t errors;
 } DataRequest;
 
-/* =======  NETWORK ============ */
+/* =======  PROTOCOL ============ */
 
 enum commands
 {
-    RIP = 0x01, // ?
+    RIP = 0x01, // device info
     ACK = 0x02, // acknowledgement
     ID_SYNC = 0x03, // ?
     DATA_PROVIDE = 0x04, // send info about variables that device provides
@@ -103,6 +103,8 @@ enum commands
     MESSAGE = 0x0a, // msg
     TIME_REQUEST = 0x0b, // send request for time
     STATUS_REQUEST = 0x0c, // request status
+    VARIABLES_REQUEST = 0x0d, // request to get all available variables in given hour num
+    VARIABLE_INFO = 0x0e, // info about available variable
 };
 
 typedef struct routing_table_entry_t
