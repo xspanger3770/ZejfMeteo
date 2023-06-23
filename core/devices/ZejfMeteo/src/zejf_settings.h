@@ -7,8 +7,8 @@
 // PACKETS
 #define PACKET_MAX_LENGTH 128 // maximum theoretical is 108 characters long data request
 #define PACKET_MAX_TTL 8
-#define RX_QUEUE_SIZE 256
-#define TX_QUEUE_SIZE 256
+#define RX_QUEUE_SIZE 16384
+#define TX_QUEUE_SIZE 16384
 #define ACK_REQUIRED false
 
 #define PACKET_RETRY_TIMEOUT 400
@@ -32,7 +32,7 @@
 #define ZEJF_LOG_INFO 1
 #define ZEJF_LOG_CRITICAL 2
 
-#define ZEJF_LOG_LEVEL 0
+#define ZEJF_LOG_LEVEL 1
 #define ZEJF_LOG(p, x, ...)  \
     do { if(p >= ZEJF_LOG_LEVEL) printf(x, ##__VA_ARGS__); } while(0)
 

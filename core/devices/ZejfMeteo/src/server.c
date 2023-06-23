@@ -113,7 +113,7 @@ void client_remove(Node *node)
 Node *client_get(int fd)
 {
     Node *node = clients->head;
-    for (int i = 0; i < clients->item_count; i++) {
+    for (size_t i = 0; i < clients->item_count; i++) {
         Client *client = (Client *) (node->item);
         if (client->fd == fd) {
             return node;
@@ -129,7 +129,7 @@ void prepare_fds(struct pollfd *fds)
     (fds)[0].events = POLLIN;
 
     Node *node = clients->head;
-    for (int i = 0; i < clients->item_count; i++) {
+    for (size_t i = 0; i < clients->item_count; i++) {
         (fds)[i + 1].fd = ((Client *) (node->item))->fd;
         (fds)[i + 1].events = POLLIN;
         node = node->next;
@@ -154,14 +154,14 @@ void read_client(int fd)
     }
 
     int64_t millis = current_millis();
-    int rv = -1;
+    size_t rv = -1;
     size_t n_bytes = -1;
 
     do {
         n_bytes = CLIENT_BUFFER_SIZE - client->buffer_ptr;
         rv = read(fd, &client->buffer[client->buffer_ptr], n_bytes);
 
-        ZEJF_LOG(0, "read %d/%zu bytes from fd %d\n", rv, n_bytes, fd);
+        ZEJF_LOG(0, "read %zu/%zu bytes from fd %d\n", rv, n_bytes, fd);
         if (rv <= 0) {
             perror("read");
             client_remove(node);

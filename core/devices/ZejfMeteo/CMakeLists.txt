@@ -9,15 +9,13 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} ${DEBUG_FLAGS}")
 #set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=/.clang-tidy")
 set(CMAKE_C_CPPCHECK "cppcheck")
 
-set(EXECUTABLE zejfmeteo_beta_1.3.3)
-
-# Project configuration
 project(zejfmeteo)
 
-include_directories(lib/zejf_api/inc)
+set(EXECUTABLE zejfmeteo_beta_1.3.3)
 
 add_subdirectory(src)
-add_subdirectory(lib)
+
+add_subdirectory(../../api/zejf_api zejf_api)
 
 target_include_directories(zejf_api PUBLIC src)
 
