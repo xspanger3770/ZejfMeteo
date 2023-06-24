@@ -44,6 +44,10 @@
 #define ZEJF_ERR_PACKET_FORMAT_ITEMS 11
 #define ZEJF_ERR_PACKET_FORMAT_LENGTH 12
 
+#define CHECKSUM_BYPASS_VALUE 0
+
+#define RESERVED_DEVICE_IDS 1000
+
 /* =======  DATA ============ */
 
 typedef struct interface_t
@@ -105,6 +109,9 @@ enum commands
     STATUS_REQUEST = 0x0c, // request status
     VARIABLES_REQUEST = 0x0d, // request to get all available variables in given hour num
     VARIABLE_INFO = 0x0e, // info about available variable
+    ID_REQUEST = 0x0f, // request to send next available device id
+    ID_INFO = 0x10, // info about next available device id
+    DATA_SUBSCRIBE = 0x11, // subscribe to all data changes
 };
 
 typedef struct routing_table_entry_t
@@ -118,6 +125,7 @@ typedef struct routing_table_entry_t
     uint8_t distance;
     uint16_t provided_count;
     VariableInfo *provided_variables;
+    bool subscribed;
 } RoutingEntry;
 
 typedef struct packet_t

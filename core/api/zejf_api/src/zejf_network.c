@@ -136,6 +136,18 @@ void ack_packet(Interface *interface, uint32_t id)
     } while (node != tx_queue->tail);
 }
 
+void process_id_request(Packet* packet, TIME_TYPE time) {
+    uint16_t asigned_id = routing_find_free_id();
+    if(asigned_id == 0){
+        return; // no free slots
+    }
+
+    Packet* pack = network_prepare_packet(asigned_id, ID_INFO, NULL);
+    char buff[PACKET_MAX_LENGTH];
+    packet_to_string(pack, buff, PACKET_MAX_LENGTH);
+    network_send_via(buff, strlen(buff), packet->source_interface, time);
+}
+
 // EVERY PACKET THAT ENDS UP IN THE QUEUE MUST PASS THIS FUNCTION
 // PACKET MUST BE ALLOCATED
 int network_send_packet(Packet *packet, TIME_TYPE time)
@@ -154,6 +166,11 @@ int network_send_packet(Packet *packet, TIME_TYPE time)
     if(packet->from == DEVICE_ID && packet->to != BROADCAST && routing_entry_find(packet->to) == NULL){
         packet_destroy(packet);
         return ZEJF_ERR_NO_SUCH_DEVICE;
+    }
+
+    if(packet->command == ID_REQUEST){
+        process_id_request(packet, time);
+        return 0;
     }
 
     if (packet->command == RIP) { // always from outside
@@ -512,6 +529,9 @@ bool network_catch_packet(Packet *packet, TIME_TYPE time)
         break;
     case VARIABLES_REQUEST:
         variables_request_receive(packet, time);
+        break;
+    case DATA_SUBSCRIBE:
+        process_data_subscribe(packet);
         break;
     default:
         return false;

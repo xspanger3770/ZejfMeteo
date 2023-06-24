@@ -14,6 +14,8 @@
 RoutingEntry *routing_table[ROUTING_TABLE_SIZE];
 size_t routing_table_top;
 
+uint16_t next_free_id = RESERVED_DEVICE_IDS;
+
 RoutingEntry *routing_entry_create();
 
 int routing_table_update(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time);
@@ -46,6 +48,7 @@ RoutingEntry *routing_entry_create()
     }
 
     entry->paused = 0;
+    entry->subscribed = false;
 
     entry->provided_count = 0;
     entry->provided_variables = NULL;
@@ -265,4 +268,39 @@ void print_routing_table(uint32_t time)
         }
         printf("]\n");
     }
+}
+
+uint16_t routing_find_free_id() {
+    uint16_t id = next_free_id;
+
+    while(true){
+        size_t i = 0;
+        bool found = false;
+        while (i < routing_table_top) {
+            RoutingEntry *entry = routing_table[i];
+            if(entry->device_id == id){
+                id++;
+                if(id == 0) {
+                    id = RESERVED_DEVICE_IDS;
+                }
+                if(id == next_free_id){
+                    return 0; // full
+                }
+                found = true;
+                break;
+            }
+            i++;
+        }
+
+        if(!found){
+            break;
+        }
+    }
+
+    next_free_id = id + 1;
+    if(next_free_id == 0) {
+        id = RESERVED_DEVICE_IDS;
+    }
+
+    return id;
 }

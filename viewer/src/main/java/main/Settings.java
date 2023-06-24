@@ -10,7 +10,7 @@ import java.util.Properties;
 
 public class Settings {
 
-	private static final File propertiesFile = new File(Main.MAIN_FOLDER, "properties.properties");
+	private static final File propertiesFile = new File(ZejfMeteo.MAIN_FOLDER, "properties.properties");
 	public static String ADDRESS;
 	public static int PORT;
 	static void loadProperties() throws FatalIOException {

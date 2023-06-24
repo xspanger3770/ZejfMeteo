@@ -1,13 +1,17 @@
 package socket;
 
-import exception.FatalIOException;
 import exception.RuntimeApplicationException;
-import main.Main;
+import main.ZejfMeteo;
 import main.Settings;
+import org.tinylog.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SocketManager {
 
@@ -17,10 +21,21 @@ public class SocketManager {
     private Thread socketThread;
     private volatile boolean socketRunning = false;
     private Socket socket;
-    private ZejfReader reader;
+    private ZejfCommunicator reader;
 
     public SocketManager(){
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        Runnable task = () -> {
+            if(socket != null && socket.isConnected()){
+                try {
+                    socket.getOutputStream().write("heartbeat\n".getBytes(StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                    Logger.error(e);
+                }
+            }
+        };
 
+        executor.scheduleAtFixedRate(task, 0, 5, TimeUnit.SECONDS);
     }
 
     public void connect() {
@@ -35,7 +50,7 @@ public class SocketManager {
                 try {
                     runSocket(Settings.ADDRESS, Settings.PORT);
                 }catch(RuntimeApplicationException e){
-                    Main.handleException(e);
+                    ZejfMeteo.handleException(e);
                 }
             }
         };
@@ -43,7 +58,7 @@ public class SocketManager {
     }
 
     private void runSocket(String ip, int port) {
-        System.out.println("Connect "+ ip+":"+port);
+        ZejfMeteo.getFrame().setStatus("Connecting...");
         socket = new Socket();
         try {
             socket.connect(new InetSocketAddress(ip, port), CONNECT_TIMEOUT);
@@ -56,17 +71,34 @@ public class SocketManager {
     }
 
     private void runReader() throws IOException{
-        reader = new ZejfReader(socket.getInputStream()){
+        reader = new ZejfCommunicator(socket.getInputStream(), socket.getOutputStream()){
             @Override
             public void onClose() {
                 socketRunning = false;
+                ZejfMeteo.getFrame().setStatus("Disconnected");
+            }
+
+            @Override
+            public void onReceive(Packet packet) {
+                System.out.printf("Packet command %d from %d to %d: %s\n", packet.command(), packet.from(), packet.to(), packet.message());
             }
         };
 
         reader.run();
+        ZejfMeteo.getFrame().setStatus(String.format("Connected to %s:%d", socket.getInetAddress().getHostAddress(), socket.getPort()));
     }
 
     public boolean isSocketRunning() {
         return socketRunning;
+    }
+
+    public void close() {
+        if(socket != null){
+            try {
+                socket.close();
+            }catch(IOException e){
+                throw new RuntimeApplicationException("Cannot close socket", e);
+            }
+        }
     }
 }

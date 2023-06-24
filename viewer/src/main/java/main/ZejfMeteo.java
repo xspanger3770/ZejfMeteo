@@ -10,11 +10,11 @@ import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 
-public class Main {
+public class ZejfMeteo {
 
     public static final String VERSION = "0.0.1";
     public static final File MAIN_FOLDER = new File("./ZejfMeteoViewer");
-    private static JFrame frame;
+    private static ZejfFrame frame;
     private static ApplicationErrorHandler errorHandler;
 
     public static void main(String[] args) throws Exception {
@@ -31,6 +31,7 @@ public class Main {
         SwingUtilities.invokeLater(() -> {
             frame = new ZejfFrame();
             frame.setVisible(true);
+            frame.setStatus("Ready");
         });
     }
 
@@ -39,7 +40,15 @@ public class Main {
             Logger.error("Caught exception : {}", e.getMessage());
             Logger.error(e);
         }
+
+        if(getFrame() != null){
+            getFrame().setStatus(String.format("Error: %s", e.getMessage()));
+        }
+
         errorHandler.handleException(e);
     }
 
+    public static ZejfFrame getFrame() {
+        return frame;
+    }
 }
