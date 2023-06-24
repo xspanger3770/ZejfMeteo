@@ -30,6 +30,13 @@ uint8_t gencrc(uint8_t *data, size_t len) {
     return crc;
 }
 
+bool htu21_reset(){
+    uint8_t buf[1];
+    buf[0] = HTU_COMMAND_SOFT_RESET;
+    bool res = i2c_write_blocking_until(i2c_inst, HTU_ADDR, buf, 1, false, delayed_by_ms(get_absolute_time(), 5000)) == 1;
+    return res;
+}
+
 bool htu21_init(i2c_inst_t *i2c, uint sda_pin, uint sck_pin, uint baudrate) {
     i2c_inst = i2c;
     i2c_init(i2c, baudrate);
@@ -38,10 +45,7 @@ bool htu21_init(i2c_inst_t *i2c, uint sda_pin, uint sck_pin, uint baudrate) {
     gpio_pull_up(sda_pin);
     gpio_pull_up(sck_pin);
 
-    uint8_t buf[1];
-    buf[0] = HTU_COMMAND_SOFT_RESET;
-    bool res = i2c_write_blocking(i2c, HTU_ADDR, buf, 1, false) == 1;
-    return res;
+    return htu21_reset();
 }
 
 double htu_calculate_dewpoint(double t, double rh) {
@@ -54,13 +58,13 @@ double htu_get(uint8_t command, bool* valid){
     }
     uint8_t buf[1];
     buf[0] = command;
-    if (i2c_write_blocking(i2c_inst, HTU_ADDR, buf, 1, false) != 1) {
+    if (i2c_write_blocking_until(i2c_inst, HTU_ADDR, buf, 1, false, delayed_by_ms(get_absolute_time(), 5000)) != 1) {
         *valid = false;
         return -1;
     }
 
     uint8_t in[3] = { 0 };
-    if (i2c_read_blocking(i2c_inst, HTU_ADDR, in, 3, false) != 3) {
+    if (i2c_read_blocking_until(i2c_inst, HTU_ADDR, in, 3, false, delayed_by_ms(get_absolute_time(), 5000)) != 3) {
         *valid = false;
         return -1;
     }

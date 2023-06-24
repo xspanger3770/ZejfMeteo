@@ -255,6 +255,8 @@ void zejf_tcp_check_connect(void) {
             cyw43_arch_lwip_end();
             return;
         }
+
+        next_attempt_last = 1;
     }
 
     if (current_state != NULL && (current_state->complete || !current_state->connected)) {

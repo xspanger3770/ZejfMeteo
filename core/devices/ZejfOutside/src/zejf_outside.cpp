@@ -22,7 +22,10 @@ extern "C" {
 volatile uint32_t millis_since_boot = 0;
 static uint32_t millis_overflows = 0;
 static bool reboot_by_watchdog = false;
+
 static long htu_errors = 0;
+static int htu_reset_countdown = 0;
+static int htu_next_reset = 1;
 
 static volatile bool time_set = false; // dont forgor
 static volatile bool htu_initialised = false;
@@ -221,14 +224,34 @@ void send_tcp_msgs(uint16_t to){
     send_msg(to, "  TCP stats:\n    tcp_reconnects=%d\n    wifi_reconnects=%d", tcp_stats.tcp_reconnects, tcp_stats.wifi_reconnects);
 }
 
+float read_onboard_temperature(const char unit) {
+    /* 12-bit conversion, assume max value == ADC_VREF == 3.3 V */
+    const float conversionFactor = 3.3f / (1 << 12);
+
+    adc_select_input(4);
+    float adc = (float)adc_read() * conversionFactor;
+    float tempC = 27.0f - (adc - 0.706f) / 0.001721f;
+
+    if (unit == 'C') {
+        return tempC;
+    } else if (unit == 'F') {
+        return tempC * 9 / 5 + 32;
+    }
+
+    return -1.0f;
+}
+
 void network_process_packet(Packet *packet) {
     if (packet->command == TIME_CHECK) {
         set_time(packet->message);
     } else if (packet->command == STATUS_REQUEST) {
+        float temperature = read_onboard_temperature('C');
+        
         send_msg(packet->from, "  Status of ZejfOutside:\n    time_set=%d\n    htu_initialised=%d", time_set, htu_initialised);
         send_msg(packet->from, "    queue_lock=%d\n    queue_size=%d\n    rr_count=%d", queue_lock, logs_queue.size(), rr_c);
         send_msg(packet->from, "    millis_since_boot=%d\n    millis_overflows=%d", millis_since_boot, millis_overflows);
         send_msg(packet->from, "    rebooted_by_watchdog=%d\n    htu_errors=%d", reboot_by_watchdog, htu_errors);
+        send_msg(packet->from, "    onboard_temperature=%.1f˚C\n", temperature);
         send_sd_card_msgs(packet->from);
         send_tcp_msgs(packet->from);
     } else {
@@ -297,16 +320,40 @@ static bool process_measurements(struct repeating_timer *) {
 }
 
 static bool htu_measure(struct repeating_timer *t) {
-    if (!time_set || !htu_initialised) {
-        return true;
+    ZEJF_LOG(0, "HTU = %d %d/%d\n", htu_initialised, htu_reset_countdown, htu_next_reset);
+
+    if(!htu_initialised){
+        if (htu_reset_countdown < htu_next_reset) {
+            htu_reset_countdown++;
+            return true;
+        }
+
+        htu_reset_countdown = 0;
+        if (htu_next_reset < 20) {
+            htu_next_reset *= 2;
+        }
+
+        htu_initialised = htu21_reset();
+
+        if(!htu_initialised){
+            return true;
+        }
+
+        htu_next_reset = 1;
     }
 
     htu_measurement m = htu21_measure();
-    if (m.valid) {
-        current_htu_log.sample(m);
-    } else {
+
+    if(!m.valid) {
         htu_errors++;
+        htu_initialised = 0;
     }
+
+    if (!time_set) {
+        return true;
+    }
+
+    current_htu_log.sample(m);
 
     return true;
 }
@@ -363,6 +410,8 @@ static void init_all() {
     adc_gpio_init(ADC_SOLAR_PIN);
     adc_gpio_init(ADC_BATT0_PIN);
     adc_gpio_init(ADC_BATT1_PIN);
+
+    adc_set_temp_sensor_enabled(true);
 
     htu_initialised = htu21_init(I2C_INST, I2C_SDA, I2C_SCK, I2C_SPEED);
     printf("htu_initialised = %d\n", htu_initialised);

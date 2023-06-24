@@ -10,6 +10,8 @@ typedef struct htu_measurement_t{
     bool valid;
 } htu_measurement;
 
+bool htu21_reset();
+
 bool htu21_init(i2c_inst_t* i2c, uint sda_pin, uint sck_pin, uint baudrate);
 
 htu_measurement htu21_measure();
