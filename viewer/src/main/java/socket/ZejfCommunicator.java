@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 public class ZejfCommunicator {
 
     public static final int COMMAND_RIP = 0x01;
+
+    public static final int COMMAND_DATA_LOG = 0x06;
     public static final int COMMAND_ID_REQUEST = 0x0f;
     public static final int COMMAND_ID_INFO = 0x10;
     public static final int COMMAND_DATA_SUBSCRIBE = 0x11;
@@ -93,6 +95,7 @@ public class ZejfCommunicator {
                 System.out.println("Our device id is #"+deviceId);
                 try {
                     sendRIP();
+                    sendPacket(create_packet(serverDeviceId, COMMAND_DATA_SUBSCRIBE, ""));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
