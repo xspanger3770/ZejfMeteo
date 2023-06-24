@@ -110,7 +110,7 @@ int packet_from_string(Packet *packet, char *data, int length)
     packet->message_size = message_size;
     packet->message = message;
 
-    if (checksum != packet_checksum(packet)) {
+    if (checksum != CHECKSUM_BYPASS_VALUE && checksum != packet_checksum(packet)) {
         ZEJF_LOG(0, "CHECKSUM FAIL\n");
         packet->message = NULL;
         return ZEJF_ERR_CHECKSUM;

@@ -402,6 +402,10 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
     if (announce) {
         network_announce_log(target_variable, hour_number, sample_number, value, time);
     }
+
+    // subscribed
+    network_broadcast_log(target_variable, hour_number, sample_number, value, time);
+
     hour->flags = 1;
     return true;
 }

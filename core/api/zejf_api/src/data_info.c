@@ -130,6 +130,15 @@ void process_data_provide(Packet *packet)
     routing_entry_add_provided_variable(entry, var_info);
 }
 
+void process_data_subscribe(Packet *packet)  {
+    RoutingEntry *entry = routing_entry_find(packet->from);
+    if (entry == NULL) {
+        return;
+    }
+
+    entry->subscribed = true;
+}
+
 int data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
@@ -162,6 +171,20 @@ bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, ui
         }
 
         if (!demanded) {
+            continue;
+        }
+
+        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+    }
+    return true;
+}
+
+bool network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
+{
+    for (size_t i = 0; i < routing_table_top; i++) {
+        RoutingEntry *entry = routing_table[i];
+
+        if (!entry->subscribed) {
             continue;
         }
 

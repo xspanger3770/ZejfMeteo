@@ -8,7 +8,11 @@ void process_data_demand(Packet *packet);
 
 void process_data_provide(Packet *packet);
 
+void process_data_subscribe(Packet *packet);
+
 bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time);
+
+bool network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time);
 
 void process_data_log(Packet *packet, TIME_TYPE time);
 
