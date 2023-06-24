@@ -83,11 +83,10 @@ typedef struct
     bmp_calib_part_param_t calib_part;
 } bmp_t;
 
-bool bmp_reset(bmp_t *bmp)
-{
+bool bmp_reset(bmp_t *bmp) {
     uint8_t data_buffer[] = { BMP_RESET_REG, BMP_RESET_VAL };
 
-    i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false);
+    bool res = i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false);
 
 #ifdef DEBUG
     printf("INFO: Successfully reset sensor.\n");
@@ -95,16 +94,17 @@ bool bmp_reset(bmp_t *bmp)
 
     sleep_ms(10);
 
-    return true;
+    return res;
 }
 
-bool bmp_check_chip_id(bmp_t *bmp)
-{
+bool bmp_check_chip_id(bmp_t *bmp) {
     uint8_t chip_id_reg = BMP_SENSOR_ID_REG;
     uint8_t chip_id_val[1];
 
-    i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &chip_id_reg, 1, true);
-    i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, chip_id_val, 1, false);
+    bool res = true;
+
+    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &chip_id_reg, 1, true);
+    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, chip_id_val, 1, false);
 
     if (chip_id_val[0] != BMP_SENSOR_ID_VAL) {
 #ifdef DEBUG
@@ -118,29 +118,36 @@ bool bmp_check_chip_id(bmp_t *bmp)
     printf("INFO: Successfully checked the Chip ID.\n");
 #endif
 
-    return true;
+    return res;
 }
 
-bool bmp_set_oversampling_rate(bmp_t *bmp)
-{
+bool bmp_set_oversampling_rate(bmp_t *bmp) {
     uint8_t data_buffer[] = { BMP_OSR_REG,
         (uint8_t) ((bmp->oss << 3ul) | (bmp->oss << 0ul)) };
 
-    i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false);
+    bool res = true;
+
+    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false);
 
 #ifdef DEBUG
     printf("INFO: Successfully configured oversampling rate.\n");
 #endif
 
-    return true;
+    return res;
 }
-bool bmp_get_calib_coeffs(bmp_t *bmp)
-{
+
+bool bmp_get_calib_coeffs(bmp_t *bmp) {
     uint8_t calib_coeffs_reg = BMP_CAL_REG;
     uint8_t calib_coeffs_val[BMP_CAL_LEN];
 
-    i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &calib_coeffs_reg, 1, true);
-    i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, calib_coeffs_val, BMP_CAL_LEN, false);
+    bool res = true;
+
+    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &calib_coeffs_reg, 1, true);
+    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, calib_coeffs_val, BMP_CAL_LEN, false);
+
+    if(!res){
+        return false;
+    }
 
     bmp->calib.T1 = (calib_coeffs_val[1] << 8) | calib_coeffs_val[0];
     bmp->calib.T2 = (calib_coeffs_val[3] << 8) | calib_coeffs_val[2];
@@ -195,8 +202,7 @@ bool bmp_get_calib_coeffs(bmp_t *bmp)
     return true;
 }
 
-bool bmp_read_uncalibrated_temperature(bmp_t *bmp)
-{
+bool bmp_read_uncalibrated_temperature(bmp_t *bmp) {
     uint8_t temp_reg = BMP_TEMPERATURE_REG;
     uint8_t temp_val[3];
 
@@ -207,13 +213,16 @@ bool bmp_read_uncalibrated_temperature(bmp_t *bmp)
     res &=
             i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, temp_val, 3, false) == 3;
 
+    if(!res){
+        return false;
+    }
+
     bmp->temperature = (temp_val[2] << 16) | (temp_val[1] << 8) | temp_val[0];
 
     return res;
 }
 
-bool bmp_read_uncalibrated_pressure(bmp_t *bmp)
-{
+bool bmp_read_uncalibrated_pressure(bmp_t *bmp) {
     uint8_t pres_reg = BMP_PRESSURE_REG;
     uint8_t pres_val[3];
 
@@ -229,8 +238,7 @@ bool bmp_read_uncalibrated_pressure(bmp_t *bmp)
     return res;
 }
 
-bool bmp_calibrate_temperature(bmp_t *bmp)
-{
+bool bmp_calibrate_temperature(bmp_t *bmp) {
     double par1 = bmp->temperature - bmp->calib_part.T1;
     double par2 = par1 * bmp->calib_part.T2;
     bmp->temperature = par2 + (par1 * par1) * bmp->calib_part.T3;
@@ -238,8 +246,7 @@ bool bmp_calibrate_temperature(bmp_t *bmp)
     return true;
 }
 
-bool bmp_calibrate_pressure(bmp_t *bmp)
-{
+bool bmp_calibrate_pressure(bmp_t *bmp) {
     double out1, out2, out3;
 
     {
@@ -268,8 +275,7 @@ bool bmp_calibrate_pressure(bmp_t *bmp)
     return true;
 }
 
-bool bmp_calculate_altitude(bmp_t *bmp)
-{
+bool bmp_calculate_altitude(bmp_t *bmp) {
     bmp->altitude = ((pow((1013.25 / bmp->pressure), (1 / 5.257)) - 1) *
                             (bmp->temperature + 273.15)) /
             0.0065;
@@ -277,8 +283,7 @@ bool bmp_calculate_altitude(bmp_t *bmp)
     return true;
 }
 
-bool bmp_get_pressure_temperature(bmp_t *bmp)
-{
+bool bmp_get_pressure_temperature(bmp_t *bmp) {
     bool res = true;
 
     {
@@ -289,7 +294,7 @@ bool bmp_get_pressure_temperature(bmp_t *bmp)
 
     {
         uint8_t status = 0x00;
-        while ((status & 0x60) != 0x60) {
+        while (res && (status & 0x60) != 0x60) {
             uint8_t status_reg = BMP_STATUS_REG;
             res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &status_reg, 1, true) == 1;
             res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, &status, 1, false) == 1;
@@ -306,8 +311,7 @@ bool bmp_get_pressure_temperature(bmp_t *bmp)
     return res;
 }
 
-bool bmp_init(bmp_t *bmp)
-{
+bool bmp_init(bmp_t *bmp) {
     i2c_init(bmp->i2c.inst, bmp->i2c.rate);
 
     if (bmp->oss < 0 || bmp->oss > 5) {
@@ -334,18 +338,15 @@ bool bmp_init(bmp_t *bmp)
     return res;
 }
 
-float bmp_get_sea_level_pressure(float altitude, float pressure)
-{
+float bmp_get_sea_level_pressure(float altitude, float pressure) {
     return pressure / pow(1.0 - (altitude / 44330.0), 5.255);
 }
 
-bool bmp_get_temperature(bmp_t *bmp)
-{
+bool bmp_get_temperature(bmp_t *bmp) {
     return false;
 }
 
-bool bmp_get_pressure(bmp_t *bmp)
-{
+bool bmp_get_pressure(bmp_t *bmp) {
     return false;
 }
 
