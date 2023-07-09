@@ -2,6 +2,7 @@
 #include <memory>
 #include <queue>
 #include <stdio.h>
+#include <array>
 
 #include <hardware/rtc.h>
 #include <hardware/timer.h>
@@ -12,6 +13,8 @@
 #include "sd_card_handler.h"
 #include "time_utils.h"
 #include "zejf_outside.h"
+
+int __dso_handle = 0; // some random shit that needs to be here because some smart engineer forgot it somewhere
 
 extern "C" {
 #include "htu21.h"
@@ -174,7 +177,7 @@ void get_all_interfaces(Interface ***interfaces, size_t *length) {
     *length = 1;
 }
 
-int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time) {
+int network_send_via(char *msg, int, Interface *interface, TIME_TYPE) {
     switch (interface->type) {
     case TCP: {
         char msg2[PACKET_MAX_LENGTH];
@@ -185,10 +188,6 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
         ZEJF_LOG(1, "Unknown interaface: %d\n", interface->type);
         return SEND_UNABLE;
     }
-}
-
-static bool save_all() {
-    return true;
 }
 
 static void set_time(char *msg) {
@@ -319,7 +318,7 @@ static bool process_measurements(struct repeating_timer *) {
     return true;
 }
 
-static bool htu_measure(struct repeating_timer *t) {
+static bool htu_measure(struct repeating_timer *) {
     ZEJF_LOG(0, "HTU = %d %d/%d\n", htu_initialised, htu_reset_countdown, htu_next_reset);
 
     if(!htu_initialised){
@@ -421,7 +420,10 @@ static void init_all() {
 
     wifi_connect();
 
-    zejf_init();
+
+    if(!zejf_init()){
+        panic("ZEJF INIT FAILED!\n");   
+    }
 
     init_card(SD_SPI, SD_MISO, SD_MOSI, SD_SCK, SD_CS, SD_SPI_SPEED);
 }
@@ -443,14 +445,11 @@ int main() {
     uint32_t last_provide = -1;
     uint32_t last_save = -1;
 
-    datetime_t dt;
-
     watchdog_enable(7000, 1);
     reboot_by_watchdog = watchdog_enable_caused_reboot();
 
     while (true) {
         watchdog_update();
-        bool time_was_set = time_set;
 
         cyw43_arch_poll();
 

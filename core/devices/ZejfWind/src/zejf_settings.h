@@ -14,7 +14,6 @@ extern struct interface_t tcp_client_1;
 #define PACKET_MAX_TTL 8
 #define TX_QUEUE_SIZE 32
 #define RX_QUEUE_SIZE 64
-#define ACK_REQUIRED false
 
 #define PACKET_RETRY_TIMEOUT (300)
 #define PACKET_RESET_TIMEOUT (1000 * 2)

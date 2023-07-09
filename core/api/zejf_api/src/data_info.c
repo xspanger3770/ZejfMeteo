@@ -4,17 +4,21 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-void p_send_provide(VariableInfo info, TIME_TYPE time)
+bool p_send_provide(VariableInfo info, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 "@%" SCNu32, info.id, info.samples_per_hour) <= 0) {
-        return;
+        return false;
     }
 
     Packet *packet = network_prepare_packet(BROADCAST, DATA_PROVIDE, msg);
 
-    network_send_packet(packet, time);
+    if(packet == NULL){
+        return false;
+    }
+
+    return network_send_packet(packet, time) == 0;
 }
 
 bool network_send_provide_info(TIME_TYPE time)
@@ -33,7 +37,9 @@ bool network_send_provide_info(TIME_TYPE time)
 
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        p_send_provide(provided_variables[provide_ptr], time);
+        if(!p_send_provide(provided_variables[provide_ptr], time)){
+            return false;
+        }
         provide_ptr++;
         provide_ptr %= provide_count;
         if (provide_ptr == 0) {
@@ -75,11 +81,11 @@ bool network_send_demand_info(TIME_TYPE time)
         demand_ptr = 0;
     }
 
-    bool res = true;
-
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        res &= p_send_demand(demanded_variables[demand_ptr], time);
+        if(!p_send_demand(demanded_variables[demand_ptr], time)){
+            return false;
+        }
         demand_ptr++;
         demand_ptr %= demand_count;
         if (demand_ptr == 0) {
@@ -88,7 +94,7 @@ bool network_send_demand_info(TIME_TYPE time)
         max_count--;
     }
 
-    return res;
+    return true;
 }
 
 void process_data_demand(Packet *packet)
@@ -174,7 +180,10 @@ bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, ui
             continue;
         }
 
-        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+        if(!data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time)){
+            return false;
+        }
+        
     }
     return true;
 }
@@ -188,15 +197,18 @@ bool network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, u
             continue;
         }
 
-        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+        if(!data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time)){
+            return false;
+        }
+
     }
     return true;
 }
 
-void process_data_log(Packet *packet, TIME_TYPE time)
+bool process_data_log(Packet *packet, TIME_TYPE time)
 {
     if (packet->message == NULL) {
-        return;
+        return false;
     }
 
     VariableInfo variable = { 0 };
@@ -205,8 +217,8 @@ void process_data_log(Packet *packet, TIME_TYPE time)
     float val = 0.0f;
 
     if (sscanf(packet->message, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%f", &variable.id, &variable.samples_per_hour, &hour_number, &sample_num, &val) != 5) {
-        return;
+        return false;
     }
 
-    data_log(variable, hour_number, sample_num, val, time, false);
+    return data_log(variable, hour_number, sample_num, val, time, false);
 }

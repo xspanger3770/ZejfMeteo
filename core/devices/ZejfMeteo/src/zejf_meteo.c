@@ -62,8 +62,8 @@ void print_info(Settings* settings) {
         Interface* interace = all_interfaces[i];
         printf("    Interface #%d\n", interace->uid);
         printf("        handle: %d\n", interace->handle);
-        printf("        rx_id: %"SCNu32"\n", interace->rx_id);
-        printf("        tx_id: %"SCNu32"\n", interace->tx_id);
+        printf("        rx_count: %"SCNu32"\n", interace->rx_count);
+        printf("        tx_count: %"SCNu32"\n", interace->tx_count);
         printf("        type: %d\n", interace->type);
     }
 

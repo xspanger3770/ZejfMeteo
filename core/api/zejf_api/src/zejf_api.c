@@ -4,12 +4,14 @@
 #include "zejf_network.h"
 #include "zejf_routing.h"
 
-void zejf_init(void)
+bool zejf_init(void)
 {
-    data_init();
-    data_requests_init();
-    routing_init();
-    network_init();
+    bool res = true;
+    res &= data_init();
+    res &= data_requests_init();
+    res &= routing_init();
+    res &= network_init();
+    return res;
 }
 
 void zejf_destroy(void)

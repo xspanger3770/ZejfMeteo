@@ -51,7 +51,7 @@ void test(sd_card_t *pSD) {
         ZEJF_LOG(2, "f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     }
 
-    // f_unmount(pSD->pcName);
+    f_unmount(pSD->pcName);
 }
 
 void file_path(uint32_t hour_number, char *buff, size_t size) {
@@ -98,7 +98,7 @@ bool mkdirs(char *filename) {
     case FR_NO_PATH:
         ZEJF_LOG(1, "Creating dir %s\n", filename);
 
-        char file_path[64];
+        char file_path[65];
         strncpy(file_path, filename, 64lu);
         for (char *p = strchr(file_path + 1, '/'); p; p = strchr(p + 1, '/')) {
             *p = '\0';
@@ -215,7 +215,7 @@ size_t card_read(void **ptr, char *filename) {
         goto close;
     }
 
-    ZEJF_LOG(1, "%lu bytes successfully read.\n", total_size);
+    ZEJF_LOG(1, "%zu bytes successfully read.\n", total_size);
 
 close:
     fr = f_close(&fil);

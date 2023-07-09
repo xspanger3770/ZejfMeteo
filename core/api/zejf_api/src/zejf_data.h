@@ -9,7 +9,7 @@
 
 #define FLAG_MODIFIED (1 << 0)
 
-void data_init(void);
+bool data_init(void);
 
 void data_destroy(void);
 

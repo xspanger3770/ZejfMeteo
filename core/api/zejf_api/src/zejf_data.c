@@ -15,9 +15,10 @@ Queue *data_queue;
 
 void *hour_destroy(void *ptr);
 
-void data_init(void)
+bool data_init(void)
 {
     data_queue = list_create(HOUR_BUFFER_SIZE);
+    return data_queue != NULL;
 }
 
 void data_destroy(void)
@@ -126,7 +127,7 @@ void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
 uint8_t *hour_serialize(DataHour *hour, size_t *size)
 {
     if (hour == NULL || size == NULL) {
-        return NULL;
+        return 0;
     }
     size_t total_size = DATAHOUR_BYTES;
     for (uint32_t i = 0; i < hour->variable_count; i++) {
@@ -136,7 +137,7 @@ uint8_t *hour_serialize(DataHour *hour, size_t *size)
 
     uint8_t *data = malloc(total_size);
     if (data == NULL) {
-        return NULL;
+        return 0;
     }
 
     hour->checksum = hour_calculate_checksum(hour);
@@ -288,7 +289,7 @@ bool datahour_save(DataHour *hour)
     return result;
 }
 
-void hour_add(DataHour *hour)
+bool hour_add(DataHour *hour)
 {
     if (list_is_full(data_queue)) {
         DataHour *old = list_pop(data_queue);
@@ -296,7 +297,7 @@ void hour_add(DataHour *hour)
         hour_destroy(old);
     }
 
-    list_push(data_queue, hour);
+    return list_push(data_queue, hour);
 }
 
 DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
@@ -324,7 +325,9 @@ DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
     }
 
     if (result != NULL && add) {
-        hour_add(result);
+        if(!hour_add(result)){
+            return NULL;
+        }
     }
 
     return result;
@@ -430,6 +433,10 @@ static bool variables_request_process(uint16_t device_id, uint32_t hour_number, 
         }
 
         Packet* packet = network_prepare_packet(device_id, VARIABLE_INFO, msg);
+        if(packet == NULL){
+            return false;
+        }
+
         network_send_packet(packet, time);
     }
 

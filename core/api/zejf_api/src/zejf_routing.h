@@ -6,7 +6,7 @@
 extern RoutingEntry *routing_table[ROUTING_TABLE_SIZE];
 extern size_t routing_table_top;
 
-void routing_init(void);
+bool routing_init(void);
 
 void routing_destroy(void);
 

@@ -6,7 +6,7 @@
 
 extern LinkedList *data_requests_queue;
 
-void data_requests_init(void);
+bool data_requests_init(void);
 
 void data_requests_destroy(void);
 

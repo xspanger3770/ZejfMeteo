@@ -15,7 +15,6 @@ extern struct interface_t tcp_client_1;
 #define PACKET_MAX_TTL 8
 #define TX_QUEUE_SIZE 32
 #define RX_QUEUE_SIZE 64
-#define ACK_REQUIRED false
 
 #define PACKET_RETRY_TIMEOUT (300)
 #define PACKET_RESET_TIMEOUT (1000 * 2)
@@ -26,7 +25,7 @@ extern struct interface_t tcp_client_1;
 #define ROUTING_ENTRY_TIMEOUT (1000 * 60)
 
 // DATA
-#define HOUR_BUFFER_SIZE 12 // 15 * 8 = 120kB
+#define HOUR_BUFFER_SIZE 8 // 15 * 8 = 120kB
 #define HOUR_FILE_MAX_SIZE (1024 * 32)
 #define SAMPLE_RATE_MAX (60 * 12) //3kb
 #define VARIABLES_MAX 8           //3*5 = 15kb per hour + slow

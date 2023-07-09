@@ -14,7 +14,7 @@ bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, ui
 
 bool network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time);
 
-void process_data_log(Packet *packet, TIME_TYPE time);
+bool process_data_log(Packet *packet, TIME_TYPE time);
 
 int data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time);
 

@@ -9,7 +9,7 @@ extern uint16_t provide_ptr;
 extern uint16_t demand_ptr;
 
 // Initialise buffers etc..
-void network_init(void);
+bool network_init(void);
 
 // Free all resources
 void network_destroy(void);

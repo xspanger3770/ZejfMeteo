@@ -1,7 +1,11 @@
-#include <cmath>
 #include <memory>
 #include <queue>
+#include <array>
 #include <stdio.h>
+#include <cmath>
+#include <inttypes.h>
+
+int __dso_handle = 0; // some random shit that needs to be here because some smart engineer forgot it somewhere
 
 #include <hardware/adc.h>
 #include <hardware/rtc.h>
@@ -11,7 +15,8 @@
 
 #include "sd_card_handler.h"
 #include "time_utils.h"
-#include "zejf_wind.h"
+
+#include "zejf_wind.hpp"
 
 extern "C" {
 #include "bmp085.h"
@@ -31,6 +36,10 @@ static volatile bool queue_lock = false;
 
 static volatile uint16_t wspd_c = 0;
 static volatile uint16_t wspd_c_last = 0;
+
+static uint64_t last_wspd_callback = 0;
+static bool gust_measured = false;
+static volatile double latest_max_gust = 0.0;
 
 static uint32_t time_check_count = 0;
 
@@ -102,48 +111,81 @@ class wind_log : public zejf_log
     double wdir = 0;
     double actual_wdir = 0;
     double wspd = 0;
-    uint16_t log_count = 0;
+    unsigned int log_count = 0;
+    unsigned int running_index = 0;
 
-    wind_log(VariableInfo wspd_var, VariableInfo wgust_var, VariableInfo wdir_var, uint32_t sample_rate)
-        : zejf_log(sample_rate), wspd_var{ wspd_var }, wgust_var{ wgust_var }, wdir_var{ wdir_var } {};
+    unsigned int average_count;
+    unsigned int averages_sampled = 0;
+
+    std::vector<double> wspd_running;
+    std::vector<double> wdir_running;
+
+    wind_log(VariableInfo wspd_var, VariableInfo wgust_var, VariableInfo wdir_var, uint32_t sample_rate, unsigned int average_count)
+        : zejf_log(sample_rate), wspd_var{ wspd_var }, wgust_var{ wgust_var }, wdir_var{ wdir_var } , average_count{average_count} {
+            wspd_running.resize(average_count);
+            wdir_running.resize(average_count);
+        };
 
     void reset() override
     {
         dx = 0.0;
         dy = 0.0;
-        log_count = 0;
         wgust = 0;
+        log_count = 0;
     }
 
     void finish() override
     {
-        wspd = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2)) * (2.4 / log_count);
-        wdir = (dx == 0 && dy == 0) ? actual_wdir : (std::atan2(-dx, -dy) + M_PI) * 180.0 / M_PI;
+        wspd_running[running_index] = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2)) * (2.4 / log_count);
+        wdir_running[running_index] = (dx == 0 && dy == 0) ? actual_wdir : (std::atan2(-dx, -dy) + M_PI) * 180.0 / M_PI;
+
+        running_index++;
+        if(running_index == average_count){
+            running_index = 0;
+        }
+
+        if(averages_sampled < average_count){
+            averages_sampled++;
+        }
+        
+        double my_dx = 0;
+        double my_dy = 0;
+        unsigned int index = running_index;
+        unsigned int start = running_index;
+
+        do{
+            my_dy += wspd_running[index] * std::cos((wdir_running[index] / 180.0) * M_PI);
+            my_dx += wspd_running[index] * std::sin((wdir_running[index] / 180.0) * M_PI);
+            index = (index + 1) % average_count;
+        } while(index != start);
+        
+        
+        wspd = std::sqrt(std::pow(my_dx, 2) + std::pow(my_dy, 2)) / (average_count);
+        wdir = (my_dx == 0 && my_dy == 0) ? actual_wdir : (std::atan2(-dx, -dy) + M_PI) * 180.0 / M_PI;
     }
 
-    void sample(double _wdir, uint16_t counts)
+    void sample(double _wdir, uint16_t counts, double gust)
     {
         dy += counts * std::cos((_wdir / 180.0) * M_PI);
         dx += counts * std::sin((_wdir / 180.0) * M_PI);
 
-        double wgust_now = 2.4 * counts;
-        if (wgust_now > wgust) {
-            wgust = wgust_now;
+        //double wgust_now = 2.4 * counts;
+        if (gust > wgust) {
+            wgust = gust;
         }
 
         actual_wdir = _wdir;
-
         log_count++;
     }
 
     void log_data(uint32_t millis) const override
     {
-        if (log_count == 0) {
+        ZEJF_LOG(0, "logging with millis %ld\n", millis);
+        data_log(wgust_var, hour_num, log_num, wgust, millis, true);
+        if (averages_sampled < average_count) {
             return;
         }
-        ZEJF_LOG(0, "logging with millis %ld\n", millis);
         data_log(wspd_var, hour_num, log_num, wspd, millis, true);
-        data_log(wgust_var, hour_num, log_num, wgust, millis, true);
         data_log(wdir_var, hour_num, log_num, wdir, millis, true);
     }
 
@@ -153,11 +195,11 @@ class wind_log : public zejf_log
     }
 };
 
-static wind_log current_short_log(VAR_WSPD_NOW, VAR_WGUST_NOW, VAR_WDIR_NOW, SECONDS_5);
-static wind_log current_long_log(VAR_WSPD_AVG, VAR_WGUST_AVG, VAR_WDIR_AVG, EVERY_MINUTE);
+static wind_log current_short_log(VAR_WSPD_NOW, VAR_WGUST_NOW, VAR_WDIR_NOW, SECONDS_5, 12);
+static wind_log current_long_log(VAR_WSPD_AVG, VAR_WGUST_AVG, VAR_WDIR_AVG, EVERY_MINUTE, 10);
 static bmp_log current_bmp_log(EVERY_MINUTE);
 
-static std::array<zejf_log *, 3> all_logs = { &current_short_log, &current_long_log, &current_bmp_log };
+static std::array<zejf_log*, 3> all_logs = { &current_short_log, &current_long_log, &current_bmp_log };
 
 void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables)
 {
@@ -177,7 +219,7 @@ void get_all_interfaces(Interface ***interfaces, size_t *length)
     *length = 1;
 }
 
-int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
+int network_send_via(char *msg, int, Interface *interface, TIME_TYPE)
 {
     switch (interface->type) {
     case TCP: {
@@ -264,6 +306,9 @@ static bool process_measurements(struct repeating_timer *)
     uint16_t _wspd_c = wspd_c_temp - wspd_c_last;
     wspd_c_last = wspd_c_temp;
 
+    double gust = latest_max_gust;
+    latest_max_gust = 0;
+
     datetime_t dt;
     rtc_get_datetime(&dt);
     uint32_t unixtime = unix_time(dt);
@@ -273,7 +318,7 @@ static bool process_measurements(struct repeating_timer *)
     millis_since_boot = to_ms_since_boot(get_absolute_time());
     if (millis_since_boot < last_millis) {
         millis_overflows++;
-        printf("Warn: millis overflow from %d to %d\n", last_millis, millis_since_boot);
+        printf( "Warn: millis overflow from %" SCNu32 " to %" SCNu32 "\n" , last_millis, millis_since_boot);
     }
 
     if (!time_set) {
@@ -286,8 +331,8 @@ static bool process_measurements(struct repeating_timer *)
         wdir -= 360;
     }
 
-    current_long_log.sample(wdir, _wspd_c);
-    current_short_log.sample(wdir, _wspd_c);
+    current_long_log.sample(wdir, _wspd_c, gust);
+    current_short_log.sample(wdir, _wspd_c, gust);
 
     if (queue_lock) {
         return true;
@@ -306,7 +351,7 @@ static bool process_measurements(struct repeating_timer *)
     return true;
 }
 
-static bool bmp_measure(struct repeating_timer *t)
+static bool bmp_measure(struct repeating_timer *)
 {
     if (!time_set || !bmp_initialised) {
         return true;
@@ -319,10 +364,22 @@ static bool bmp_measure(struct repeating_timer *t)
 }
 
 // ONE INTERRUPT PER SECONDS MEANS 1.2km/h WIND
-static void wspd_callback(uint gpio, uint32_t)
+static void wspd_callback(uint gpio, uint32_t events)
 {
     if (gpio == WSPD_PIN) {
         wspd_c++;
+
+        if(events & GPIO_IRQ_EDGE_RISE){
+            uint64_t current_us = to_us_since_boot(get_absolute_time());
+            if(gust_measured && time_set){
+                double gust = 2.4 * (1000000.0 / (current_us - last_wspd_callback));
+                if((gust >= 0 && gust < 200.0) && gust > latest_max_gust){
+                    latest_max_gust = gust;
+                }
+            }
+            gust_measured = true;
+            last_wspd_callback = current_us;
+        }
     }
 }
 
@@ -382,7 +439,11 @@ static void init_all()
 
     wifi_connect();
 
-    zejf_init();
+    
+    if(!zejf_init()){
+        panic("ZEJF INIT FAILED!\n");   
+    }
+    
 
     init_card(SD_SPI, SD_MISO, SD_MOSI, SD_SCK, SD_CS, SD_SPI_SPEED);
 }
@@ -405,8 +466,6 @@ int main()
     uint32_t last_provide = -1;
     uint32_t last_save = -1;
 
-    datetime_t dt;
-
     reboot_by_watchdog = watchdog_enable_caused_reboot();
 
     watchdog_enable(7000, 1);
@@ -414,8 +473,6 @@ int main()
     // dont put time getting functions here they break for some reason
     while (true) {
         watchdog_update();
-
-        bool time_was_set = time_set;
 
         cyw43_arch_poll();
 

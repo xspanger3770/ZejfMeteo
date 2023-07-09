@@ -7,7 +7,7 @@
 
 #include "zejf_defs.h"
 
-void zejf_init(void);
+bool zejf_init(void);
 
 void zejf_destroy(void);
 

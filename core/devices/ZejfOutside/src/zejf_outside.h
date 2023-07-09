@@ -108,7 +108,9 @@ const VariableInfo my_provided_variables[] = { VAR_T2M, VAR_RH, VAR_TD, VAR_RR, 
 Interface tcp_client_1 = {
     .uid = 2,
     .type = TCP,
-    .handle = 0
+    .handle = 0,
+    .rx_count = 0,
+    .tx_count = 0
 };
 
 Interface *all_interfaces[] = { &tcp_client_1 };

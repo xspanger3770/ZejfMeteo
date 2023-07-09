@@ -24,13 +24,15 @@ void routing_entry_destroy(RoutingEntry *entry);
 
 void routing_entry_remove(size_t index);
 
-void routing_init(void)
+bool routing_init(void)
 {
     routing_table_top = 0;
 
     for (int i = 0; i < ROUTING_TABLE_SIZE; i++) {
         routing_table[i] = NULL;
     }
+
+    return true;
 }
 
 void routing_destroy(void)
@@ -149,8 +151,8 @@ int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t dista
     RoutingEntry *entry = routing_entry_create();
     entry->device_id = device_id;
     entry->distance = distance;
-    interface->tx_id = 0;
-    interface->rx_id = 0;
+    interface->tx_count = 0;
+    interface->rx_count = 0;
     entry->interface = interface;
     entry->last_seen = time;
 
@@ -178,7 +180,6 @@ int routing_table_update(uint16_t device_id, Interface *interface, uint8_t dista
     if (existing_entry->distance > distance) {
         existing_entry->distance = distance;
         existing_entry->interface = interface;
-        existing_entry->interface->tx_id = 0;
         result = UPDATE_SUCCESS;
     }
 

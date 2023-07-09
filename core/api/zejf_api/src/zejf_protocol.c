@@ -54,7 +54,7 @@ uint32_t packet_checksum(Packet *packet)
     result += checksum(&packet->from, sizeof(packet->from));
     result += checksum(&packet->to, sizeof(packet->to));
     result += checksum(&packet->ttl, sizeof(packet->ttl));
-    result += checksum(&packet->tx_id, sizeof(packet->tx_id));
+    result += checksum(&packet->flags, sizeof(packet->flags));
     return result;
 }
 
@@ -79,15 +79,14 @@ int packet_from_string(Packet *packet, char *data, int length)
 
     uint16_t from = 0;
     uint16_t to = 0;
-    uint16_t ttl = 0;
     uint16_t command = 0;
+    uint16_t ttl = 0;
     uint32_t checksum = 0;
+    uint32_t flags = 0;
     uint16_t message_size = 0;
-    uint32_t tx_id;
-
     char message[length];
 
-    int rv = sscanf(data, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%[^\t\n]", &from, &to, &ttl, &tx_id, &command, &checksum, &message_size, message);
+    int rv = sscanf(data, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";%[^\t\n]", &from, &to, &command, &ttl, &checksum, &flags, &message_size, message);
 
     if (rv != 8) {
         return ZEJF_ERR_PACKET_FORMAT_ITEMS;
@@ -104,7 +103,7 @@ int packet_from_string(Packet *packet, char *data, int length)
     packet->from = from;
     packet->to = to;
     packet->ttl = ttl;
-    packet->tx_id = tx_id;
+    packet->flags = flags;
     packet->checksum = checksum;
     packet->command = command;
     packet->message_size = message_size;
@@ -117,6 +116,9 @@ int packet_from_string(Packet *packet, char *data, int length)
     }
 
     packet->message = malloc(message_size + 1);
+    if(packet->message == NULL){
+        return ZEJF_ERR_OUT_OF_MEMORY;
+    }
     memcpy(packet->message, message, message_size + 1);
     replace_character(packet->message, (char)2, '\n');
 
@@ -124,22 +126,22 @@ int packet_from_string(Packet *packet, char *data, int length)
 }
 
 // WITH NEWLINE
-bool packet_to_string(Packet *pack, char *buff, size_t max_length)
+bool packet_to_string(Packet *packet, char *buff, size_t max_length)
 {
-    if (pack->message == NULL) {
-        pack->message_size = 0;
+    if (packet->message == NULL) {
+        packet->message_size = 0;
     } else {
-        pack->message_size = strlen(pack->message);
-        replace_character(pack->message, '\n', (char)2);
+        packet->message_size = strlen(packet->message);
+        replace_character(packet->message, '\n', (char)2);
     }
 
-    uint32_t checksum = packet_checksum(pack);
+    uint32_t checksum = packet_checksum(packet);
 
-    if (pack->message != NULL) {
-        return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%s}", pack->from, pack->to, pack->ttl, pack->tx_id, pack->command, checksum, pack->message_size, pack->message) > 0;
+    if (packet->message != NULL) {
+        return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";%s}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size, packet->message) > 0;
     }
 
-    return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";%" SCNu32 ";%" SCNu16 ";}", pack->from, pack->to, pack->ttl, pack->tx_id, pack->command, checksum, pack->message_size) > 0;
+    return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size) > 0;
 }
 
 int main444()

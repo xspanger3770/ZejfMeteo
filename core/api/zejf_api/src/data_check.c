@@ -93,7 +93,7 @@ bool data_check_receive(Packet *packet)
     ZEJF_LOG(0, "DATA CHECK hour %"SCNu32" variable %"SCNu16" [our %"SCNu32" vs their %"SCNu32"]\n", hour_num, variable.id, our_check_number, check_number);
 
     if (our_check_number > check_number) {
-        data_request_add(packet->from, variable, hour_num, 0, log_num);
+        return data_request_add(packet->from, variable, hour_num, 0, log_num);
     }
 
     return true;
@@ -138,7 +138,9 @@ void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, 
                     continue;
                 }
 
-                data_check_send(entry->device_id, provided_variable, hour_num, hour_num == current_hour_num ? current_log_num : provided_variable.samples_per_hour - 1, time);
+                if(!data_check_send(entry->device_id, provided_variable, hour_num, hour_num == current_hour_num ? current_log_num : provided_variable.samples_per_hour - 1, time)){
+                    return;
+                }
             }
         }
     }

@@ -13,9 +13,10 @@ typedef LinkedList Queue;
 
 Queue *data_requests_queue;
 
-void data_requests_init(void)
+bool data_requests_init(void)
 {
     data_requests_queue = list_create(DATA_REQUEST_QUEUE_SIZE);
+    return data_requests_queue != NULL;
 }
 
 void *data_request_destroy(void *request)

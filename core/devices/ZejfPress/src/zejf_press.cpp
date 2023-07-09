@@ -11,6 +11,8 @@
 #include "time_utils.h"
 #include "zejf_press.h"
 
+int __dso_handle = 0; // some random shit that needs to be here because some smart engineer forgot it somewhere
+
 #define EVERY_5_SECONDS (60 * 12)
 #define EVERY_MINUTE (60)
 
@@ -19,7 +21,6 @@
 
 extern "C" {
 #include "zejf_api.h"
-//#include "bmp085.h"
 #include "bmp390.h"
 }
 
@@ -258,7 +259,9 @@ int main()
 
     sleep_ms(2000);
 
-    zejf_init();
+    if(!zejf_init()){
+        panic("ZEJF INIT FAILED!\n");   
+    }
 
     gpio_callback(0, 0);
 
