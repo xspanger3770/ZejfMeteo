@@ -11,7 +11,7 @@ set(CMAKE_C_CPPCHECK "cppcheck")
 
 project(zejfmeteo)
 
-set(EXECUTABLE zejfmeteo_beta_1.3.3)
+set(EXECUTABLE zejfmeteo_beta_1.4.0)
 
 add_subdirectory(src)
 

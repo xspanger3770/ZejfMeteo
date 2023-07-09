@@ -20,8 +20,8 @@ int __dso_handle = 0; // some random shit that needs to be here because some sma
 #define CHARGING_PIN 22
 
 extern "C" {
-#include "zejf_api.h"
 #include "bmp390.h"
+#include "zejf_api.h"
 }
 
 volatile double sum_press = 0;
@@ -43,20 +43,18 @@ const VariableInfo TEMPERATURE{ .samples_per_hour = EVERY_MINUTE, .id = 0x02 };
 const VariableInfo my_provided_variables[]{ PRESSURE, TEMPERATURE };
 
 void get_provided_variables(uint16_t *provide_count,
-        const VariableInfo **provided_variables)
-{
+        const VariableInfo **provided_variables) {
     *provide_count = 2;
     *provided_variables = my_provided_variables;
 }
 
 void get_demanded_variables(uint16_t *demand_count,
-        uint16_t **demanded_variables)
-{
+        uint16_t **demanded_variables) {
     *demand_count = 0;
     *demanded_variables = NULL;
 }
 
-Interface usb_serial_1 = { .uid = 1, .type = USB, .handle = 0 };
+Interface usb_serial_1 = { .uid = 1, .type = USB, .handle = 0, .rx_count = 0, .tx_count = 0 };
 
 Interface *all_interfaces[] = { &usb_serial_1 };
 
@@ -64,20 +62,17 @@ static i2c_t my_i2c;
 static bmp_t bmp;
 static bool bmp_initialised = false;
 
-void get_all_interfaces(Interface ***interfaces, size_t *length)
-{
+void get_all_interfaces(Interface ***interfaces, size_t *length) {
     *interfaces = all_interfaces;
     *length = 1;
 }
 
-void gpio_callback(uint gpio, uint32_t events)
-{
+void gpio_callback(uint, uint32_t) {
     bool g = gpio_get(USB_DETECT_PIN);
     gpio_put(CHARGING_PIN, g);
 }
 
-void init_all()
-{
+void init_all() {
     stdio_init_all();
 
     sleep_ms(1000);
@@ -101,7 +96,9 @@ void init_all()
         .sda = I2C0_SDA,
         .inst = i2c0 };
 
-    bmp = { .i2c = my_i2c, .oss = 5 };
+    bmp = {};
+    bmp.i2c = my_i2c;
+    bmp.oss = 5;
 
     bmp_initialised = true;
 
@@ -131,8 +128,7 @@ void init_all()
 
 #define MAX_ARG 4
 
-void set_time(char *msg)
-{
+void set_time(char *msg) {
     time_t time = strtol(msg, NULL, 10);
 
     ZEJF_LOG(1, "Time will be set to %lld\n", time);
@@ -154,7 +150,7 @@ void send_msg(uint16_t to, const char *str, Args... args) {
     network_send_packet(packet2, millis_since_boot);
 }
 
-void send_sd_card_msgs(uint16_t to){
+void send_sd_card_msgs(uint16_t to) {
     send_msg(to, "  SD Card stats:\n    fatal_errors=%d\n    resets=%d", sd_stats.fatal_errors, sd_stats.fatal_errors);
     send_msg(to, "    successful_reads=%d\n    successful_writes=%d\n    working=%d", sd_stats.successful_reads, sd_stats.successful_writes, sd_stats.working);
 }
@@ -170,8 +166,7 @@ void network_process_packet(Packet *packet) {
     }
 }
 
-int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
-{
+int network_send_via(char *msg, int, Interface *interface, TIME_TYPE) {
     switch (interface->type) {
     case USB:
         printf("%s\n", msg);
@@ -182,8 +177,7 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
     }
 }
 
-void check_input(char *buff, int size, int *pos, TIME_TYPE time)
-{
+void check_input(char *buff, int size, int *pos, TIME_TYPE time) {
     int ch;
     while ((ch = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT) {
         if (ch == '\n') {
@@ -199,8 +193,7 @@ void check_input(char *buff, int size, int *pos, TIME_TYPE time)
     }
 }
 
-bool bmp_measure(struct repeating_timer *t)
-{
+bool bmp_measure(struct repeating_timer *) {
     if (!time_set || !bmp_initialised) {
         return true;
     }
@@ -219,10 +212,10 @@ bool bmp_measure(struct repeating_timer *t)
     return true;
 }
 
-void time_check(){
-    if(time_set){
+void time_check() {
+    if (time_set) {
         time_check_count++;
-        if(time_check_count < 12 * 30){
+        if (time_check_count < 12 * 30) {
             return;
         }
         time_check_count = 0;
@@ -238,29 +231,26 @@ void time_check(){
     }
 }
 
-bool save_all(struct repeating_timer *t)
-{
+bool save_all(struct repeating_timer *) {
     network_send_provide_info(millis_since_boot);
     save_all_flag = true;
     return true;
 }
 
-bool send_rip(struct repeating_timer *t)
-{
+bool send_rip(struct repeating_timer *) {
     network_send_routing_info(millis_since_boot);
     time_check();
 
     return true;
 }
 
-int main()
-{
+int main() {
     init_all();
 
     sleep_ms(2000);
 
-    if(!zejf_init()){
-        panic("ZEJF INIT FAILED!\n");   
+    if (!zejf_init()) {
+        panic("ZEJF INIT FAILED!\n");
     }
 
     gpio_callback(0, 0);
@@ -270,8 +260,8 @@ int main()
     char command_buff[64];
     int command_buff_pos = 0;
 
-    char datetime_buf[256];
-    char *datetime_str = &datetime_buf[0];
+    //char datetime_buf[256];
+    //char *datetime_str = &datetime_buf[0];
 
     uint32_t last_log_num_press = -1;
     uint32_t last_log_num_temp = -1;

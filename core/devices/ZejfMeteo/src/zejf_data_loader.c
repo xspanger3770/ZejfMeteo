@@ -115,7 +115,7 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
 
     FILE *actual_file = fopen(path_buff, "wb");
     if (actual_file == NULL) {
-        perror("fopen");
+        printf("SAVE: %s: %s\n", path_buff, strerror(errno));
         return false;
     }
 
@@ -135,7 +135,7 @@ size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
 
     FILE *file = fopen(path_buff, "rb");
     if (file == NULL) {
-        perror("fopen");
+        printf("LOAD: %s: %s\n", path_buff, strerror(errno));
         return 0;
     }
 

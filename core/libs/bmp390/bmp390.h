@@ -103,8 +103,8 @@ bool bmp_check_chip_id(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &chip_id_reg, 1, true);
-    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, chip_id_val, 1, false);
+    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &chip_id_reg, 1, true) == 1;
+    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, chip_id_val, 1, false) == 1;
 
     if (chip_id_val[0] != BMP_SENSOR_ID_VAL) {
 #ifdef DEBUG
@@ -127,7 +127,7 @@ bool bmp_set_oversampling_rate(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false);
+    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false) == 2;
 
 #ifdef DEBUG
     printf("INFO: Successfully configured oversampling rate.\n");
@@ -142,8 +142,8 @@ bool bmp_get_calib_coeffs(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &calib_coeffs_reg, 1, true);
-    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, calib_coeffs_val, BMP_CAL_LEN, false);
+    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &calib_coeffs_reg, 1, true) == 1;
+    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, calib_coeffs_val, BMP_CAL_LEN, false) == BMP_CAL_LEN;
 
     if(!res){
         return false;
@@ -314,7 +314,7 @@ bool bmp_get_pressure_temperature(bmp_t *bmp) {
 bool bmp_init(bmp_t *bmp) {
     i2c_init(bmp->i2c.inst, bmp->i2c.rate);
 
-    if (bmp->oss < 0 || bmp->oss > 5) {
+    if (bmp->oss > 5) {
 #ifdef DEBUG
         printf("Invalid over-sampling rate (%d). Valid 0 to 5.\n", bmp->oss);
 #endif
@@ -342,11 +342,11 @@ float bmp_get_sea_level_pressure(float altitude, float pressure) {
     return pressure / pow(1.0 - (altitude / 44330.0), 5.255);
 }
 
-bool bmp_get_temperature(bmp_t *bmp) {
+bool bmp_get_temperature(bmp_t *) {
     return false;
 }
 
-bool bmp_get_pressure(bmp_t *bmp) {
+bool bmp_get_pressure(bmp_t *) {
     return false;
 }
 

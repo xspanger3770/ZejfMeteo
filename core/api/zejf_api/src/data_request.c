@@ -122,7 +122,7 @@ void data_requests_process(TIME_TYPE time)
             break; // still null, nothing left
         }
 
-        if (request_finished(request)) {
+        if (request_finished(request) || request->errors > 50) {
             data_request_destroy(list_pop(data_requests_queue));
             request = NULL;
             request_count++;
@@ -132,13 +132,13 @@ void data_requests_process(TIME_TYPE time)
             goto next;
         }
 
-        float val = data_get_val(request->variable, request->hour_number, request->current_log);
+        float val = 0.0;
 
-        if (data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time) != 0) {
+        bool success = data_get_val(request->variable, request->hour_number, request->current_log, true, false, &val) && 
+                       data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time) == 0;
+
+        if (!success){
             request->errors++;
-            if(request->errors > 50){
-                goto next;
-            }
             break;
         }
 

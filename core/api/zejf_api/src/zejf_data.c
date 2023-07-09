@@ -267,7 +267,9 @@ DataHour *datahour_load(uint32_t hour_number, size_t *loaded_size)
     uint8_t *buffer = NULL;
     size_t size = hour_load(&buffer, hour_number);
     DataHour *result = hour_deserialize(buffer, size);
-    free(buffer);
+    if(buffer != NULL){
+        free(buffer);
+    }
     if (result != NULL) {
         *loaded_size = size;
     }
@@ -333,23 +335,24 @@ DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
     return result;
 }
 
-float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number)
+bool data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number, bool load, bool create_new, float* target)
 {
-    DataHour *hour = datahour_get(hour_number, true, true);
+    DataHour *hour = datahour_get(hour_number, load, create_new);
     if (hour == NULL) {
-        return VALUE_EMPTY;
+        return false;
     }
 
     Variable *var = get_variable(hour, variable.id);
     if (var == NULL) {
-        return VALUE_EMPTY;
+        return false;
     }
 
     if (log_number >= var->variable_info.samples_per_hour) {
-        return VALUE_EMPTY;
+        return false;
     }
 
-    return var->data[log_number];
+    *target = var->data[log_number];
+    return true;
 }
 
 void data_save(void)
