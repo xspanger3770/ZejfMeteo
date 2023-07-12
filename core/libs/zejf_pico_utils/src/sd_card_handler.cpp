@@ -121,12 +121,12 @@ bool mkdirs(char *filename) {
     }
 }
 
-bool card_write(void *ptr, size_t size, char *filename) {
+zejf_err card_write(void *ptr, size_t size, char *filename) {
     ZEJF_LOG(1, "request to write %d bytes to [%s]\n", size, filename);
     FIL fil;
 
     if (!mkdirs(filename)) {
-        return false;
+        return ZEJF_ERR_IO;
     }
 
     FRESULT fr = f_open(&fil, filename, FA_WRITE | FA_CREATE_ALWAYS);
@@ -137,7 +137,7 @@ bool card_write(void *ptr, size_t size, char *filename) {
             sd_stats.fatal_errors++;
             reset_card();
         }
-        return false;
+        return ZEJF_ERR_IO;
     }
 
     UINT result;
@@ -156,7 +156,7 @@ close:
     if (FR_OK != fr) {
         ZEJF_LOG(2, "f_close error: %s (%d)\n", FRESULT_str(fr), fr);
         sd_stats.fatal_errors++;
-        return false;
+        return ZEJF_ERR_IO;
     }
 
     bool success = result == size;
@@ -165,12 +165,12 @@ close:
         sd_stats.working = true;
     }
 
-    return success;
+    return success ? ZEJF_OK : ZEJF_ERR_IO;
 }
 
-size_t card_read(void **ptr, char *filename) {
+zejf_err card_read(void **ptr, size_t* size, char *filename) {
     if (ptr == NULL) {
-        return 0;
+        return ZEJF_ERR_NULL;
     }
     ZEJF_LOG(1, "request to read at most %d bytes from [%s]\n", HOUR_FILE_MAX_SIZE, filename);
 
@@ -182,10 +182,10 @@ size_t card_read(void **ptr, char *filename) {
             ZEJF_LOG(2, "FATAL f_open error in read: %s (%d) [%s]\n", FRESULT_str(fr), fr, filename);
             sd_stats.fatal_errors++;
             reset_card();
-            return 0;
+            return ZEJF_ERR_IO;
         }
         ZEJF_LOG(1, "f_open error in read: %s (%d) [%s]\n", FRESULT_str(fr), fr, filename);
-        return 0;
+        return ZEJF_ERR_FILE_DOESNT_EXIST;
     }
 
     UINT result = 0;
@@ -227,17 +227,22 @@ close:
     sd_stats.successful_reads++;
     sd_stats.working = true;
 
-    return total_size;
+    if(total_size > 0){
+        *size = total_size;
+        return ZEJF_OK;
+    }
+
+    return ZEJF_ERR_IO;
 }
 
-size_t hour_load(uint8_t **data_buffer, uint32_t hour_number) {
+zejf_err hour_load(uint8_t **data_buffer, size_t* size, uint32_t hour_number) {
     char buff[64];
     file_path(hour_number, buff, 64);
 
-    return card_read((void **) data_buffer, buff);
+    return card_read((void **) data_buffer, size, buff);
 }
 
-bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size) {
+zejf_err hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size) {
     char buff[64];
     file_path(hour_number, buff, 64);
 

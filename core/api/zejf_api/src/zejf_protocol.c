@@ -71,7 +71,7 @@ void replace_character(char* str, char target, char replacement) {
 }
 
 // fill in packet from string, malloc the message, length is the length from { to }, rv 0 is succes
-int packet_from_string(Packet *packet, char *data, int length)
+zejf_err packet_from_string(Packet *packet, char *data, int length)
 {
     if (data[0] != '{' || data[length - 1] != '}') {
         return ZEJF_ERR_PACKET_FORMAT_BRACKETS;
@@ -126,7 +126,7 @@ int packet_from_string(Packet *packet, char *data, int length)
 }
 
 // WITH NEWLINE
-bool packet_to_string(Packet *packet, char *buff, size_t max_length)
+zejf_err packet_to_string(Packet *packet, char *buff, size_t max_length)
 {
     if (packet->message == NULL) {
         packet->message_size = 0;
@@ -138,10 +138,10 @@ bool packet_to_string(Packet *packet, char *buff, size_t max_length)
     uint32_t checksum = packet_checksum(packet);
 
     if (packet->message != NULL) {
-        return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";%s}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size, packet->message) > 0;
+        return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";%s}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size, packet->message) > 0 ? ZEJF_OK : ZEJF_ERR_GENERIC;
     }
 
-    return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size) > 0;
+    return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size) > 0 ? ZEJF_OK : ZEJF_ERR_GENERIC;
 }
 
 int main444()

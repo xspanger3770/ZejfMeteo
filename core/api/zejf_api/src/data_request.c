@@ -13,10 +13,10 @@ typedef LinkedList Queue;
 
 Queue *data_requests_queue;
 
-bool data_requests_init(void)
+zejf_err data_requests_init(void)
 {
     data_requests_queue = list_create(DATA_REQUEST_QUEUE_SIZE);
-    return data_requests_queue != NULL;
+    return data_requests_queue != NULL ? ZEJF_OK:ZEJF_ERR_OUT_OF_MEMORY;
 }
 
 void *data_request_destroy(void *request)
@@ -56,14 +56,14 @@ bool request_already_exists(uint16_t to, VariableInfo variable, uint32_t hour_nu
     return false;
 }
 
-bool data_request_add(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t start_log, uint32_t end_log)
+zejf_err data_request_add(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t start_log, uint32_t end_log)
 {
     if (request_already_exists(to, variable, hour_number)) {
-        return false;
+        return ZEJF_ERR_REQUEST_ALREADY_EXISTS;
     }
     DataRequest *request = data_request_create();
     if (request == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
     request->hour_number = hour_number;
@@ -74,26 +74,26 @@ bool data_request_add(uint16_t to, VariableInfo variable, uint32_t hour_number, 
     request->variable = variable;
     request->errors = 0;
 
-    return list_push(data_requests_queue, request);
+    return list_push(data_requests_queue, request) ? ZEJF_OK : ZEJF_ERR_GENERIC;
 }
 
-bool data_request_send(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t start_log, uint32_t end_log, TIME_TYPE time)
+zejf_err data_request_send(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t start_log, uint32_t end_log, TIME_TYPE time)
 {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32, variable.id, variable.samples_per_hour, hour_number, start_log, end_log) <= 0) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     Packet *packet = network_prepare_packet(to, DATA_REQUEST, msg);
     if (packet == NULL) {
-        return NULL;
+        return ZEJF_ERR_GENERIC;
     }
 
-    return network_send_packet(packet, time) == 0;
+    return network_send_packet(packet, time);
 }
 
-bool data_request_receive(Packet *packet)
+zejf_err data_request_receive(Packet *packet)
 {
     VariableInfo variable;
     uint32_t hour_number;
@@ -101,7 +101,7 @@ bool data_request_receive(Packet *packet)
     uint32_t end_log;
 
     if (sscanf(packet->message, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32, &variable.id, &variable.samples_per_hour, &hour_number, &start_log, &end_log) != 5) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     return data_request_add(packet->from, variable, hour_number, start_log, end_log);
@@ -134,8 +134,8 @@ void data_requests_process(TIME_TYPE time)
 
         float val = 0.0;
 
-        bool success = data_get_val(request->variable, request->hour_number, request->current_log, true, false, &val) && 
-                       data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time) == 0;
+        bool success = data_get_val(request->variable, request->hour_number, request->current_log, true, false, &val) == ZEJF_OK && 
+                       data_send_log(request->target_device, request->variable, request->hour_number, request->current_log, val, time) == ZEJF_OK;
 
         if (!success){
             request->errors++;

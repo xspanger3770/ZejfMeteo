@@ -166,14 +166,14 @@ void network_process_packet(Packet *packet) {
     }
 }
 
-int network_send_via(char *msg, int, Interface *interface, TIME_TYPE) {
+zejf_err network_send_via(char *msg, int, Interface *interface, TIME_TYPE) {
     switch (interface->type) {
     case USB:
         printf("%s\n", msg);
-        return SEND_SUCCES;
+        return ZEJF_OK;
     default:
         ZEJF_LOG(1, "Unknown interaface: %d\n", interface->type);
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 }
 
@@ -249,7 +249,7 @@ int main() {
 
     sleep_ms(2000);
 
-    if (!zejf_init()) {
+    if (zejf_init() != ZEJF_OK) {
         panic("ZEJF INIT FAILED!\n");
     }
 

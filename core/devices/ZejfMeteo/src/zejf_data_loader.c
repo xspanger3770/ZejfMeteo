@@ -1,6 +1,3 @@
-#include "zejf_data_loader.h"
-#include "zejf_api.h"
-#include "zejf_meteo.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +8,10 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "zejf_data_loader.h"
+#include "zejf_api.h"
+#include "zejf_meteo.h"
 
 int mkpath(char *file_path, mode_t mode)
 {
@@ -89,10 +90,10 @@ void zejf_day_path(char *buff, uint32_t hour_number)
     *end_ptr = '\0';
 }
 
-bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
+zejf_err hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
 {
     if (buffer == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
     char path_buff[128];
@@ -109,14 +110,14 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
         ZEJF_LOG(1, "Creating path %s\n", path_only);
         if (mkpath(path_only, 0700) != 0) {
             perror("mkdir");
-            return false;
+            return ZEJF_ERR_IO;
         }
     }
 
     FILE *actual_file = fopen(path_buff, "wb");
     if (actual_file == NULL) {
         printf("SAVE: %s: %s\n", path_buff, strerror(errno));
-        return false;
+        return ZEJF_ERR_IO;
     }
 
     ZEJF_LOG(0, "%ld bytes will be written to [%s]\n", total_size, path_buff);
@@ -125,18 +126,22 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
 
     fclose(actual_file);
 
-    return result;
+    return result ? ZEJF_OK:ZEJF_ERR_IO;
 }
 
-size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
+zejf_err hour_load(uint8_t **data_buffer, size_t* size, uint32_t hour_number)
 {
     char path_buff[128];
     zejf_day_path(path_buff, hour_number);
 
+    if (access(path_buff, F_OK) != 0) {
+        return ZEJF_ERR_FILE_DOESNT_EXIST;
+    }
+
     FILE *file = fopen(path_buff, "rb");
     if (file == NULL) {
         printf("LOAD: %s: %s\n", path_buff, strerror(errno));
-        return 0;
+        return ZEJF_ERR_IO;
     }
 
     fseek(file, 0, SEEK_END);
@@ -168,5 +173,10 @@ size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
 close:
     fclose(file);
 
-    return fsize;
+    if(fsize > 0){
+        *size = fsize;
+        return ZEJF_OK;
+    }
+
+    return ZEJF_ERR_IO;
 }

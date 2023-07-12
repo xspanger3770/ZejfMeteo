@@ -219,7 +219,7 @@ void get_all_interfaces(Interface ***interfaces, size_t *length)
     *length = 1;
 }
 
-int network_send_via(char *msg, int, Interface *interface, TIME_TYPE)
+zejf_err network_send_via(char *msg, int, Interface *interface, TIME_TYPE)
 {
     switch (interface->type) {
     case TCP: {
@@ -229,7 +229,7 @@ int network_send_via(char *msg, int, Interface *interface, TIME_TYPE)
     }
     default:
         ZEJF_LOG(1, "Unknown interaface: %d\n", interface->type);
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 }
 

@@ -70,13 +70,13 @@ void network_process_packet(Packet *packet)
     }
 }
 
-int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
+zejf_err network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
 {
     UNUSED(length);
     switch (interface->type) {
     case USB: {
         if (interface->handle == STDIN_FILENO) {
-            return SEND_SUCCES;
+            return ZEJF_OK;
         }
     }
         // intentionaly no break here
@@ -87,11 +87,11 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
         if (!write(interface->handle, msg2, strlen(msg2))) {
             perror("write");
         }
-        return SEND_SUCCES;
+        return ZEJF_OK;
     }
     default:
         ZEJF_LOG(0, "Unknown interaface: %d time %d\n", interface->type, time);
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 }
 

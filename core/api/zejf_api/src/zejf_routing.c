@@ -14,17 +14,9 @@
 RoutingEntry *routing_table[ROUTING_TABLE_SIZE];
 size_t routing_table_top;
 
-uint16_t next_free_id = RESERVED_DEVICE_IDS;
+static uint16_t next_free_id = RESERVED_DEVICE_IDS;
 
-RoutingEntry *routing_entry_create();
-
-int routing_table_update(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time);
-
-void routing_entry_destroy(RoutingEntry *entry);
-
-void routing_entry_remove(size_t index);
-
-bool routing_init(void)
+zejf_err routing_init(void)
 {
     routing_table_top = 0;
 
@@ -32,7 +24,7 @@ bool routing_init(void)
         routing_table[i] = NULL;
     }
 
-    return true;
+    return ZEJF_OK;
 }
 
 void routing_destroy(void)
@@ -78,12 +70,12 @@ void routing_entry_destroy(RoutingEntry *entry)
     free(entry);
 }
 
-bool routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provided_variable)
+zejf_err routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provided_variable)
 {
     for (uint16_t i = 0; i < entry->provided_count; i++) {
         if (entry->provided_variables[i].id == provided_variable.id) {
             // TODO what about differeing sample rates?
-            return false;
+            return ZEJF_ERR_GENERIC;
         }
     }
 
@@ -91,33 +83,33 @@ bool routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provi
 
     VariableInfo *ptr = realloc(entry->provided_variables, new_size);
     if (ptr == NULL) {
-        return false;
+        return ZEJF_ERR_OUT_OF_MEMORY;
     }
 
     entry->provided_variables = ptr;
     entry->provided_variables[entry->provided_count - 1] = provided_variable;
 
-    return true;
+    return ZEJF_OK;
 }
 
-bool routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t demanded_variable)
+zejf_err routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t demanded_variable)
 {
     for (uint16_t i = 0; i < entry->demand_count; i++) {
         if (entry->demanded_variables[i] == demanded_variable) {
-            return false;
+            return ZEJF_ERR_GENERIC;
         }
     }
     size_t new_size = (++entry->demand_count) * sizeof(uint16_t);
 
     uint16_t *ptr = realloc(entry->demanded_variables, new_size);
     if (ptr == NULL) {
-        return false;
+        return ZEJF_ERR_OUT_OF_MEMORY;
     }
 
     entry->demanded_variables = ptr;
     entry->demanded_variables[entry->demand_count - 1] = demanded_variable;
 
-    return true;
+    return ZEJF_OK;
 }
 
 RoutingEntry *routing_entry_find(uint16_t device_id)
@@ -142,10 +134,10 @@ RoutingEntry *routing_entry_find_by_interface(int uid)
     return NULL;
 }
 
-int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
+zejf_err routing_table_insert(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
 {
     if (routing_table_top >= ROUTING_TABLE_SIZE) {
-        return UPDATE_FAIL;
+        return ZEJF_ERR_GENERIC;
     }
 
     RoutingEntry *entry = routing_entry_create();
@@ -161,13 +153,13 @@ int routing_table_insert(uint16_t device_id, Interface *interface, uint8_t dista
 
     ZEJF_LOG(1, "Device #%d added\n", device_id);
 
-    return UPDATE_SUCCESS;
+    return ZEJF_OK;
 }
 
-int routing_table_update(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
+zejf_err routing_table_update(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
 {
     if (device_id == DEVICE_ID) {
-        return UPDATE_FAIL; // cannot add itself
+        return ZEJF_ERR_GENERIC; // cannot add itself
     }
 
     RoutingEntry *existing_entry = routing_entry_find(device_id);
@@ -175,17 +167,17 @@ int routing_table_update(uint16_t device_id, Interface *interface, uint8_t dista
         return routing_table_insert(device_id, interface, distance, time);
     }
 
-    int result = UPDATE_NO_CHANGE;
+    int result = ZEJF_ERR_NO_CHANGE;
 
     if (existing_entry->distance > distance) {
         existing_entry->distance = distance;
         existing_entry->interface = interface;
-        result = UPDATE_SUCCESS;
+        result = ZEJF_OK;
     }
 
     if (existing_entry->distance == distance) {
         existing_entry->last_seen = time;
-        result = UPDATE_SUCCESS;
+        result = ZEJF_OK;
     }
 
     return result;
@@ -229,18 +221,22 @@ void interface_removed(Interface *interface)
     network_interface_removed(interface);
 }
 
-bool network_send_routing_info(TIME_TYPE time)
+zejf_err network_send_routing_info(TIME_TYPE time)
 {
     Packet *packet = network_prepare_packet(0, RIP, NULL);
     if (packet == NULL) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
-    network_send_everywhere(packet, time);
+    zejf_err result = network_send_everywhere(packet, time);
+    if(result != ZEJF_OK){
+        packet_destroy(packet);
+        return result;
+    }
 
     packet_destroy(packet);
 
-    return true;
+    return ZEJF_OK;
 }
 
 void print_routing_table(uint32_t time)

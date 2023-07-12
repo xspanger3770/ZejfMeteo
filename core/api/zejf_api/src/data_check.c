@@ -56,27 +56,27 @@ uint32_t calculate_data_check(VariableInfo variable, uint32_t hour_num, uint32_t
     return result;
 }
 
-bool data_check_send(uint16_t to, VariableInfo variable, uint32_t hour_num, uint32_t log_num, TIME_TYPE time)
+zejf_err data_check_send(uint16_t to, VariableInfo variable, uint32_t hour_num, uint32_t log_num, TIME_TYPE time)
 {
     uint32_t check_number = calculate_data_check(variable, hour_num, log_num);
 
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32, variable.id, variable.samples_per_hour, hour_num, log_num, check_number) <= 0) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     Packet *packet = network_prepare_packet(to, DATA_CHECK, msg);
     if (packet == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
     ZEJF_LOG(0, "Sending data check hour %"SCNu32" var %"SCNu16"\n", hour_num, variable.id);
 
-    return network_send_packet(packet, time) == 0;
+    return network_send_packet(packet, time);
 }
 
-bool data_check_receive(Packet *packet)
+zejf_err data_check_receive(Packet *packet)
 {
     VariableInfo variable;
 
@@ -85,7 +85,7 @@ bool data_check_receive(Packet *packet)
     uint32_t check_number;
 
     if (sscanf(packet->message, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32, &variable.id, &variable.samples_per_hour, &hour_num, &log_num, &check_number) != 5) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     uint32_t our_check_number = calculate_data_check(variable, hour_num, log_num);
@@ -96,7 +96,7 @@ bool data_check_receive(Packet *packet)
         return data_request_add(packet->from, variable, hour_num, 0, log_num);
     }
 
-    return true;
+    return ZEJF_OK;
 }
 
 void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, uint32_t hours, TIME_TYPE time)
@@ -138,7 +138,7 @@ void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, 
                     continue;
                 }
 
-                if(!data_check_send(entry->device_id, provided_variable, hour_num, hour_num == current_hour_num ? current_log_num : provided_variable.samples_per_hour - 1, time)){
+                if(data_check_send(entry->device_id, provided_variable, hour_num, hour_num == current_hour_num ? current_log_num : provided_variable.samples_per_hour - 1, time) != ZEJF_OK){
                     return;
                 }
             }
