@@ -103,14 +103,14 @@ zejf_err process_id_request(Packet *packet, TIME_TYPE time) {
     }
 
     Packet *pack = network_prepare_packet(asigned_id, ID_INFO, NULL);
-    if(pack == NULL){
+    if (pack == NULL) {
         return ZEJF_ERR_NULL;
     }
     char buff[PACKET_MAX_LENGTH];
 
     zejf_err rv = packet_to_string(pack, buff, PACKET_MAX_LENGTH);
 
-    if(rv != ZEJF_OK){
+    if (rv != ZEJF_OK) {
         return rv;
     }
 
@@ -137,14 +137,14 @@ zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
     }
 
     if (packet->command == ID_REQUEST) {
-        if(!process_id_request(packet, time)){
+        if (process_id_request(packet, time) != ZEJF_OK) {
             return ZEJF_ERR_GENERIC;
         }
         return ZEJF_OK;
     }
 
     if (packet->command == RIP) { // always from outside
-        zejf_err rv  = process_rip_packet(packet, time); 
+        zejf_err rv = process_rip_packet(packet, time);
         if (rv != ZEJF_OK) {
             packet_destroy(packet);
             return rv;
@@ -162,7 +162,7 @@ zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
     if (packet->from != DEVICE_ID && packet->command != RIP) {
         if (packet->source_interface == NULL) {
             packet_destroy(packet);
-            return 0;
+            return ZEJF_OK;
         }
     }
 
@@ -172,8 +172,9 @@ zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
     zejf_err rv = network_push_packet(packet);
 
     if (rv != ZEJF_OK) {
-        ZEJF_LOG(0, "THIS SHOULD HAVE NEVER HAPPENED\n");
+        ZEJF_LOG(2, "THIS SHOULD HAVE NEVER HAPPENED (%d)\n", rv);
         // fun fact: it happened     edit: many times
+        // fun fact: IT HAPPENED AGAIN
         return ZEJF_ERR_OUT_OF_MEMORY;
     }
 
@@ -182,12 +183,12 @@ zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
 
 zejf_err network_push_packet(Packet *packet) {
     Queue *target_queue = packet->to == DEVICE_ID ? rx_queue : tx_queue;
-    return list_push(target_queue, packet);
+    return list_push(target_queue, packet) ? ZEJF_OK : ZEJF_ERR_GENERIC;
 }
 
 zejf_err prepare_and_send(Packet *packet, Interface *destination_interface, TIME_TYPE time) {
     char buff[PACKET_MAX_LENGTH];
-    if (!packet_to_string(packet, buff, PACKET_MAX_LENGTH)) {
+    if (packet_to_string(packet, buff, PACKET_MAX_LENGTH) != ZEJF_OK) {
         return ZEJF_ERR_SEND_UNABLE;
     }
 
@@ -205,12 +206,12 @@ zejf_err process_broadcast_packet(Packet *packet) {
         for (size_t i = 0; i < routing_table_top; i++) {
             RoutingEntry *entry = routing_table[i];
             Packet *new_packet = network_prepare_packet(entry->device_id, packet->command, packet->message);
-            if(new_packet == NULL){
+            if (new_packet == NULL) {
                 return ZEJF_ERR_NULL;
             }
 
             zejf_err rv = network_send_packet(new_packet, packet->time_received);
-            if(rv != ZEJF_OK){
+            if (rv != ZEJF_OK) {
                 result = ZEJF_ERR_PARTIAL;
             }
         }
@@ -224,7 +225,7 @@ zejf_err process_broadcast_packet(Packet *packet) {
 // EXCEPT BACKWARDS
 zejf_err network_send_everywhere(Packet *packet, TIME_TYPE time) {
     char buff[PACKET_MAX_LENGTH];
-    if (!packet_to_string(packet, buff, PACKET_MAX_LENGTH)) {
+    if (packet_to_string(packet, buff, PACKET_MAX_LENGTH) != ZEJF_OK) {
         return ZEJF_ERR_GENERIC;
     }
     Interface **interfaces = NULL;
@@ -238,7 +239,7 @@ zejf_err network_send_everywhere(Packet *packet, TIME_TYPE time) {
         Interface *interface = interfaces[i];
         if (packet->source_interface == NULL || interface->uid != packet->source_interface->uid) {
             zejf_err res = network_send_via(buff, (int) strlen(buff), interface, time);
-            if(res != ZEJF_OK){
+            if (res != ZEJF_OK) {
                 result = ZEJF_ERR_PARTIAL;
             }
         }
@@ -248,8 +249,8 @@ zejf_err network_send_everywhere(Packet *packet, TIME_TYPE time) {
 }
 
 zejf_err process_rip_packet(Packet *packet, TIME_TYPE now) {
-    zejf_err rv = routing_table_update(packet->from, packet->source_interface, packet->ttl, now); 
-    if (rv == ZEJF_OK) {
+    zejf_err rv = routing_table_update(packet->from, packet->source_interface, packet->ttl, now);
+    if (rv == ZEJF_OK && packet->flags != 0) {
         return network_send_everywhere(packet, now);
     }
 
@@ -263,13 +264,11 @@ void network_process_packets(TIME_TYPE time) {
 
 void network_process_rx(TIME_TYPE time) {
     Packet *packet = (Packet *) list_pop(rx_queue);
-    while (packet != NULL) {
+    if (packet != NULL) {
         if (!network_catch_packet(packet, time)) {
             network_process_packet(packet);
         }
         packet_destroy(packet);
-
-        packet = (Packet *) list_pop(rx_queue);
     }
 }
 
@@ -339,7 +338,7 @@ Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg) {
     if (msg != NULL) {
         packet->message_size = strlen(msg);
         packet->message = malloc(packet->message_size + 1);
-        if(packet->message == NULL){
+        if (packet->message == NULL) {
             return NULL;
         }
         memcpy(packet->message, msg, packet->message_size + 1);

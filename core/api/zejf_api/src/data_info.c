@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-zejf_err p_send_provide(VariableInfo info, TIME_TYPE time) {
+static zejf_err p_send_provide(VariableInfo info, TIME_TYPE time) {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 "@%" SCNu32, info.id, info.samples_per_hour) <= 0) {
@@ -177,7 +177,7 @@ zejf_err network_announce_log(VariableInfo target_variable, uint32_t hour_number
         }
 
         if (data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time) != ZEJF_OK) {
-            return result = ZEJF_ERR_PARTIAL;
+            result = ZEJF_ERR_PARTIAL;
         }
     }
 

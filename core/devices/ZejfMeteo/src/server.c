@@ -30,8 +30,7 @@ int next_client_uid;
 // [0] for read, [1] for write
 int pipe_fds[2];
 
-Client *client_create(int fd)
-{
+Client *client_create(int fd) {
     Client *client = calloc(1, sizeof(Client));
     if (client == NULL) {
         return NULL;
@@ -50,14 +49,12 @@ Client *client_create(int fd)
     return client;
 }
 
-void *client_destroy(void *ptr)
-{
+void *client_destroy(void *ptr) {
     free(ptr);
     return NULL;
 }
 
-void client_connect(int client_fd)
-{
+void client_connect(int client_fd) {
     Client *client = client_create(client_fd);
     if (client == NULL) {
         return;
@@ -87,8 +84,7 @@ void client_connect(int client_fd)
     ZEJF_LOG(1, "Client #%d joined\n", client->uid);
 }
 
-void client_remove(Node *node)
-{
+void client_remove(Node *node) {
     if (node == NULL) {
         return;
     }
@@ -110,8 +106,7 @@ void client_remove(Node *node)
     pthread_mutex_unlock(&zejf_lock);
 }
 
-Node *client_get(int fd)
-{
+Node *client_get(int fd) {
     Node *node = clients->head;
     for (size_t i = 0; i < clients->item_count; i++) {
         Client *client = (Client *) (node->item);
@@ -123,8 +118,7 @@ Node *client_get(int fd)
     return NULL;
 }
 
-void prepare_fds(struct pollfd *fds)
-{
+void prepare_fds(struct pollfd *fds) {
     (fds)[0].fd = pipe_fds[0];
     (fds)[0].events = POLLIN;
 
@@ -135,8 +129,7 @@ void prepare_fds(struct pollfd *fds)
         node = node->next;
     }
 }
-void read_dummy(int fd)
-{
+void read_dummy(int fd) {
     char buff[16];
     int rv = -1;
     do {
@@ -144,8 +137,7 @@ void read_dummy(int fd)
     } while (rv == 16);
 }
 
-void read_client(int fd)
-{
+void read_client(int fd) {
     Node *node = client_get(fd);
     Client *client = (Client *) node->item;
     if (client == NULL) {
@@ -154,14 +146,14 @@ void read_client(int fd)
     }
 
     int64_t millis = current_millis();
-    size_t rv = -1;
-    size_t n_bytes = -1;
+    int rv = -1;
+    int n_bytes = -1;
 
     do {
         n_bytes = CLIENT_BUFFER_SIZE - client->buffer_ptr;
         rv = read(fd, &client->buffer[client->buffer_ptr], n_bytes);
 
-        ZEJF_LOG(0, "read %zu/%zu bytes from fd %d\n", rv, n_bytes, fd);
+        ZEJF_LOG(2, "read %d/%d bytes from fd %d\n", rv, n_bytes, fd);
         if (rv <= 0) {
             perror("read");
             client_remove(node);
@@ -176,7 +168,7 @@ void read_client(int fd)
                 client->buffer[client->buffer_parse_ptr] = '\0';
 
                 pthread_mutex_lock(&zejf_lock);
-                int rv = network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
+                zejf_err rv = network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
                 pthread_mutex_unlock(&zejf_lock);
 
                 ZEJF_LOG(0, "ACCEPTING [%s]: %d\n", client->buffer, rv);
@@ -198,8 +190,7 @@ void read_client(int fd)
     } while (rv == n_bytes);
 }
 
-void *poll_run()
-{
+void poll_run(void) {
     while (true) {
         pthread_rwlock_rdlock(&clients_lock);
         int nfds = clients->item_count + 1;
@@ -236,11 +227,10 @@ void *poll_run()
             }
         }
     }
-    return NULL;
+    //return NULL;
 }
 
-void *server_run(void *arg)
-{
+void *server_run(void *arg) {
     Settings *settings = (Settings *) arg;
 
     ZEJF_LOG(1, "Starting server... %s:%d\n", settings->ip, settings->tcp_port);
@@ -275,7 +265,7 @@ void *server_run(void *arg)
         pthread_exit(0);
     }
 
-    pthread_create(&server_poll_thread, NULL, poll_run, NULL);
+    pthread_create(&server_poll_thread, NULL, (void* (*)(void*))poll_run, NULL);
 
     ZEJF_LOG(1, "Server is open\n");
 
@@ -304,8 +294,7 @@ void *server_run(void *arg)
     return NULL;
 }
 
-void *watchdog_run(void *arg)
-{
+void *watchdog_run(void *arg) {
     while (true) {
         if (!server_running) {
             server_running = true;
@@ -329,7 +318,7 @@ void *watchdog_run(void *arg)
 
                 Client *client = tmp->item;
                 if (millis - client->last_seen > 10 * 1000) {
-                    ZEJF_LOG(0, "Someone timedout after %ld\n", millis - client->last_seen);
+                    ZEJF_LOG(2, "Someone timedout after %ld\n", millis - client->last_seen);
                     client_remove(tmp);
                     node = clients->head;
                 }
@@ -340,8 +329,7 @@ void *watchdog_run(void *arg)
     }
 }
 
-void server_init(Settings *settings)
-{
+void server_init(Settings *settings) {
     pthread_rwlock_init(&clients_lock, NULL);
     if (pipe(pipe_fds) == -1) {
         perror("pipe");
@@ -354,8 +342,7 @@ void server_init(Settings *settings)
     pthread_create(&server_watchdog, NULL, watchdog_run, settings);
 }
 
-void server_close()
-{
+void server_close(void) {
     if (server_running) {
         pthread_cancel(server_thread);
         pthread_join(server_thread, NULL);
@@ -366,8 +353,7 @@ void server_close()
     pthread_rwlock_destroy(&clients_lock);
 }
 
-void server_destroy(void)
-{
+void server_destroy(void) {
     pthread_cancel(server_watchdog);
     pthread_join(server_watchdog, NULL);
 

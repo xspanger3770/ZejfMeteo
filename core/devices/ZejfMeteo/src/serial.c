@@ -6,8 +6,8 @@
 #include <string.h>
 
 // Linux headers
-#include <errno.h> // Error integer and strerror() function
-#include <fcntl.h> // Contains file controls like O_RDWR
+#include <errno.h>   // Error integer and strerror() function
+#include <fcntl.h>   // Contains file controls like O_RDWR
 #include <stdint.h>
 #include <termios.h> // Contains POSIX terminal control definitions
 #include <unistd.h>  // write(), read(), close()
@@ -38,8 +38,7 @@ volatile bool serial_running = false;
 
 #define UNUSED(x) (void) (x)
 
-bool time_request(uint16_t to)
-{
+bool time_request(uint16_t to) {
     char msg[PACKET_MAX_LENGTH];
 
     int64_t seconds = current_seconds();
@@ -52,26 +51,24 @@ bool time_request(uint16_t to)
         return false;
     }
 
-    if (!network_send_packet(packet, current_millis())) {
+    if (network_send_packet(packet, current_millis()) != ZEJF_OK) {
         return false;
     }
 
     return true;
 }
 
-void network_process_packet(Packet *packet)
-{
+void network_process_packet(Packet *packet) {
     if (packet->command == TIME_REQUEST) {
         time_request(packet->from);
-    } else if (packet->command == MESSAGE){
+    } else if (packet->command == MESSAGE) {
         printf("%s\n", packet->message);
     } else {
         ZEJF_LOG(0, "Weird packet from device %d command %d\n", packet->from, packet->command);
     }
 }
 
-zejf_err network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time)
-{
+zejf_err network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time) {
     UNUSED(length);
     switch (interface->type) {
     case USB: {
@@ -110,20 +107,18 @@ void process_packet(Packet *pack)
 
 uint16_t demand[] = { ALL_VARIABLES };
 
-void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables)
-{
+void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables) {
     *provide_count = 0;
     *provided_variables = NULL;
 }
 
-void get_demanded_variables(uint16_t *demand_count, uint16_t **demanded_variables)
-{
+void get_demanded_variables(uint16_t *demand_count, uint16_t **demanded_variables) {
     *demand_count = 1;
     *demanded_variables = demand;
 }
 
-void *run_timer()
-{
+void *run_timer(void* arg) {
+    (void) arg;
     int count = 0;
     while (true) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
@@ -155,8 +150,8 @@ void *run_timer()
     }
 }
 
-void *packet_sender_start()
-{
+void *packet_sender_start(void *arg) {
+    (void) arg;
     sleep(5);
     while (true) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
@@ -171,8 +166,7 @@ void *packet_sender_start()
     }
 }
 
-void run_reader(int port_fd, char *serial)
-{
+void run_reader(int port_fd, char *serial) {
     pthread_mutex_lock(&zejf_lock);
     usb_interface_1.handle = port_fd;
     pthread_mutex_unlock(&zejf_lock);
@@ -226,8 +220,7 @@ void run_reader(int port_fd, char *serial)
     ZEJF_LOG(0, "Serial reader thread finish\n");
 }
 
-void open_serial(char *serial)
-{
+void open_serial(char *serial) {
     serial_running = false;
     ZEJF_LOG(0, "Trying to open port %s\n", serial);
 
@@ -256,7 +249,7 @@ void open_serial(char *serial)
     tty.c_cflag &= ~CSIZE;  // Clear all bits that set the data size
     tty.c_cflag |= CS8;     // 8 bits per byte (most common)
     tty.c_cflag &=
-            ~CRTSCTS; // Disable RTS/CTS hardware flow control (most common)
+            ~CRTSCTS;       // Disable RTS/CTS hardware flow control (most common)
     tty.c_cflag |=
             CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
 
@@ -267,12 +260,12 @@ void open_serial(char *serial)
     tty.c_lflag &= ~ISIG;                   // Disable interpretation of INTR, QUIT and SUSP
     tty.c_iflag &= ~(IXON | IXOFF | IXANY); // Turn off s/w flow ctrl
     tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR |
-            ICRNL); // Disable any special handling of received bytes
+            ICRNL);                         // Disable any special handling of received bytes
 
-    tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g.
-                           // newline chars)
+    tty.c_oflag &= ~OPOST;                  // Prevent special interpretation of output bytes (e.g.
+                                            // newline chars)
     tty.c_oflag &=
-            ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+            ~ONLCR;                         // Prevent conversion of newline to carriage return/line feed
     // tty.c_oflag &= ~OXTABS; // Prevent conversion of tabs to spaces (NOT
     // PRESENT ON LINUX) tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars
     // (0x004) in output (NOT PRESENT ON LINUX)
@@ -297,8 +290,7 @@ void open_serial(char *serial)
     serial_running = false;
 }
 
-void *start_serial(void *arg)
-{
+void *start_serial(void *arg) {
     while (true) {
         open_serial((char *) arg);
         ZEJF_LOG(0, "Next attempt in 5s\n");
@@ -306,15 +298,13 @@ void *start_serial(void *arg)
     }
 }
 
-void run_serial(Settings *settings)
-{
-    pthread_create(&packet_sender_thread, NULL, &packet_sender_start, NULL);
-    pthread_create(&serial_reader_thread, NULL, &start_serial, settings->serial);
-    pthread_create(&rip_thread, NULL, &run_timer, NULL);
+void run_serial(Settings *settings) {
+    pthread_create(&packet_sender_thread, NULL, packet_sender_start, NULL);
+    pthread_create(&serial_reader_thread, NULL, start_serial, settings->serial);
+    pthread_create(&rip_thread, NULL, run_timer, NULL);
 }
 
-void stop_serial()
-{
+void stop_serial(void) {
     pthread_cancel(rip_thread);
     pthread_join(rip_thread, NULL);
     pthread_cancel(serial_reader_thread);

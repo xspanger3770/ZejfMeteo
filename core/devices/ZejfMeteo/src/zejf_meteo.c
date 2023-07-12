@@ -130,9 +130,9 @@ bool process_command(char *cmd, int argc, char **argv, Settings* settings)
 
         pthread_mutex_lock(&zejf_lock);
         Packet* packet = network_prepare_packet(device_id, STATUS_REQUEST, NULL);
-        int rv = network_send_packet(packet, current_millis());
+        zejf_err rv = network_send_packet(packet, current_millis());
         pthread_mutex_unlock(&zejf_lock);
-        if(rv == 0){
+        if(rv == ZEJF_OK){
             printf("Status request sent to device #%ld\n", device_id);
         } else{
             printf("Failed to send status request with error code %d\n", rv);
@@ -225,7 +225,7 @@ void command_line(Settings* settings)
     }
 }
 
-void meteo_stop()
+void meteo_stop(void)
 {
     stop_serial();
 

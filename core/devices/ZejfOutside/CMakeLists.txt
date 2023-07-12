@@ -6,6 +6,8 @@ cmake_minimum_required(VERSION 3.13)
 set(ALL_FLAGS "-O2 -Wall -Wextra -Werror -Wno-psabi")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ALL_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ALL_FLAGS}")
+#set(CMAKE_C_CLANG_TIDY "clang-tidy")
+#set(CMAKE_C_CPPCHECK "cppcheck")
 
 include(import/pico_sdk_import.cmake)
 

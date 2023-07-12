@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-LinkedList *list_create(size_t capacity)
-{
+LinkedList *list_create(size_t capacity) {
     LinkedList *list = malloc(sizeof(LinkedList));
     if (list == NULL) {
         return NULL;
@@ -18,8 +17,7 @@ LinkedList *list_create(size_t capacity)
     return list;
 }
 
-void list_destroy(LinkedList *list, void *(*destructor)(void *) )
-{
+void list_destroy(LinkedList *list, void *(*destructor)(void *) ) {
     Node *node = list->tail;
     if (node == NULL) {
         goto end;
@@ -36,8 +34,7 @@ end:
     free(list);
 }
 
-bool list_push(LinkedList *list, void *item)
-{
+bool list_push(LinkedList *list, void *item) {
     if (list == NULL) {
         return false;
     }
@@ -70,8 +67,7 @@ bool list_push(LinkedList *list, void *item)
     return true;
 }
 
-Node *list_peek(LinkedList *list)
-{
+Node *list_peek(LinkedList *list) {
     if (list == NULL) {
         return NULL;
     }
@@ -79,8 +75,7 @@ Node *list_peek(LinkedList *list)
     return list->tail;
 }
 
-void *list_remove(LinkedList *list, Node *node)
-{
+void *list_remove(LinkedList *list, Node *node) {
     if (list == NULL) {
         return NULL;
     }
@@ -109,23 +104,19 @@ void *list_remove(LinkedList *list, Node *node)
     return result;
 }
 
-void *list_pop(LinkedList *list)
-{
+void *list_pop(LinkedList *list) {
     return list_remove(list, list->tail);
 }
 
-void list_prioritise(LinkedList *list, Node *node)
-{
+void list_prioritise(LinkedList *list, Node *node) {
     list->tail = node;
     list->head = node->previous;
 }
 
-inline bool list_is_full(LinkedList *list)
-{
+inline bool list_is_full(LinkedList *list) {
     return list->item_count == list->capacity;
 }
 
-inline bool list_is_empty(LinkedList *list)
-{
+inline bool list_is_empty(LinkedList *list) {
     return list->item_count == 0;
 }

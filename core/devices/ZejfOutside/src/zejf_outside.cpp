@@ -377,7 +377,7 @@ void time_check() {
         return;
     }
 
-    if (!network_send_packet(packet, millis_since_boot)) {
+    if (network_send_packet(packet, millis_since_boot) != ZEJF_OK) {
         return;
     }
 }
@@ -421,7 +421,7 @@ static void init_all() {
     wifi_connect();
 
 
-    if(!zejf_init()){
+    if(zejf_init() != ZEJF_OK){
         panic("ZEJF INIT FAILED!\n");   
     }
 

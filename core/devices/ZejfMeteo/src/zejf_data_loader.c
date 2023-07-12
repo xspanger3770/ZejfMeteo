@@ -9,12 +9,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "zejf_data_loader.h"
 #include "zejf_api.h"
+#include "zejf_data_loader.h"
 #include "zejf_meteo.h"
 
-int mkpath(char *file_path, mode_t mode)
-{
+int mkpath(char *file_path, mode_t mode) {
     for (char *p = strchr(file_path + 1, '/'); p; p = strchr(p + 1, '/')) {
         *p = '\0';
         if (mkdir(file_path, mode) == -1) {
@@ -59,8 +58,7 @@ int mkpath(char *file_path, mode_t mode)
     return day;
 }*/
 
-void str_append(char **end_ptr, char *str)
-{
+void str_append(char **end_ptr, char *str) {
     size_t len = strlen(str);
     memcpy(*end_ptr, str, len);
     *end_ptr += len;
@@ -68,8 +66,7 @@ void str_append(char **end_ptr, char *str)
 
 char months[12][10] = { "January\0", "February\0", "March\0", "April\0", "May\0", "June\0", "July\0", "August\0", "September\0", "October\0", "November\0", "December\0" };
 
-void zejf_day_path(char *buff, uint32_t hour_number)
-{
+void zejf_day_path(char *buff, uint32_t hour_number) {
     time_t now = (time_t) hour_number * 60 * 60;
     struct tm *t = localtime(&now);
 
@@ -90,8 +87,7 @@ void zejf_day_path(char *buff, uint32_t hour_number)
     *end_ptr = '\0';
 }
 
-zejf_err hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
-{
+zejf_err hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size) {
     if (buffer == NULL) {
         return ZEJF_ERR_NULL;
     }
@@ -126,11 +122,10 @@ zejf_err hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
 
     fclose(actual_file);
 
-    return result ? ZEJF_OK:ZEJF_ERR_IO;
+    return result ? ZEJF_OK : ZEJF_ERR_IO;
 }
 
-zejf_err hour_load(uint8_t **data_buffer, size_t* size, uint32_t hour_number)
-{
+zejf_err hour_load(uint8_t **data_buffer, size_t *size, uint32_t hour_number) {
     char path_buff[128];
     zejf_day_path(path_buff, hour_number);
 
@@ -173,10 +168,14 @@ zejf_err hour_load(uint8_t **data_buffer, size_t* size, uint32_t hour_number)
 close:
     fclose(file);
 
-    if(fsize > 0){
-        *size = fsize;
-        return ZEJF_OK;
+    if (fsize <= 0) {
+        if ((*data_buffer) != NULL) {
+            free(*data_buffer);
+            *data_buffer = NULL;
+        }
+        return ZEJF_ERR_IO;
     }
 
-    return ZEJF_ERR_IO;
+    *size = fsize;
+    return ZEJF_OK;
 }

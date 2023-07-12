@@ -182,7 +182,7 @@ void check_input(char *buff, int size, int *pos, TIME_TYPE time) {
     while ((ch = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT) {
         if (ch == '\n') {
             buff[*pos] = '\0';
-            if (network_accept(buff, *pos, &usb_serial_1, time) != 0) {
+            if (network_accept(buff, *pos, &usb_serial_1, time) != ZEJF_OK) {
                 ZEJF_LOG(2, "Unparseable input [%s]\n", buff);
             }
             *pos = 0;
@@ -226,7 +226,7 @@ void time_check() {
         return;
     }
 
-    if (!network_send_packet(packet, millis_since_boot)) {
+    if (network_send_packet(packet, millis_since_boot) != ZEJF_OK) {
         return;
     }
 }

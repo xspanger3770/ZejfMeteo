@@ -10,7 +10,7 @@ zejf_err routing_init(void);
 
 void routing_destroy(void);
 
-RoutingEntry *routing_entry_create();
+RoutingEntry *routing_entry_create(void);
 
 void routing_entry_destroy(RoutingEntry *entry);
 
@@ -26,6 +26,6 @@ zejf_err routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t deman
 
 zejf_err routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provided_variable);
 
-uint16_t routing_find_free_id();
+uint16_t routing_find_free_id(void);
 
 #endif

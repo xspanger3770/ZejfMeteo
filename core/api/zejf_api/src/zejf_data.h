@@ -15,8 +15,8 @@ void data_destroy(void);
 
 void *hour_destroy(void *ptr);
 
-zejf_err data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number, bool load, bool create_new, float* target);
+zejf_err data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number, bool load, bool create_new, float *target);
 
-zejf_err variables_request_receive(Packet* packet, TIME_TYPE time);
+zejf_err variables_request_receive(Packet *packet, TIME_TYPE time);
 
 #endif

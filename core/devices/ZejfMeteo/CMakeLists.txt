@@ -2,16 +2,14 @@ cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_C_STANDARD 11)
 
-set(DEBUG_FLAGS "-O2 -g -std=gnu11 -Wall -Wextra -Wpedantic")
-set(RELEASE_FLAGS "-O2 -g -std=gnu11")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS} ${RELEASE_FLAGS}")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} ${DEBUG_FLAGS}")
-#set(CMAKE_C_CLANG_TIDY "clang-tidy;--config-file=/.clang-tidy")
+set(SOME_FLAGS "-O2 -s -std=gnu11 -Wall -Wextra -Wpedantic")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SOME_FLAGS}")
+set(CMAKE_C_CLANG_TIDY "clang-tidy")
 set(CMAKE_C_CPPCHECK "cppcheck")
 
 project(zejfmeteo)
 
-set(EXECUTABLE zejfmeteo_beta_1.4.0)
+set(EXECUTABLE zejfmeteo_beta_1.5.0)
 
 add_subdirectory(src)
 

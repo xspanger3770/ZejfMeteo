@@ -10,8 +10,7 @@
 #include "zejf_protocol.h"
 #include "zejf_routing.h"
 
-Packet *packet_create(void)
-{
+Packet *packet_create(void) {
     Packet *pack = calloc(1, sizeof(Packet));
     if (pack == NULL) {
         return NULL;
@@ -20,8 +19,7 @@ Packet *packet_create(void)
     return pack;
 }
 
-void *packet_destroy(void *ptr)
-{
+void *packet_destroy(void *ptr) {
     Packet *pack = (Packet *) ptr;
     if (pack == NULL) {
         return NULL;
@@ -36,8 +34,7 @@ void *packet_destroy(void *ptr)
     return NULL;
 }
 
-uint32_t checksum(void *ptr, size_t size)
-{
+uint32_t checksum(void *ptr, size_t size) {
     uint32_t result = 5381;
     for (size_t i = 0; i < size; i++) {
         result = ((result << 5) + result) + ((uint8_t *) ptr)[i];
@@ -46,8 +43,7 @@ uint32_t checksum(void *ptr, size_t size)
 }
 
 // note that checksum itself and interfaces are not included
-uint32_t packet_checksum(Packet *packet)
-{
+uint32_t packet_checksum(Packet *packet) {
     uint32_t result = checksum(&packet->command, sizeof(packet->command));
     result += checksum(&packet->message_size, sizeof(packet->message_size));
     result += checksum(packet->message, packet->message_size);
@@ -58,9 +54,9 @@ uint32_t packet_checksum(Packet *packet)
     return result;
 }
 
-void replace_character(char* str, char target, char replacement) {
+void replace_character(char *str, char target, char replacement) {
     if (str == NULL) {
-        return;  // Check if the string is valid
+        return; // Check if the string is valid
     }
 
     for (int i = 0; str[i] != '\0'; i++) {
@@ -71,8 +67,7 @@ void replace_character(char* str, char target, char replacement) {
 }
 
 // fill in packet from string, malloc the message, length is the length from { to }, rv 0 is succes
-zejf_err packet_from_string(Packet *packet, char *data, int length)
-{
+zejf_err packet_from_string(Packet *packet, char *data, int length) {
     if (data[0] != '{' || data[length - 1] != '}') {
         return ZEJF_ERR_PACKET_FORMAT_BRACKETS;
     }
@@ -116,23 +111,22 @@ zejf_err packet_from_string(Packet *packet, char *data, int length)
     }
 
     packet->message = malloc(message_size + 1);
-    if(packet->message == NULL){
+    if (packet->message == NULL) {
         return ZEJF_ERR_OUT_OF_MEMORY;
     }
     memcpy(packet->message, message, message_size + 1);
-    replace_character(packet->message, (char)2, '\n');
+    replace_character(packet->message, (char) 2, '\n');
 
     return 0;
 }
 
 // WITH NEWLINE
-zejf_err packet_to_string(Packet *packet, char *buff, size_t max_length)
-{
+zejf_err packet_to_string(Packet *packet, char *buff, size_t max_length) {
     if (packet->message == NULL) {
         packet->message_size = 0;
     } else {
         packet->message_size = strlen(packet->message);
-        replace_character(packet->message, '\n', (char)2);
+        replace_character(packet->message, '\n', (char) 2);
     }
 
     uint32_t checksum = packet_checksum(packet);
@@ -142,24 +136,4 @@ zejf_err packet_to_string(Packet *packet, char *buff, size_t max_length)
     }
 
     return snprintf(buff, max_length, "{%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu16 ";%" SCNu32 ";%" SCNu32 ";%" SCNu16 ";}", packet->from, packet->to, packet->command, packet->ttl, checksum, packet->flags, packet->message_size) > 0 ? ZEJF_OK : ZEJF_ERR_GENERIC;
-}
-
-int main444()
-{
-    char buff[128];
-    Packet *pack = packet_create();
-    char *msg = NULL;
-    pack->message = msg;
-    packet_to_string(pack, buff, 128);
-
-    printf("[%s]\n", buff);
-
-    Packet *pack2 = packet_create();
-    int rv = packet_from_string(pack2, buff, (int) strlen(buff));
-    printf("rv %d\n", rv);
-    printf("%d [%s]\n", pack2->message_size, pack2->message);
-
-    free(pack);
-    packet_destroy(pack2);
-    return 0;
 }

@@ -16,8 +16,7 @@ size_t routing_table_top;
 
 static uint16_t next_free_id = RESERVED_DEVICE_IDS;
 
-zejf_err routing_init(void)
-{
+zejf_err routing_init(void) {
     routing_table_top = 0;
 
     for (int i = 0; i < ROUTING_TABLE_SIZE; i++) {
@@ -27,15 +26,13 @@ zejf_err routing_init(void)
     return ZEJF_OK;
 }
 
-void routing_destroy(void)
-{
+void routing_destroy(void) {
     for (size_t i = 0; i < routing_table_top; i++) {
         routing_entry_destroy(routing_table[i]);
     }
 }
 
-RoutingEntry *routing_entry_create()
-{
+RoutingEntry *routing_entry_create(void) {
     RoutingEntry *entry = calloc(1, sizeof(RoutingEntry));
     if (entry == NULL) {
         return NULL;
@@ -53,8 +50,7 @@ RoutingEntry *routing_entry_create()
     return entry;
 }
 
-void routing_entry_destroy(RoutingEntry *entry)
-{
+void routing_entry_destroy(RoutingEntry *entry) {
     if (entry == NULL) {
         return;
     }
@@ -70,8 +66,7 @@ void routing_entry_destroy(RoutingEntry *entry)
     free(entry);
 }
 
-zejf_err routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provided_variable)
-{
+zejf_err routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo provided_variable) {
     for (uint16_t i = 0; i < entry->provided_count; i++) {
         if (entry->provided_variables[i].id == provided_variable.id) {
             // TODO what about differeing sample rates?
@@ -92,8 +87,7 @@ zejf_err routing_entry_add_provided_variable(RoutingEntry *entry, VariableInfo p
     return ZEJF_OK;
 }
 
-zejf_err routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t demanded_variable)
-{
+zejf_err routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t demanded_variable) {
     for (uint16_t i = 0; i < entry->demand_count; i++) {
         if (entry->demanded_variables[i] == demanded_variable) {
             return ZEJF_ERR_GENERIC;
@@ -112,8 +106,7 @@ zejf_err routing_entry_add_demanded_variable(RoutingEntry *entry, uint16_t deman
     return ZEJF_OK;
 }
 
-RoutingEntry *routing_entry_find(uint16_t device_id)
-{
+RoutingEntry *routing_entry_find(uint16_t device_id) {
     for (size_t i = 0; i < routing_table_top; i++) {
         RoutingEntry *entry = routing_table[i];
         if (entry->device_id == device_id) {
@@ -123,8 +116,7 @@ RoutingEntry *routing_entry_find(uint16_t device_id)
     return NULL;
 }
 
-RoutingEntry *routing_entry_find_by_interface(int uid)
-{
+RoutingEntry *routing_entry_find_by_interface(int uid) {
     for (size_t i = 0; i < routing_table_top; i++) {
         RoutingEntry *entry = routing_table[i];
         if (entry->interface->uid == uid) {
@@ -134,8 +126,7 @@ RoutingEntry *routing_entry_find_by_interface(int uid)
     return NULL;
 }
 
-zejf_err routing_table_insert(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
-{
+zejf_err routing_table_insert(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time) {
     if (routing_table_top >= ROUTING_TABLE_SIZE) {
         return ZEJF_ERR_GENERIC;
     }
@@ -156,8 +147,7 @@ zejf_err routing_table_insert(uint16_t device_id, Interface *interface, uint8_t 
     return ZEJF_OK;
 }
 
-zejf_err routing_table_update(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time)
-{
+zejf_err routing_table_update(uint16_t device_id, Interface *interface, uint8_t distance, TIME_TYPE time) {
     if (device_id == DEVICE_ID) {
         return ZEJF_ERR_GENERIC; // cannot add itself
     }
@@ -183,20 +173,19 @@ zejf_err routing_table_update(uint16_t device_id, Interface *interface, uint8_t 
     return result;
 }
 
-void routing_table_check(TIME_TYPE time)
-{
+void routing_table_check(TIME_TYPE time) {
     size_t i = 0;
     while (i < routing_table_top) {
         RoutingEntry *entry = routing_table[i];
         if (time - entry->last_seen > ROUTING_ENTRY_TIMEOUT) {
+            ZEJF_LOG(0, "Routing entry for device %d timeout\n", entry->device_id);
             routing_entry_remove(i);
         }
         i++;
     }
 }
 
-void routing_entry_remove(size_t index)
-{
+void routing_entry_remove(size_t index) {
     ZEJF_LOG(1, "Device #%d removed\n", routing_table[index]->device_id);
     routing_entry_destroy(routing_table[index]);
     for (size_t i = index; i < routing_table_top - 1; i++) {
@@ -207,8 +196,7 @@ void routing_entry_remove(size_t index)
     routing_table[routing_table_top] = NULL;
 }
 
-void interface_removed(Interface *interface)
-{
+void interface_removed(Interface *interface) {
     size_t i = 0;
     while (i < routing_table_top) {
         RoutingEntry *entry = routing_table[i];
@@ -221,15 +209,15 @@ void interface_removed(Interface *interface)
     network_interface_removed(interface);
 }
 
-zejf_err network_send_routing_info(TIME_TYPE time)
-{
+zejf_err network_send_routing_info(TIME_TYPE time) {
     Packet *packet = network_prepare_packet(0, RIP, NULL);
+    packet->flags = 1; // set to 1 to allow mesh network
     if (packet == NULL) {
         return ZEJF_ERR_GENERIC;
     }
 
     zejf_err result = network_send_everywhere(packet, time);
-    if(result != ZEJF_OK){
+    if (result != ZEJF_OK) {
         packet_destroy(packet);
         return result;
     }
@@ -239,27 +227,26 @@ zejf_err network_send_routing_info(TIME_TYPE time)
     return ZEJF_OK;
 }
 
-void print_routing_table(uint32_t time)
-{
-    printf("Routing table entries: %d/%d\n", (int)routing_table_top, ROUTING_TABLE_SIZE);
+void print_routing_table(uint32_t time) {
+    printf("Routing table entries: %d/%d\n", (int) routing_table_top, ROUTING_TABLE_SIZE);
     for (size_t i = 0; i < routing_table_top; i++) {
         RoutingEntry *entry = routing_table[i];
         printf("    Device %d\n", entry->device_id);
         printf("        distance: %d\n", entry->distance);
         printf("        interface_id: %d\n", entry->interface->uid);
-        printf("        last_seen: %ld ms ago\n", (long int)(time - entry->last_seen));
+        printf("        last_seen: %ld ms ago\n", (long int) (time - entry->last_seen));
         printf("        paused: %d\n", entry->paused);
         printf("        provided variables: %d [", entry->provided_count);
-        for(size_t i = 0; i < entry->provided_count; i++){
-            printf("%d@%ld", entry->provided_variables[i].id, (long int)entry->provided_variables[i].samples_per_hour);
-            if((int)i < entry->provided_count - 1){
+        for (size_t i = 0; i < entry->provided_count; i++) {
+            printf("%d@%ld", entry->provided_variables[i].id, (long int) entry->provided_variables[i].samples_per_hour);
+            if ((int) i < entry->provided_count - 1) {
                 printf(", ");
             }
         }
         printf("]\n        demanded variables: %" SCNu16 " [", entry->demand_count);
-        for(size_t i = 0; i < entry->demand_count; i++){
-            printf("%"SCNu16", ", entry->demanded_variables[i]);
-            if((int)i < entry->demand_count - 1){
+        for (size_t i = 0; i < entry->demand_count; i++) {
+            printf("%" SCNu16 ", ", entry->demanded_variables[i]);
+            if ((int) i < entry->demand_count - 1) {
                 printf(", ");
             }
         }
@@ -267,20 +254,20 @@ void print_routing_table(uint32_t time)
     }
 }
 
-uint16_t routing_find_free_id() {
+uint16_t routing_find_free_id(void) {
     uint16_t id = next_free_id;
 
-    while(true){
+    while (true) {
         size_t i = 0;
         bool found = false;
         while (i < routing_table_top) {
             RoutingEntry *entry = routing_table[i];
-            if(entry->device_id == id){
+            if (entry->device_id == id) {
                 id++;
-                if(id == 0) {
+                if (id == 0) {
                     id = RESERVED_DEVICE_IDS;
                 }
-                if(id == next_free_id){
+                if (id == next_free_id) {
                     return 0; // full
                 }
                 found = true;
@@ -289,13 +276,13 @@ uint16_t routing_find_free_id() {
             i++;
         }
 
-        if(!found){
+        if (!found) {
             break;
         }
     }
 
     next_free_id = id + 1;
-    if(next_free_id == 0) {
+    if (next_free_id == 0) {
         id = RESERVED_DEVICE_IDS;
     }
 
