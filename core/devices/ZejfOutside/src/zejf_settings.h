@@ -25,10 +25,10 @@ extern struct interface_t tcp_client_1;
 #define ROUTING_ENTRY_TIMEOUT (1000 * 60)
 
 // DATA
-#define HOUR_BUFFER_SIZE 8 // 15 * 8 = 120kB
+#define HOUR_BUFFER_SIZE 6 // 30 * 6 = 180kB, but not all of them are that big
 #define HOUR_FILE_MAX_SIZE (1024 * 32)
 #define SAMPLE_RATE_MAX (60 * 12) //3kb
-#define VARIABLES_MAX 8           //3*5 = 15kb per hour + slow
+#define VARIABLES_MAX 10           //10*3 = 30kb per hour
 
 // REQUESTS
 #define DATA_REQUEST_QUEUE_SIZE 164

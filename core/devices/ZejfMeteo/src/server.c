@@ -153,7 +153,7 @@ void read_client(int fd) {
         n_bytes = CLIENT_BUFFER_SIZE - client->buffer_ptr;
         rv = read(fd, &client->buffer[client->buffer_ptr], n_bytes);
 
-        ZEJF_LOG(2, "read %d/%d bytes from fd %d\n", rv, n_bytes, fd);
+        ZEJF_LOG(0, "read %d/%d bytes from fd %d\n", rv, n_bytes, fd);
         if (rv <= 0) {
             perror("read");
             client_remove(node);

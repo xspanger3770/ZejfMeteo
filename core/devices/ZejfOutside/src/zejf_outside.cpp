@@ -38,9 +38,15 @@ static volatile bool queue_lock = false;
 static volatile uint16_t rr_c = 0;
 static volatile uint16_t rr_c_last = 0;
 
+static volatile uint64_t last_rr_callback = 0;
+static volatile bool rr_measured = false;
+static volatile double latest_max_rain_rate = 0.0;
+
 static uint32_t time_check_count = 0;
 
 static std::queue<std::unique_ptr<zejf_log>> logs_queue;
+
+const double RR_COEFF = 0.254;
 
 class htu_log : public zejf_log
 {
@@ -84,29 +90,33 @@ class htu_log : public zejf_log
     }
 };
 
-#define RR_COEFF 0.254
-
 class rr_log : public zejf_log
 {
   public:
     uint16_t log_count = 0;
+    double max_rain_rate = 0.0;
 
     rr_log(uint32_t sample_rate)
         : zejf_log(sample_rate){};
 
     void reset() override {
         log_count = 0;
+        max_rain_rate = 0.0;
     }
 
     void finish() override {
     }
 
-    void sample(uint16_t counts) {
+    void sample(uint16_t counts, double _latest_max_rain_rate) {
         log_count += counts;
+        if(_latest_max_rain_rate > max_rain_rate){
+            max_rain_rate = _latest_max_rain_rate;
+        }
     }
 
     void log_data(uint32_t millis) const override {
         data_log(VAR_RR, hour_num, log_num, log_count * RR_COEFF, millis, true);
+        data_log(VAR_RAIN_RATE_PEAK, hour_num, log_num, max_rain_rate, millis, true);
     }
 
     std::unique_ptr<zejf_log> clone() const override {
@@ -163,7 +173,7 @@ static voltages_log current_voltages_log(EVERY_MINUTE);
 static std::array<zejf_log *, 3> all_logs = { &current_htu_log, &current_rr_log, &current_voltages_log };
 
 void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables) {
-    *provide_count = 7;
+    *provide_count = 8;
     *provided_variables = my_provided_variables;
 }
 
@@ -293,13 +303,17 @@ static bool process_measurements(struct repeating_timer *) {
         millis_overflows++;
     }
 
+    if(rr_measured && (millis_since_boot - last_rr_callback / 1000) >= (15 * 1000 * 60)){
+        latest_max_rain_rate = 0.0;
+    }
+
     if (!time_set) {
         return true;
     }
 
     measure_voltages();
 
-    current_rr_log.sample(_rr_c);
+    current_rr_log.sample(_rr_c, latest_max_rain_rate);
 
     if (queue_lock) {
         return true;
@@ -357,9 +371,27 @@ static bool htu_measure(struct repeating_timer *) {
     return true;
 }
 
+static bool rr_first = false;
+
+// one interrupt per second means 914.4 mm/h
 static void rr_callback(uint gpio, uint32_t) {
     if (gpio == RR_PIN) {
+        if(!rr_first){
+            rr_first = true;
+            return;
+        }
+        
         rr_c++;
+
+        uint64_t current_us = to_us_since_boot(get_absolute_time());
+        if(rr_measured){
+            double rain_rate = (RR_COEFF * 60.0 * 60.0) * (1000000.0 / (current_us - last_rr_callback));
+            if((rain_rate >= 0 && rain_rate < 2000.0) && rain_rate > latest_max_rain_rate){
+                latest_max_rain_rate = rain_rate;
+            }
+        }
+        last_rr_callback = current_us;
+        rr_measured = true;
     }
 }
 
