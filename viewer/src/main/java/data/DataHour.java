@@ -6,20 +6,24 @@ import java.util.List;
 
 public class DataHour implements Serializable {
 
-    private int hourId;
+    private long hourNumber;
 
-    private List<DataVariable> variables;
+    private transient boolean modified = false;
 
-    public DataHour(int hourId){
-        this.hourId = hourId;
-        variables = new LinkedList<>();
+    private List<DataVariable> variablesRaw;
+    private List<DataVariable> variablesComputed;
+
+    public DataHour(long hourNumber){
+        this.hourNumber = hourNumber;
+        variablesRaw = new LinkedList<>();
+        variablesComputed = new LinkedList<>();
     }
 
-    public int getHourId() {
-        return hourId;
+    public long getHourNumber() {
+        return hourNumber;
     }
 
-    public List<DataVariable> getVariables() {
-        return variables;
+    public boolean isModified() {
+        return modified;
     }
 }
