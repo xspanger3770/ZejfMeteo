@@ -1,14 +1,20 @@
 package main;
 
+import data.DataManager;
 import exception.ApplicationErrorHandler;
+import exception.FatalApplicationException;
 import exception.FatalIOException;
 import exception.RuntimeApplicationException;
 import org.tinylog.Logger;
 import ui.ZejfFrame;
 
 import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.TimerTask;
+import java.util.Timer;
 
 public class ZejfMeteo {
 
@@ -16,6 +22,7 @@ public class ZejfMeteo {
     public static final File MAIN_FOLDER = new File("./ZejfMeteoViewer");
     private static ZejfFrame frame;
     private static ApplicationErrorHandler errorHandler;
+    private static DataManager dataManager;
 
     public static void main(String[] args) throws Exception {
         if(!MAIN_FOLDER.exists()){
@@ -27,12 +34,30 @@ public class ZejfMeteo {
         errorHandler = new ApplicationErrorHandler(frame);
         Thread.setDefaultUncaughtExceptionHandler(errorHandler);
 
+        dataManager = new DataManager();
+
         Settings.loadProperties();
         SwingUtilities.invokeLater(() -> {
             frame = new ZejfFrame();
+
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    try {
+                        destroy();
+                    } catch (FatalApplicationException ex) {
+                        ZejfMeteo.handleException(ex);
+                    }
+                }
+            });
+
             frame.setVisible(true);
             frame.setStatus("Ready");
         });
+    }
+
+    private static void destroy() throws FatalApplicationException {
+        dataManager.saveAll();
     }
 
     public static void handleException(Exception e) {
@@ -46,6 +71,10 @@ public class ZejfMeteo {
         }
 
         errorHandler.handleException(e);
+    }
+
+    public static DataManager getDataManager() {
+        return dataManager;
     }
 
     public static ZejfFrame getFrame() {

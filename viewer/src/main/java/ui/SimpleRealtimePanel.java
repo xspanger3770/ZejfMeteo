@@ -13,16 +13,22 @@ public class SimpleRealtimePanel extends JPanel {
 
     public SimpleRealtimePanel(){
         displayedVariables = new ArrayList<>();
-        displayedVariables.add(new DisplayedVariable(11, "Temperature", "˚C"));
-        displayedVariables.add(new DisplayedVariable(12, "Humidity", "%"));
-        displayedVariables.add(new DisplayedVariable(13, "Dewpoint", "˚C"));
-        displayedVariables.add(new DisplayedVariable(1, "Pressure", "hPa"));
-        displayedVariables.add(new DisplayedVariable(8, "Wspd", "km/h"));
-        displayedVariables.add(new DisplayedVariable(9, "Gust", "km/h"));
-        displayedVariables.add(new DisplayedVariable(10, "Wdir", "˚"));
-        displayedVariables.add(new DisplayedVariable(15, "Solar panel voltage", "V"));
-        displayedVariables.add(new DisplayedVariable(16, "Battery voltage", "V"));
-        displayedVariables.add(new DisplayedVariable(17, "Battery current", "mA"));
+        displayedVariables.add(new DisplayedVariable(11, "Temperature", "˚C", 3));
+        displayedVariables.add(new DisplayedVariable(12, "Humidity", "%", 2));
+        displayedVariables.add(new DisplayedVariable(13, "Dewpoint", "˚C", 2));
+        displayedVariables.add(new DisplayedVariable(1, "Pressure", "hPa", 3));
+        displayedVariables.add(new DisplayedVariable(8, "Wspd 1 min", "km/h", 2));
+        displayedVariables.add(new DisplayedVariable(9, "Gust now", "km/h", 2));
+        displayedVariables.add(new DisplayedVariable(10, "Wdir 1 min", "˚", 2));
+        displayedVariables.add(new DisplayedVariable(3, "Wspd 10 min", "km/h",3));
+        displayedVariables.add(new DisplayedVariable(4, "Gust 1 min", "km/h", 2));
+        displayedVariables.add(new DisplayedVariable(5, "Wdir 10 min", "˚", 2));
+        displayedVariables.add(new DisplayedVariable(15, "Solar panel voltage", "V", 3));
+        displayedVariables.add(new DisplayedVariable(16, "Battery voltage", "V", 3));
+        displayedVariables.add(new DisplayedVariable(17, "Battery current", "mA", 2));
+
+        displayedVariables.add(new DisplayedVariable(7, "Temperature puda", "˚C", 2));
+        displayedVariables.add(new DisplayedVariable(2, "Temperature sklep", "˚C", 3));
     }
 
     @Override
@@ -35,7 +41,7 @@ public class SimpleRealtimePanel extends JPanel {
         int y = 20;
 
         for(DisplayedVariable displayedVariable:displayedVariables){
-            g.drawString(String.format("%s: %.2f%s", displayedVariable.name, displayedVariable.lastValue, displayedVariable.units), 2, y);
+            g.drawString(String.format("%s: %."+displayedVariable.decimals+"f%s", displayedVariable.name, displayedVariable.lastValue, displayedVariable.units), 2, y);
             y += 22;
         }
     }
@@ -49,16 +55,18 @@ public class SimpleRealtimePanel extends JPanel {
         repaint();
     }
 
-    class DisplayedVariable{
+    static class DisplayedVariable{
+        private final int decimals;
         int variableId;
-        double lastValue = DataManager.VAL_ERROR;
+        double lastValue = DataManager.VALUE_EMPTY;
         String name;
         String units;
 
-        public DisplayedVariable(int variableId, String name, String units) {
+        public DisplayedVariable(int variableId, String name, String units, int decimals) {
             this.variableId = variableId;
             this.name = name;
             this.units = units;
+            this.decimals = decimals;
         }
     }
 }

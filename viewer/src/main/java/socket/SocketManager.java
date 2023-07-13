@@ -86,7 +86,11 @@ public class SocketManager {
                         String msg = packet.message();
                         String[] data = msg.split(",");
                         int variableId = Integer.parseInt(data[0]);
+                        int samplesPerHour = Integer.parseInt(data[1]);
+                        long hourNumber = Long.parseLong(data[2]);
+                        int sampleNumber = Integer.parseInt(data[3]);
                         double value = Double.parseDouble(data[4]);
+                        ZejfMeteo.getDataManager().log(variableId, samplesPerHour, hourNumber, sampleNumber, value);
                         ZejfMeteo.getFrame().getRealtimePanel().log(variableId, value);
                     } catch(Exception e){
                         e.printStackTrace();
