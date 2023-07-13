@@ -16,6 +16,7 @@ public class ZejfFrame extends JFrame {
 
     private final SocketManager socketManager;
     private final JLabel lblStatus;
+    private SimpleRealtimePanel realtimePanel;
 
     public ZejfFrame(){
         setTitle("ZejfMeteoViewer "+ ZejfMeteo.VERSION);
@@ -130,11 +131,14 @@ public class ZejfFrame extends JFrame {
     JTabbedPane createTabbedPane(){
         JTabbedPane tabbedPane = new JTabbedPane();
 
-        tabbedPane.addTab("Realtime", new JPanel());
+        tabbedPane.addTab("Realtime", realtimePanel = new SimpleRealtimePanel());
         tabbedPane.addTab("Graphs", new JPanel());
         tabbedPane.addTab("Statistics", new JPanel());
 
         return tabbedPane;
     }
 
+    public SimpleRealtimePanel getRealtimePanel() {
+        return realtimePanel;
+    }
 }

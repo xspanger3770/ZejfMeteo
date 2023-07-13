@@ -9,12 +9,14 @@
 
 #define FLAG_MODIFIED (1 << 0)
 
-void data_init(void);
+zejf_err data_init(void);
 
 void data_destroy(void);
 
-float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number);
+void *hour_destroy(void *ptr);
 
-bool variables_request_receive(Packet* packet, TIME_TYPE time);
+zejf_err data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number, bool load, bool create_new, float *target);
+
+zejf_err variables_request_receive(Packet *packet, TIME_TYPE time);
 
 #endif

@@ -103,12 +103,19 @@ const VariableInfo VAR_CURRENT_BATTERY = {
     .id = 17
 };
 
-const VariableInfo my_provided_variables[] = { VAR_T2M, VAR_RH, VAR_TD, VAR_RR, VAR_VOLTAGE_SOLAR, VAR_VOLTAGE_BATTERY, VAR_CURRENT_BATTERY };
+const VariableInfo VAR_RAIN_RATE_PEAK = {
+    .samples_per_hour = SECONDS_5,
+    .id = 18
+};
+
+const VariableInfo my_provided_variables[] = { VAR_T2M, VAR_RH, VAR_TD, VAR_RR, VAR_VOLTAGE_SOLAR, VAR_VOLTAGE_BATTERY, VAR_CURRENT_BATTERY, VAR_RAIN_RATE_PEAK };
 
 Interface tcp_client_1 = {
     .uid = 2,
     .type = TCP,
-    .handle = 0
+    .handle = 0,
+    .rx_count = 0,
+    .tx_count = 0
 };
 
 Interface *all_interfaces[] = { &tcp_client_1 };

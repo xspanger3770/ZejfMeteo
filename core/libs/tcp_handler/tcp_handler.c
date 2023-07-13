@@ -201,9 +201,9 @@ static bool tcp_client_open(void *arg) {
     return err == ERR_OK;
 }
 
-int zejf_tcp_send(char *msg, u16_t length) {
+zejf_err zejf_tcp_send(char *msg, u16_t length) {
     if (current_state == NULL || current_state->complete || !current_state->connected) {
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 
     ZEJF_LOG(0, "write %s", msg);
@@ -213,23 +213,23 @@ int zejf_tcp_send(char *msg, u16_t length) {
 
     if (length > tcp_sndbuf(current_state->tcp_pcb)) {
         cyw43_arch_lwip_end();
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 
     if ((err = tcp_write(current_state->tcp_pcb, msg, length, TCP_WRITE_FLAG_COPY)) != ERR_OK) {
         tcp_result(current_state, err);
         cyw43_arch_lwip_end();
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 
     if ((err = tcp_output(current_state->tcp_pcb)) != ERR_OK) {
         tcp_result(current_state, err);
         cyw43_arch_lwip_end();
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
 
     cyw43_arch_lwip_end();
-    return SEND_SUCCES;
+    return ZEJF_OK;
 }
 
 void zejf_tcp_check_connect(void) {

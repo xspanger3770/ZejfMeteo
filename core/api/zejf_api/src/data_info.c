@@ -4,27 +4,29 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-void p_send_provide(VariableInfo info, TIME_TYPE time)
-{
+static zejf_err p_send_provide(VariableInfo info, TIME_TYPE time) {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 "@%" SCNu32, info.id, info.samples_per_hour) <= 0) {
-        return;
+        return ZEJF_ERR_GENERIC;
     }
 
     Packet *packet = network_prepare_packet(BROADCAST, DATA_PROVIDE, msg);
 
-    network_send_packet(packet, time);
+    if (packet == NULL) {
+        return ZEJF_ERR_NULL;
+    }
+
+    return network_send_packet(packet, time);
 }
 
-bool network_send_provide_info(TIME_TYPE time)
-{
+zejf_err network_send_provide_info(TIME_TYPE time) {
     uint16_t provide_count;
     const VariableInfo *provided_variables;
     get_provided_variables(&provide_count, &provided_variables);
 
     if (provide_count == 0 || provided_variables == NULL) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     if (provide_ptr >= provide_count) {
@@ -33,7 +35,10 @@ bool network_send_provide_info(TIME_TYPE time)
 
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        p_send_provide(provided_variables[provide_ptr], time);
+        zejf_err rv = p_send_provide(provided_variables[provide_ptr], time);
+        if (rv != ZEJF_OK) {
+            return rv;
+        }
         provide_ptr++;
         provide_ptr %= provide_count;
         if (provide_ptr == 0) {
@@ -42,44 +47,43 @@ bool network_send_provide_info(TIME_TYPE time)
         max_count--;
     }
 
-    return true;
+    return ZEJF_OK;
 }
 
-bool p_send_demand(uint16_t var, TIME_TYPE time)
-{
+zejf_err p_send_demand(uint16_t var, TIME_TYPE time) {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16, var) <= 0) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     Packet *packet = network_prepare_packet(BROADCAST, DATA_DEMAND, msg);
     if (packet == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
-    return network_send_packet(packet, time) == 0;
+    return network_send_packet(packet, time);
 }
 
-bool network_send_demand_info(TIME_TYPE time)
-{
+zejf_err network_send_demand_info(TIME_TYPE time) {
     uint16_t demand_count;
     uint16_t *demanded_variables;
     get_demanded_variables(&demand_count, &demanded_variables);
 
     if (demand_count == 0 || demanded_variables == NULL) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     if (demand_ptr >= demand_count) {
         demand_ptr = 0;
     }
 
-    bool res = true;
-
     size_t max_count = allocate_packet_queue(PRIORITY_MEDIUM);
     while (max_count > 0) {
-        res &= p_send_demand(demanded_variables[demand_ptr], time);
+        zejf_err rv = p_send_demand(demanded_variables[demand_ptr], time);
+        if (rv != ZEJF_OK) {
+            return rv;
+        }
         demand_ptr++;
         demand_ptr %= demand_count;
         if (demand_ptr == 0) {
@@ -88,59 +92,57 @@ bool network_send_demand_info(TIME_TYPE time)
         max_count--;
     }
 
-    return res;
+    return ZEJF_OK;
 }
 
-void process_data_demand(Packet *packet)
-{
+zejf_err process_data_demand(Packet *packet) {
     if (packet->message == NULL) {
-        return;
+        return ZEJF_ERR_NULL;
     }
 
     RoutingEntry *entry = routing_entry_find(packet->from);
     if (entry == NULL) {
-        return;
+        return ZEJF_ERR_NULL;
     }
 
     uint16_t variable;
     if (sscanf(packet->message, "%" SCNu16, &variable) != 1) {
-        return;
+        return ZEJF_ERR_GENERIC;
     }
 
-    routing_entry_add_demanded_variable(entry, variable);
+    return routing_entry_add_demanded_variable(entry, variable);
 }
 
-void process_data_provide(Packet *packet)
-{
+zejf_err process_data_provide(Packet *packet) {
     if (packet->message == NULL) {
-        return;
+        return ZEJF_ERR_NULL;
     }
 
     RoutingEntry *entry = routing_entry_find(packet->from);
     if (entry == NULL) {
-        return;
+        return ZEJF_ERR_NULL;
     }
 
     VariableInfo var_info;
 
     if (sscanf(packet->message, "%" SCNu16 "@%" SCNu32, &var_info.id, &var_info.samples_per_hour) != 2) {
-        return;
+        return ZEJF_ERR_GENERIC;
     }
 
-    routing_entry_add_provided_variable(entry, var_info);
+    return routing_entry_add_provided_variable(entry, var_info);
 }
 
-void process_data_subscribe(Packet *packet)  {
+zejf_err process_data_subscribe(Packet *packet) {
     RoutingEntry *entry = routing_entry_find(packet->from);
     if (entry == NULL) {
-        return;
+        return ZEJF_ERR_NULL;
     }
 
     entry->subscribed = true;
+    return ZEJF_OK;
 }
 
-int data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
-{
+zejf_err data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time) {
     char msg[PACKET_MAX_LENGTH];
 
     if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%.4f", variable.id, variable.samples_per_hour, hour_number, sample_num, val) <= 0) {
@@ -156,8 +158,8 @@ int data_send_log(uint16_t to, VariableInfo variable, uint32_t hour_number, uint
     return network_send_packet(packet, time);
 }
 
-bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
-{
+zejf_err network_announce_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time) {
+    zejf_err result = ZEJF_OK;
     for (size_t i = 0; i < routing_table_top; i++) {
         RoutingEntry *entry = routing_table[i];
 
@@ -174,13 +176,16 @@ bool network_announce_log(VariableInfo target_variable, uint32_t hour_number, ui
             continue;
         }
 
-        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+        if (data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time) != ZEJF_OK) {
+            result = ZEJF_ERR_PARTIAL;
+        }
     }
-    return true;
+
+    return result;
 }
 
-bool network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time)
-{
+zejf_err network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_num, float val, TIME_TYPE time) {
+    zejf_err result = ZEJF_OK;
     for (size_t i = 0; i < routing_table_top; i++) {
         RoutingEntry *entry = routing_table[i];
 
@@ -188,15 +193,16 @@ bool network_broadcast_log(VariableInfo target_variable, uint32_t hour_number, u
             continue;
         }
 
-        data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time);
+        if (data_send_log(entry->device_id, target_variable, hour_number, sample_num, val, time) != ZEJF_OK) {
+            result = ZEJF_ERR_PARTIAL;
+        }
     }
-    return true;
+    return result;
 }
 
-void process_data_log(Packet *packet, TIME_TYPE time)
-{
+zejf_err process_data_log(Packet *packet, TIME_TYPE time) {
     if (packet->message == NULL) {
-        return;
+        return ZEJF_ERR_NULL;
     }
 
     VariableInfo variable = { 0 };
@@ -205,8 +211,8 @@ void process_data_log(Packet *packet, TIME_TYPE time)
     float val = 0.0f;
 
     if (sscanf(packet->message, "%" SCNu16 ",%" SCNu32 ",%" SCNu32 ",%" SCNu32 ",%f", &variable.id, &variable.samples_per_hour, &hour_number, &sample_num, &val) != 5) {
-        return;
+        return ZEJF_ERR_GENERIC;
     }
 
-    data_log(variable, hour_number, sample_num, val, time, false);
+    return data_log(variable, hour_number, sample_num, val, time, false);
 }

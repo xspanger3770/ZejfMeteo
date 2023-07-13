@@ -26,8 +26,6 @@ extern Interface tcp_client_1;
 #define WSPD_PIN 2
 #define WDIR_PIN 26
 
-#ifdef __cplusplus
-
 #include <memory>
 
 class zejf_log
@@ -114,11 +112,11 @@ const VariableInfo my_provided_variables[] = { VAR_WSPD_AVG, VAR_WGUST_AVG, VAR_
 Interface tcp_client_1 = {
     .uid = 2,
     .type = TCP,
-    .handle = 0
+    .handle = 0,
+    .rx_count = 0,
+    .tx_count = 0
 };
 
 Interface *all_interfaces[] = { &tcp_client_1 };
-
-#endif
 
 #endif

@@ -21,6 +21,6 @@ extern volatile uint32_t millis_since_boot; // needs to be declared somewhere in
 int zejf_tcp_init(void);
 int wifi_connect(void);
 void zejf_tcp_check_connect(void);
-int zejf_tcp_send(char *msg, u16_t length);
+zejf_err zejf_tcp_send(char *msg, u16_t length);
 
 #endif

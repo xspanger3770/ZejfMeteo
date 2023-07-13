@@ -2,6 +2,7 @@
 #include <memory>
 #include <queue>
 #include <stdio.h>
+#include <array>
 
 #include <hardware/rtc.h>
 #include <hardware/timer.h>
@@ -12,6 +13,8 @@
 #include "sd_card_handler.h"
 #include "time_utils.h"
 #include "zejf_outside.h"
+
+int __dso_handle = 0; // some random shit that needs to be here because some smart engineer forgot it somewhere
 
 extern "C" {
 #include "htu21.h"
@@ -35,9 +38,15 @@ static volatile bool queue_lock = false;
 static volatile uint16_t rr_c = 0;
 static volatile uint16_t rr_c_last = 0;
 
+static volatile uint64_t last_rr_callback = 0;
+static volatile bool rr_measured = false;
+static volatile double latest_max_rain_rate = 0.0;
+
 static uint32_t time_check_count = 0;
 
 static std::queue<std::unique_ptr<zejf_log>> logs_queue;
+
+const double RR_COEFF = 0.254;
 
 class htu_log : public zejf_log
 {
@@ -81,29 +90,33 @@ class htu_log : public zejf_log
     }
 };
 
-#define RR_COEFF 0.254
-
 class rr_log : public zejf_log
 {
   public:
     uint16_t log_count = 0;
+    double max_rain_rate = 0.0;
 
     rr_log(uint32_t sample_rate)
         : zejf_log(sample_rate){};
 
     void reset() override {
         log_count = 0;
+        max_rain_rate = 0.0;
     }
 
     void finish() override {
     }
 
-    void sample(uint16_t counts) {
+    void sample(uint16_t counts, double _latest_max_rain_rate) {
         log_count += counts;
+        if(_latest_max_rain_rate > max_rain_rate){
+            max_rain_rate = _latest_max_rain_rate;
+        }
     }
 
     void log_data(uint32_t millis) const override {
         data_log(VAR_RR, hour_num, log_num, log_count * RR_COEFF, millis, true);
+        data_log(VAR_RAIN_RATE_PEAK, hour_num, log_num, max_rain_rate, millis, true);
     }
 
     std::unique_ptr<zejf_log> clone() const override {
@@ -160,7 +173,7 @@ static voltages_log current_voltages_log(EVERY_MINUTE);
 static std::array<zejf_log *, 3> all_logs = { &current_htu_log, &current_rr_log, &current_voltages_log };
 
 void get_provided_variables(uint16_t *provide_count, const VariableInfo **provided_variables) {
-    *provide_count = 7;
+    *provide_count = 8;
     *provided_variables = my_provided_variables;
 }
 
@@ -174,7 +187,7 @@ void get_all_interfaces(Interface ***interfaces, size_t *length) {
     *length = 1;
 }
 
-int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time) {
+zejf_err network_send_via(char *msg, int, Interface *interface, TIME_TYPE) {
     switch (interface->type) {
     case TCP: {
         char msg2[PACKET_MAX_LENGTH];
@@ -183,12 +196,8 @@ int network_send_via(char *msg, int length, Interface *interface, TIME_TYPE time
     }
     default:
         ZEJF_LOG(1, "Unknown interaface: %d\n", interface->type);
-        return SEND_UNABLE;
+        return ZEJF_ERR_SEND_UNABLE;
     }
-}
-
-static bool save_all() {
-    return true;
 }
 
 static void set_time(char *msg) {
@@ -294,13 +303,17 @@ static bool process_measurements(struct repeating_timer *) {
         millis_overflows++;
     }
 
+    if(rr_measured && (millis_since_boot - last_rr_callback / 1000) >= (15 * 1000 * 60)){
+        latest_max_rain_rate = 0.0;
+    }
+
     if (!time_set) {
         return true;
     }
 
     measure_voltages();
 
-    current_rr_log.sample(_rr_c);
+    current_rr_log.sample(_rr_c, latest_max_rain_rate);
 
     if (queue_lock) {
         return true;
@@ -319,7 +332,7 @@ static bool process_measurements(struct repeating_timer *) {
     return true;
 }
 
-static bool htu_measure(struct repeating_timer *t) {
+static bool htu_measure(struct repeating_timer *) {
     ZEJF_LOG(0, "HTU = %d %d/%d\n", htu_initialised, htu_reset_countdown, htu_next_reset);
 
     if(!htu_initialised){
@@ -358,9 +371,27 @@ static bool htu_measure(struct repeating_timer *t) {
     return true;
 }
 
+static bool rr_first = false;
+
+// one interrupt per second means 914.4 mm/h
 static void rr_callback(uint gpio, uint32_t) {
     if (gpio == RR_PIN) {
+        if(!rr_first){
+            rr_first = true;
+            return;
+        }
+        
         rr_c++;
+
+        uint64_t current_us = to_us_since_boot(get_absolute_time());
+        if(rr_measured){
+            double rain_rate = (RR_COEFF * 60.0 * 60.0) * (1000000.0 / (current_us - last_rr_callback));
+            if((rain_rate >= 0 && rain_rate < 2000.0) && rain_rate > latest_max_rain_rate){
+                latest_max_rain_rate = rain_rate;
+            }
+        }
+        last_rr_callback = current_us;
+        rr_measured = true;
     }
 }
 
@@ -378,7 +409,7 @@ void time_check() {
         return;
     }
 
-    if (!network_send_packet(packet, millis_since_boot)) {
+    if (network_send_packet(packet, millis_since_boot) != ZEJF_OK) {
         return;
     }
 }
@@ -421,7 +452,10 @@ static void init_all() {
 
     wifi_connect();
 
-    zejf_init();
+
+    if(zejf_init() != ZEJF_OK){
+        panic("ZEJF INIT FAILED!\n");   
+    }
 
     init_card(SD_SPI, SD_MISO, SD_MOSI, SD_SCK, SD_CS, SD_SPI_SPEED);
 }
@@ -443,14 +477,11 @@ int main() {
     uint32_t last_provide = -1;
     uint32_t last_save = -1;
 
-    datetime_t dt;
-
     watchdog_enable(7000, 1);
     reboot_by_watchdog = watchdog_enable_caused_reboot();
 
     while (true) {
         watchdog_update();
-        bool time_was_set = time_set;
 
         cyw43_arch_poll();
 

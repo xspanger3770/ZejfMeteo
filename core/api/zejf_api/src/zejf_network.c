@@ -23,22 +23,16 @@ Node *next_packet;
 uint16_t provide_ptr;
 uint16_t demand_ptr;
 
-bool network_push_packet(Packet *packet);
-
-bool process_rip_packet(Packet *packet, TIME_TYPE now);
-
-void sync_id(Interface *interface, int back, TIME_TYPE time);
-
-bool network_catch_packet(Packet *packet, TIME_TYPE time);
-
-void network_init(void)
-{
+zejf_err network_init(void) {
     rx_queue = list_create(RX_QUEUE_SIZE);
     tx_queue = list_create(TX_QUEUE_SIZE);
+
     next_packet = NULL;
 
     provide_ptr = 0;
     demand_ptr = 0;
+
+    return rx_queue != NULL && tx_queue != NULL ? ZEJF_OK : ZEJF_ERR_OUT_OF_MEMORY;
 
     /*printf("Attention ==========\n");
     printf("DataDays will take at most %"SCNu64"b\n", ((uint64_t)DAY_MAX_SIZE*(uint64_t)DAY_BUFFER_SIZE));
@@ -46,23 +40,21 @@ void network_init(void)
     printf("RoutingEntries will take at most %ldb\n", (sizeof(RoutingEntry)*ROUTING_TABLE_SIZE));*/
 }
 
-void network_destroy(void)
-{
+void network_destroy(void) {
     list_destroy(rx_queue, packet_destroy);
     list_destroy(tx_queue, packet_destroy);
 }
 
 // ALL PACKETS FROM OUTSIDE MUST PASS THIS FUNCTION
-int network_accept(char *msg, int length, Interface *interface, TIME_TYPE time)
-{
+zejf_err network_accept(char *msg, int length, Interface *interface, TIME_TYPE time) {
     Packet *packet = packet_create();
     if (packet == NULL) {
         return ZEJF_ERR_NULL;
     }
 
-    int rv = packet_from_string(packet, msg, length);
+    zejf_err rv = packet_from_string(packet, msg, length);
 
-    if (rv != 0) {
+    if (rv != ZEJF_OK) {
         packet_destroy(packet);
         return rv;
     }
@@ -78,22 +70,7 @@ int network_accept(char *msg, int length, Interface *interface, TIME_TYPE time)
     return network_send_packet(packet, time);
 }
 
-bool prepare_ack_message(char *buff, uint32_t tx_id)
-{
-    Packet packet[1];
-    packet->command = ACK;
-    packet->from = DEVICE_ID;
-    packet->to = 0;
-    packet->ttl = 0;
-    packet->tx_id = tx_id;
-    packet->message_size = 0;
-    packet->message = NULL;
-
-    return packet_to_string(packet, buff, PACKET_MAX_LENGTH);
-}
-
-void packet_remove(Node *node)
-{
+void packet_remove(Node *node) {
     if (node == next_packet) {
         next_packet = next_packet->next == next_packet ? NULL : next_packet->next;
     }
@@ -101,8 +78,7 @@ void packet_remove(Node *node)
 }
 
 // destroy packets that are going to the removed interface
-void network_interface_removed(Interface *interface)
-{
+void network_interface_removed(Interface *interface) {
     Node *node = tx_queue->tail;
     if (node == NULL) {
         return;
@@ -120,38 +96,30 @@ void network_interface_removed(Interface *interface)
     } while (node != tx_queue->tail);
 }
 
-void ack_packet(Interface *interface, uint32_t id)
-{
-    Node *node = tx_queue->tail;
-    if (node == NULL) {
-        return;
-    }
-    do {
-        Packet *packet = node->item;
-        if (packet->destination_interface != NULL && packet->destination_interface->uid == interface->uid && packet->tx_id == id) {
-            packet_remove(node);
-            return;
-        }
-        node = node->next;
-    } while (node != tx_queue->tail);
-}
-
-void process_id_request(Packet* packet, TIME_TYPE time) {
+zejf_err process_id_request(Packet *packet, TIME_TYPE time) {
     uint16_t asigned_id = routing_find_free_id();
-    if(asigned_id == 0){
-        return; // no free slots
+    if (asigned_id == 0) {
+        return ZEJF_ERR_NO_FREE_SLOTS; // no free slots
     }
 
-    Packet* pack = network_prepare_packet(asigned_id, ID_INFO, NULL);
+    Packet *pack = network_prepare_packet(asigned_id, ID_INFO, NULL);
+    if (pack == NULL) {
+        return ZEJF_ERR_NULL;
+    }
     char buff[PACKET_MAX_LENGTH];
-    packet_to_string(pack, buff, PACKET_MAX_LENGTH);
-    network_send_via(buff, strlen(buff), packet->source_interface, time);
+
+    zejf_err rv = packet_to_string(pack, buff, PACKET_MAX_LENGTH);
+
+    if (rv != ZEJF_OK) {
+        return rv;
+    }
+
+    return network_send_via(buff, strlen(buff), packet->source_interface, time);
 }
 
 // EVERY PACKET THAT ENDS UP IN THE QUEUE MUST PASS THIS FUNCTION
 // PACKET MUST BE ALLOCATED
-int network_send_packet(Packet *packet, TIME_TYPE time)
-{
+zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
     // HANDLE SPECIAL PACKETS
 
     if (packet == NULL) {
@@ -163,49 +131,26 @@ int network_send_packet(Packet *packet, TIME_TYPE time)
         return ZEJF_ERR_ITSELF;
     }
 
-    if(packet->from == DEVICE_ID && packet->to != BROADCAST && routing_entry_find(packet->to) == NULL){
+    if (packet->from == DEVICE_ID && packet->to != BROADCAST && routing_entry_find(packet->to) == NULL) {
         packet_destroy(packet);
         return ZEJF_ERR_NO_SUCH_DEVICE;
     }
 
-    if(packet->command == ID_REQUEST){
-        process_id_request(packet, time);
-        return 0;
+    if (packet->command == ID_REQUEST) {
+        if (process_id_request(packet, time) != ZEJF_OK) {
+            return ZEJF_ERR_GENERIC;
+        }
+        return ZEJF_OK;
     }
 
     if (packet->command == RIP) { // always from outside
-        if (!process_rip_packet(packet, time)) {
+        zejf_err rv = process_rip_packet(packet, time);
+        if (rv != ZEJF_OK) {
             packet_destroy(packet);
-            return 99;
+            return rv;
         }
         packet_destroy(packet);
-        return 0;
-    }
-
-    if (packet->command == ID_SYNC) {
-        if (packet->source_interface == NULL) {
-            packet_destroy(packet);
-            return 0;
-        }
-
-        if (packet->tx_id == 1) { // back
-            sync_id(packet->source_interface, 0, time);
-        }
-
-        packet->source_interface->rx_id = 1;
-        packet->source_interface->tx_id = 1;
-
-        packet_destroy(packet);
-        return 0;
-    }
-
-    if (packet->command == ACK) {
-#if ACK_REQUIRED
-        ack_packet(packet->source_interface, packet->tx_id);
-#endif
-
-        packet_destroy(packet);
-        return 0;
+        return ZEJF_OK;
     }
 
     if (list_is_full(packet->to == DEVICE_ID ? rx_queue : tx_queue)) {
@@ -217,65 +162,34 @@ int network_send_packet(Packet *packet, TIME_TYPE time)
     if (packet->from != DEVICE_ID && packet->command != RIP) {
         if (packet->source_interface == NULL) {
             packet_destroy(packet);
-            return 0;
+            return ZEJF_OK;
         }
-
-#if ACK_REQUIRED
-
-        if (packet->source_interface->tx_id == 0) {
-            packet_destroy(packet);
-            return ZEJF_ERR_TXID; // waiting for sync
-        }
-
-        if (packet->source_interface->rx_id != packet->tx_id) {
-            packet_destroy(packet);
-            return ZEJF_ERR_RXID; // wriong txid
-        }
-
-#endif
-
-        packet->source_interface->rx_id++;
     }
 
     packet->time_received = time; // time when it entered the queue
     packet->time_sent = 0;        // last send attempt
-    packet->tx_id = 0;            // not determined yet
 
-    if (!network_push_packet(packet)) {
-        ZEJF_LOG(0, "THIS SHOULD HAVE NEVER HAPPENED\n");
-        // fun fact: it happened
+    zejf_err rv = network_push_packet(packet);
+
+    if (rv != ZEJF_OK) {
+        ZEJF_LOG(2, "THIS SHOULD HAVE NEVER HAPPENED (%d)\n", rv);
+        // fun fact: it happened     edit: many times
+        // fun fact: IT HAPPENED AGAIN
+        return ZEJF_ERR_OUT_OF_MEMORY;
     }
 
-#if ACK_REQUIRED
-    // SEND ACK BACK TO EVERY NON-SPECIAL PACKET
-    if (packet->from != DEVICE_ID) { // if it came from outside it will have source_interface set
-        char buff[PACKET_MAX_LENGTH];
-        if (!prepare_ack_message(buff, packet->tx_id)) {
-            return 99;
-        }
-
-        network_send_via(buff, (int) strlen(buff), packet->source_interface, time);
-    }
-#endif
-
-    return 0;
+    return ZEJF_OK;
 }
 
-bool network_push_packet(Packet *packet)
-{
+zejf_err network_push_packet(Packet *packet) {
     Queue *target_queue = packet->to == DEVICE_ID ? rx_queue : tx_queue;
-    return list_push(target_queue, packet);
+    return list_push(target_queue, packet) ? ZEJF_OK : ZEJF_ERR_GENERIC;
 }
 
-int prepare_and_send(Packet *packet, Interface *destination_interface, TIME_TYPE time)
-{
-    if (packet->tx_id == 0 || packet->tx_id >= destination_interface->tx_id) {
-        packet->tx_id = destination_interface->tx_id++;
-    }
-
+zejf_err prepare_and_send(Packet *packet, Interface *destination_interface, TIME_TYPE time) {
     char buff[PACKET_MAX_LENGTH];
-    if (!packet_to_string(packet, buff, PACKET_MAX_LENGTH)) {
-        return SEND_UNABLE;
+    if (packet_to_string(packet, buff, PACKET_MAX_LENGTH) != ZEJF_OK) {
+        return ZEJF_ERR_SEND_UNABLE;
     }
 
     packet->destination_interface = destination_interface;
@@ -283,101 +197,84 @@ int prepare_and_send(Packet *packet, Interface *destination_interface, TIME_TYPE
     return network_send_via(buff, (int) strlen(buff), destination_interface, time);
 }
 
-bool process_broadcast_packet(Packet *packet)
-{
+zejf_err process_broadcast_packet(Packet *packet) {
     size_t size = routing_table_top; // how many packets will be created
     size_t free_space = tx_queue->capacity - tx_queue->item_count;
 
     if (size <= free_space) {
+        zejf_err result = ZEJF_OK;
         for (size_t i = 0; i < routing_table_top; i++) {
             RoutingEntry *entry = routing_table[i];
             Packet *new_packet = network_prepare_packet(entry->device_id, packet->command, packet->message);
+            if (new_packet == NULL) {
+                return ZEJF_ERR_NULL;
+            }
 
-            network_send_packet(new_packet, packet->time_received);
+            zejf_err rv = network_send_packet(new_packet, packet->time_received);
+            if (rv != ZEJF_OK) {
+                result = ZEJF_ERR_PARTIAL;
+            }
         }
 
-        return true;
+        return result;
     }
 
-    return false;
+    return ZEJF_ERR_QUEUE_FULL;
 }
 
 // EXCEPT BACKWARDS
-void network_send_everywhere(Packet *packet, TIME_TYPE time)
-{
+zejf_err network_send_everywhere(Packet *packet, TIME_TYPE time) {
     char buff[PACKET_MAX_LENGTH];
-    if (!packet_to_string(packet, buff, PACKET_MAX_LENGTH)) {
-        return;
+    if (packet_to_string(packet, buff, PACKET_MAX_LENGTH) != ZEJF_OK) {
+        return ZEJF_ERR_GENERIC;
     }
     Interface **interfaces = NULL;
     size_t count = 0;
 
     get_all_interfaces(&interfaces, &count);
 
+    zejf_err result = ZEJF_OK;
+
     for (size_t i = 0; i < count; i++) {
         Interface *interface = interfaces[i];
         if (packet->source_interface == NULL || interface->uid != packet->source_interface->uid) {
-            network_send_via(buff, (int) strlen(buff), interface, time);
+            zejf_err res = network_send_via(buff, (int) strlen(buff), interface, time);
+            if (res != ZEJF_OK) {
+                result = ZEJF_ERR_PARTIAL;
+            }
         }
     }
+
+    return result;
 }
 
-bool process_rip_packet(Packet *packet, TIME_TYPE now)
-{
-    if (routing_table_update(packet->from, packet->source_interface, packet->ttl, now) == UPDATE_SUCCESS) {
-        network_send_everywhere(packet, now);
+zejf_err process_rip_packet(Packet *packet, TIME_TYPE now) {
+    zejf_err rv = routing_table_update(packet->from, packet->source_interface, packet->ttl, now);
+    if (rv == ZEJF_OK && packet->flags != 0) {
+        return network_send_everywhere(packet, now);
     }
 
-    return true;
+    return rv;
 }
 
-void sync_id(Interface *interface, int back, TIME_TYPE time)
-{
-    Packet packet[1];
-    packet->command = ID_SYNC;
-    packet->from = DEVICE_ID;
-    packet->to = 0;
-    packet->ttl = 0;
-    packet->tx_id = back;
-    packet->message_size = 0;
-    packet->message = NULL;
-
-    char buff[PACKET_MAX_LENGTH];
-
-    if (!packet_to_string(packet, buff, PACKET_MAX_LENGTH)) {
-        return;
-    }
-    interface->rx_id = 1;
-    interface->tx_id = 0;
-
-    network_send_via(buff, (int) strlen(buff), interface, time);
-}
-
-void network_process_rx(TIME_TYPE time);
-void network_send_tx(TIME_TYPE time);
-
-void network_process_packets(TIME_TYPE time)
-{
+void network_process_packets(TIME_TYPE time) {
     network_process_rx(time);
     network_send_tx(time);
 }
 
-void network_process_rx(TIME_TYPE time)
-{
+void network_process_rx(TIME_TYPE time) {
     Packet *packet = (Packet *) list_pop(rx_queue);
-    while (packet != NULL) {
+    if (packet != NULL) {
         if (!network_catch_packet(packet, time)) {
             network_process_packet(packet);
         }
         packet_destroy(packet);
-
-        packet = (Packet *) list_pop(rx_queue);
     }
 }
 
+// send everything thats in the tx queue
 // WARNING: spaghetti code!!
-void network_send_tx(TIME_TYPE time)
-{
+void network_send_tx(TIME_TYPE time) {
     if (list_is_empty(tx_queue)) {
         return;
     }
@@ -394,13 +291,14 @@ void network_send_tx(TIME_TYPE time)
     }
 
     if ((time - packet->time_received) >= PACKET_DELETE_TIMEOUT) {
-        ZEJF_LOG(0, "timeout hard of packed command %"SCNu16" txid %"SCNu32" from %"SCNu16" to %"SCNu16" after %" SCNu32 "ms\n", packet->command, packet->tx_id, packet->from, packet->to, (time - packet->time_received));
-        ZEJF_LOG(0, "times were %"SCNu32" %"SCNu32"\n", time, packet->time_received);
+        ZEJF_LOG(0, "timeout hard of packed command %" SCNu16 " from %" SCNu16 " to %" SCNu16 " after %" SCNu32 "ms\n", packet->command, packet->from, packet->to, (time - packet->time_received));
+        ZEJF_LOG(0, "times were %" SCNu32 " %" SCNu32 "\n", time, packet->time_received);
         goto remove;
     }
 
     if (packet->to == BROADCAST) {
-        if (!process_broadcast_packet(packet)) {
+        zejf_err rv = process_broadcast_packet(packet);
+        if (rv != ZEJF_OK && rv != ZEJF_ERR_PARTIAL) {
             goto next_one;
         }
         goto remove;
@@ -413,79 +311,24 @@ void network_send_tx(TIME_TYPE time)
         goto remove;
     }
 
-#if ACK_REQUIRED
-
-    if (entry->paused == 1) {
-        goto next_one;
-    }
-
-    if (time - packet->time_sent < PACKET_RETRY_TIMEOUT) {
-        entry->paused = 1; // to keep the order of packets
-        goto next_one;
-    }
-
-    // check for reset timeout
-    if (packet->time_sent != 0 && (packet->time_sent - packet->time_received) / PACKET_RESET_TIMEOUT != (time - packet->time_received) / PACKET_RESET_TIMEOUT) {
-        entry->interface->tx_id = 0;
-        entry->interface->rx_id = 0;
-        entry->paused = 1;
-        ZEJF_LOG(0, "Reset at entry for device %d packet command %d\n", entry->device_id, packet->command);
-        // no goto here!
-    }
-
-#endif
-
     packet->time_sent = time;
 
-#if ACK_REQUIRED
-    // tx,rx
-    // 0,0 = not initialised
-    // 0,1 = not initialised, waiting for returning sync packet
-    // 1,1 = ready
-    if (entry->interface->tx_id == 0) {
-        ZEJF_LOG(0, "Cannot send %d to %d\n", packet->command, packet->to);
-        if (entry->interface->rx_id == 0) {
-            sync_id(entry->interface, 1, time);
-        }
+    zejf_err rv = prepare_and_send(packet, entry->interface, time);
+    if (rv == ZEJF_ERR_SEND_UNABLE) {
         goto next_one;
     }
 
-#endif
-
-    int rv = prepare_and_send(packet, entry->interface, time);
-    if (rv == SEND_UNABLE) {
-        goto next_one;
-    }
-
-#if !ACK_REQUIRED
     goto remove;
-#endif
 
 next_one:
     next_packet = next_packet->next;
-#if ACK_REQUIRED
-    goto finally;
-#else
     return;
-#endif
 
 remove:
     packet_remove(next_packet);
-
-#if ACK_REQUIRED
-finally:
-    // toggle reset flag to all routing entries
-    if (next_packet == tx_queue->tail) {
-        for (size_t i = 0; i < routing_table_top; i++) {
-            RoutingEntry *entry = routing_table[i];
-            entry->paused = 0;
-        }
-    }
-#endif
 }
 
-Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg)
-{
+Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg) {
     Packet *packet = packet_create();
     packet->command = command;
     packet->from = DEVICE_ID;
@@ -495,6 +338,9 @@ Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg)
     if (msg != NULL) {
         packet->message_size = strlen(msg);
         packet->message = malloc(packet->message_size + 1);
+        if (packet->message == NULL) {
+            return NULL;
+        }
         memcpy(packet->message, msg, packet->message_size + 1);
     } else {
         packet->message_size = 0;
@@ -504,13 +350,11 @@ Packet *network_prepare_packet(uint16_t to, uint8_t command, char *msg)
     return packet;
 }
 
-size_t allocate_packet_queue(int priority)
-{
+size_t allocate_packet_queue(int priority) {
     return (tx_queue->capacity - tx_queue->item_count) / priority;
 }
 
-bool network_catch_packet(Packet *packet, TIME_TYPE time)
-{
+bool network_catch_packet(Packet *packet, TIME_TYPE time) {
     switch (packet->command) {
     case DATA_DEMAND:
         process_data_demand(packet);

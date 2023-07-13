@@ -4,7 +4,6 @@
 #include "zejf_api.h"
 
 #include <inttypes.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,20 +12,16 @@ typedef LinkedList Queue;
 
 Queue *data_queue;
 
-void *hour_destroy(void *ptr);
-
-void data_init(void)
-{
+zejf_err data_init(void) {
     data_queue = list_create(HOUR_BUFFER_SIZE);
+    return data_queue != NULL ? ZEJF_OK : ZEJF_ERR_OUT_OF_MEMORY;
 }
 
-void data_destroy(void)
-{
+void data_destroy(void) {
     list_destroy(data_queue, hour_destroy);
 }
 
-DataHour *hour_create(uint32_t hour_id)
-{
+DataHour *hour_create(uint32_t hour_id) {
     DataHour *hour = calloc(1, sizeof(DataHour));
     if (hour == NULL) {
         return NULL;
@@ -40,26 +35,30 @@ DataHour *hour_create(uint32_t hour_id)
     return hour;
 }
 
-bool hour_add_variable(DataHour *hour, VariableInfo variable)
-{
-    if (variable.samples_per_hour == 0 || variable.samples_per_hour > SAMPLE_RATE_MAX || hour->variable_count == VARIABLES_MAX) {
-        return false;
+zejf_err hour_add_variable(DataHour *hour, VariableInfo variable) {
+    if (variable.samples_per_hour == 0 || variable.samples_per_hour > SAMPLE_RATE_MAX) {
+        return ZEJF_ERR_INVALID_SAMPLE_RATE;
     }
+
+    if (hour->variable_count == VARIABLES_MAX) {
+        return ZEJF_ERR_VARIABLES_MAX;
+    }
+
     for (uint16_t i = 0; i < hour->variable_count; i++) {
         if (hour->variables[i].variable_info.id == variable.id) {
-            return false;
+            return ZEJF_ERR_VARIABLE_ALREADY_EXISTS;
         }
     }
 
     void *ptr = realloc(hour->variables, (hour->variable_count + 1) * sizeof(Variable));
     if (ptr == NULL) {
-        return false;
+        return ZEJF_ERR_OUT_OF_MEMORY;
     }
 
     float *data = malloc(variable.samples_per_hour * sizeof(float));
     if (data == NULL) {
         free(ptr);
-        return false;
+        return ZEJF_ERR_OUT_OF_MEMORY;
     }
 
     for (uint32_t i = 0; i < variable.samples_per_hour; i++) {
@@ -74,11 +73,10 @@ bool hour_add_variable(DataHour *hour, VariableInfo variable)
     hour->variables = ptr;
     hour->variable_count++;
 
-    return true;
+    return ZEJF_OK;
 }
 
-void *hour_destroy(void *ptr)
-{
+void *hour_destroy(void *ptr) {
     if (ptr == NULL) {
         return NULL;
     }
@@ -96,8 +94,7 @@ void *hour_destroy(void *ptr)
     return NULL;
 }
 
-uint32_t hour_calculate_checksum(DataHour *hour)
-{
+uint32_t hour_calculate_checksum(DataHour *hour) {
     uint32_t result = 0;
 
     result += hour->flags;
@@ -117,16 +114,14 @@ uint32_t hour_calculate_checksum(DataHour *hour)
     return result;
 }
 
-void serialize(uint8_t *data, size_t *ptr, void *val, size_t size)
-{
+void serialize(uint8_t *data, size_t *ptr, void *val, size_t size) {
     memcpy(data + *ptr, val, size);
     *ptr += size;
 }
 
-uint8_t *hour_serialize(DataHour *hour, size_t *size)
-{
+uint8_t *hour_serialize(DataHour *hour, size_t *size) {
     if (hour == NULL || size == NULL) {
-        return NULL;
+        return 0;
     }
     size_t total_size = DATAHOUR_BYTES;
     for (uint32_t i = 0; i < hour->variable_count; i++) {
@@ -136,7 +131,7 @@ uint8_t *hour_serialize(DataHour *hour, size_t *size)
 
     uint8_t *data = malloc(total_size);
     if (data == NULL) {
-        return NULL;
+        return 0;
     }
 
     hour->checksum = hour_calculate_checksum(hour);
@@ -156,8 +151,7 @@ uint8_t *hour_serialize(DataHour *hour, size_t *size)
     return data;
 }
 
-bool deserialize(void *destination, uint8_t *data, size_t *ptr, size_t size, size_t total_size)
-{
+bool deserialize(void *destination, uint8_t *data, size_t *ptr, size_t size, size_t total_size) {
     if (*ptr + size > total_size) {
         return false;
     }
@@ -168,8 +162,7 @@ bool deserialize(void *destination, uint8_t *data, size_t *ptr, size_t size, siz
     return true;
 }
 
-DataHour *hour_deserialize(uint8_t *data, size_t total_size)
-{
+DataHour *hour_deserialize(uint8_t *data, size_t total_size) {
     if (data == NULL) {
         return NULL;
     }
@@ -205,7 +198,7 @@ DataHour *hour_deserialize(uint8_t *data, size_t total_size)
             .samples_per_hour = samples_per_hour
         };
 
-        result &= hour_add_variable(hour, info);
+        result &= (hour_add_variable(hour, info) == ZEJF_OK);
 
         if (!result) {
             goto error;
@@ -231,8 +224,7 @@ DataHour *hour_deserialize(uint8_t *data, size_t total_size)
     return hour;
 }
 
-Variable *get_variable(DataHour *hour, uint16_t variable_id)
-{
+Variable *get_variable(DataHour *hour, uint16_t variable_id) {
     for (uint16_t i = 0; i < hour->variable_count; i++) {
         Variable *var = &hour->variables[i];
         if (var->variable_info.id == variable_id) {
@@ -243,8 +235,7 @@ Variable *get_variable(DataHour *hour, uint16_t variable_id)
     return NULL;
 }
 
-DataHour *hour_find(uint32_t hour_number)
-{
+DataHour *hour_find(uint32_t hour_number) {
     Node *node = data_queue->head;
     if (node == NULL) {
         return NULL;
@@ -261,46 +252,60 @@ DataHour *hour_find(uint32_t hour_number)
     return NULL;
 }
 
-DataHour *datahour_load(uint32_t hour_number, size_t *loaded_size)
-{
+zejf_err datahour_load(uint32_t hour_number, size_t *loaded_size, DataHour **result) {
     uint8_t *buffer = NULL;
-    size_t size = hour_load(&buffer, hour_number);
-    DataHour *result = hour_deserialize(buffer, size);
-    free(buffer);
-    if (result != NULL) {
-        *loaded_size = size;
+    size_t size = 0;
+
+    zejf_err rv = hour_load(&buffer, &size, hour_number);
+    if (rv != ZEJF_OK) {
+        return rv;
     }
-    return result;
+
+    DataHour* tmp = hour_deserialize(buffer, size);
+    if (buffer != NULL) {
+        free(buffer);
+        buffer = NULL;
+    }
+
+    if(tmp == NULL){
+        return ZEJF_ERR_NULL;
+    }
+
+    *loaded_size = size;
+    *result = tmp;
+
+    return ZEJF_OK;
 }
 
-bool datahour_save(DataHour *hour)
-{
+zejf_err datahour_save(DataHour *hour) {
     size_t size = 0;
     uint8_t *buffer = hour_serialize(hour, &size);
     if (buffer == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
-    bool result = hour_save(hour->hour_id, buffer, size);
+    zejf_err result = hour_save(hour->hour_id, buffer, size);
 
     free(buffer);
 
     return result;
 }
 
-void hour_add(DataHour *hour)
-{
+zejf_err hour_add(DataHour *hour) {
     if (list_is_full(data_queue)) {
         DataHour *old = list_pop(data_queue);
+        if (old == NULL) {
+            return ZEJF_ERR_NULL;
+        }
         datahour_save(old);
         hour_destroy(old);
     }
 
-    list_push(data_queue, hour);
+    return list_push(data_queue, hour) ? ZEJF_OK : ZEJF_ERR_GENERIC;
 }
 
-DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
-{
+DataHour *datahour_get(uint32_t hour_number, bool load, bool create) {
+    // TODO do not create new if load failed due to IO
     DataHour *hour = hour_find(hour_number);
     if (hour != NULL) {
         return hour;
@@ -311,10 +316,12 @@ DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
 
     if (result == NULL && load) {
         size_t loaded_size = 0;
-        result = datahour_load(hour_number, &loaded_size);
-        if (result != NULL) {
+        zejf_err rv = datahour_load(hour_number, &loaded_size, &result);
+        if (rv == ZEJF_OK) {
             result->flags = 0;
             add = true;
+        } else if (rv != ZEJF_ERR_FILE_DOESNT_EXIST) {
+            return NULL;
         }
     }
 
@@ -324,33 +331,35 @@ DataHour *datahour_get(uint32_t hour_number, bool load, bool create)
     }
 
     if (result != NULL && add) {
-        hour_add(result);
+        if (hour_add(result) != ZEJF_OK) {
+            hour_destroy(result);
+            return NULL;
+        }
     }
 
     return result;
 }
 
-float data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number)
-{
-    DataHour *hour = datahour_get(hour_number, true, true);
+zejf_err data_get_val(VariableInfo variable, uint32_t hour_number, uint32_t log_number, bool load, bool create_new, float *target) {
+    DataHour *hour = datahour_get(hour_number, load, create_new);
     if (hour == NULL) {
-        return VALUE_EMPTY;
+        return ZEJF_ERR_NULL;
     }
 
     Variable *var = get_variable(hour, variable.id);
     if (var == NULL) {
-        return VALUE_EMPTY;
+        return ZEJF_ERR_NULL;
     }
 
     if (log_number >= var->variable_info.samples_per_hour) {
-        return VALUE_EMPTY;
+        return ZEJF_ERR_LOG_NUMBER;
     }
 
-    return var->data[log_number];
+    *target = var->data[log_number];
+    return ZEJF_OK;
 }
 
-void data_save(void)
-{
+void data_save(void) {
     ZEJF_LOG(0, "Save all\n");
     Node *node = data_queue->head;
     if (node == NULL) {
@@ -361,7 +370,7 @@ void data_save(void)
         if ((hour->flags & FLAG_MODIFIED) == 0) {
             goto next;
         }
-        if (!datahour_save(hour)) {
+        if (datahour_save(hour) != ZEJF_OK) {
             goto next;
         }
         hour->flags = 0;
@@ -371,33 +380,33 @@ void data_save(void)
     } while (node != data_queue->head);
 }
 
-bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_number, float value, TIME_TYPE time, bool announce)
-{
+zejf_err data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sample_number, float value, TIME_TYPE time, bool announce) {
     DataHour *hour = datahour_get(hour_number, true, true);
     if (hour == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
     Variable *existing_variable = get_variable(hour, target_variable.id);
     if (existing_variable == NULL) {
-        if (!hour_add_variable(hour, target_variable)) {
-            return false;
+        zejf_err rv = hour_add_variable(hour, target_variable);
+        if (rv != ZEJF_OK) {
+            return rv;
         }
         existing_variable = get_variable(hour, target_variable.id);
     }
     if (existing_variable->variable_info.samples_per_hour != target_variable.samples_per_hour) {
-        return false;
+        return ZEJF_ERR_INVALID_SAMPLE_RATE;
     }
     if (sample_number >= existing_variable->variable_info.samples_per_hour) {
-        return false;
+        return ZEJF_ERR_LOG_NUMBER;
     }
     if (existing_variable->data[sample_number] != VALUE_EMPTY &&
             existing_variable->data[sample_number] != VALUE_NOT_MEASURED &&
             (value == VALUE_EMPTY || value == VALUE_NOT_MEASURED)) {
-        return false; // cannot rewrite wrong value
+        return ZEJF_ERR_VALUE; // cannot rewrite wrong value
     }
     existing_variable->data[sample_number] = value;
 
-    ZEJF_LOG(0, "Logged %f hour %" SCNu32 " ln %" SCNu32 " variable %" SCNu16 " time %"SCNu32"\n", value, hour_number, sample_number, target_variable.id, time);
+    ZEJF_LOG(0, "Logged %f hour %" SCNu32 " ln %" SCNu32 " variable %" SCNu16 " time %" SCNu32 "\n", value, hour_number, sample_number, target_variable.id, time);
 
     if (announce) {
         network_announce_log(target_variable, hour_number, sample_number, value, time);
@@ -406,41 +415,45 @@ bool data_log(VariableInfo target_variable, uint32_t hour_number, uint32_t sampl
     // subscribed
     network_broadcast_log(target_variable, hour_number, sample_number, value, time);
 
-    hour->flags = 1;
-    return true;
+    hour->flags = FLAG_MODIFIED;
+    return ZEJF_OK;
 }
 
-static bool variables_request_process(uint16_t device_id, uint32_t hour_number, TIME_TYPE time){
-    DataHour* hour = datahour_get(hour_number, true, false);
-    if(hour == NULL){
-        return true;
+static zejf_err variables_request_process(uint16_t device_id, uint32_t hour_number, TIME_TYPE time) {
+    DataHour *hour = datahour_get(hour_number, true, false);
+    if (hour == NULL) {
+        return ZEJF_ERR_NULL;
     }
 
     uint16_t variable_count = hour->variable_count;
-    if(allocate_packet_queue(PRIORITY_MEDIUM) < variable_count){
-        return false;
+    if (allocate_packet_queue(PRIORITY_MEDIUM) < variable_count) {
+        return ZEJF_ERR_QUEUE_FULL;
     }
 
-    for(uint16_t i = 0; i < variable_count; i++){
-        VariableInfo* variable_info = &hour->variables[i].variable_info;
+    for (uint16_t i = 0; i < variable_count; i++) {
+        VariableInfo *variable_info = &hour->variables[i].variable_info;
         char msg[PACKET_MAX_LENGTH];
 
         if (snprintf(msg, PACKET_MAX_LENGTH, "%" SCNu16 ",%" SCNu32 ",%" SCNu32, variable_info->id, variable_info->samples_per_hour, hour_number) <= 0) {
-            return false;
+            return ZEJF_ERR_GENERIC;
         }
 
-        Packet* packet = network_prepare_packet(device_id, VARIABLE_INFO, msg);
+        Packet *packet = network_prepare_packet(device_id, VARIABLE_INFO, msg);
+        if (packet == NULL) {
+            return ZEJF_ERR_NULL;
+        }
+
         network_send_packet(packet, time);
     }
 
-    return true;
+    return ZEJF_OK;
 }
 
-bool variables_request_receive(Packet* packet, TIME_TYPE time) {
+zejf_err variables_request_receive(Packet *packet, TIME_TYPE time) {
     uint32_t hour_number;
 
     if (sscanf(packet->message, "%" SCNu32, &hour_number) != 1) {
-        return false;
+        return ZEJF_ERR_GENERIC;
     }
 
     return variables_request_process(packet->from, hour_number, time);

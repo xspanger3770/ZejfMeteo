@@ -81,6 +81,17 @@ public class SocketManager {
             @Override
             public void onReceive(Packet packet) {
                 System.out.printf("Packet command %d from %d to %d: %s\n", packet.command(), packet.from(), packet.to(), packet.message());
+                if(packet.command() == ZejfCommunicator.COMMAND_DATA_LOG) {
+                    try {
+                        String msg = packet.message();
+                        String[] data = msg.split(",");
+                        int variableId = Integer.parseInt(data[0]);
+                        double value = Double.parseDouble(data[4]);
+                        ZejfMeteo.getFrame().getRealtimePanel().log(variableId, value);
+                    } catch(Exception e){
+                        e.printStackTrace();
+                    }
+                }
             }
         };
 

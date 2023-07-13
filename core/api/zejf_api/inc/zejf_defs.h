@@ -11,14 +11,6 @@
 #define VALUE_EMPTY -999.0
 #define VALUE_NOT_MEASURED -998.0
 
-#define UPDATE_SUCCESS 0
-#define UPDATE_FAIL 1
-#define UPDATE_NO_CHANGE 2
-
-#define SEND_SUCCES 0
-#define SEND_RETRY 1
-#define SEND_UNABLE 2
-
 #define BROADCAST 0xFFFF
 
 #define TIME_TYPE uint32_t
@@ -31,18 +23,35 @@
 
 #define HOUR (1000l * 60 * 60l)
 
-#define ZEJF_ERR_NULL 1
-#define ZEJF_ERR_PACKET_FORMAT 2
-#define ZEJF_ERR_CHECKSUM 3
-#define ZEJF_ERR_ITSELF 4
-#define ZEJF_ERR_QUEUE_FULL 5
-#define ZEJF_ERR_TXID 6
-#define ZEJF_ERR_RXID 7
-#define ZEJF_ERR_TTL 8
-#define ZEJF_ERR_NO_SUCH_DEVICE 9
-#define ZEJF_ERR_PACKET_FORMAT_BRACKETS 10
-#define ZEJF_ERR_PACKET_FORMAT_ITEMS 11
-#define ZEJF_ERR_PACKET_FORMAT_LENGTH 12
+typedef enum zejf_err_t {
+    ZEJF_OK,
+    ZEJF_ERR_GENERIC,
+    ZEJF_ERR_NULL,
+    ZEJF_ERR_PACKET_FORMAT,
+    ZEJF_ERR_CHECKSUM,
+    ZEJF_ERR_ITSELF,
+    ZEJF_ERR_QUEUE_FULL,
+    ZEJF_ERR_TXID,
+    ZEJF_ERR_RXID,
+    ZEJF_ERR_TTL,
+    ZEJF_ERR_NO_SUCH_DEVICE,
+    ZEJF_ERR_PACKET_FORMAT_BRACKETS,
+    ZEJF_ERR_PACKET_FORMAT_ITEMS,
+    ZEJF_ERR_PACKET_FORMAT_LENGTH,
+    ZEJF_ERR_OUT_OF_MEMORY,
+    ZEJF_ERR_NO_CHANGE,
+    ZEJF_ERR_PARTIAL,
+    ZEJF_ERR_INVALID_SAMPLE_RATE,
+    ZEJF_ERR_VARIABLES_MAX,
+    ZEJF_ERR_VARIABLE_ALREADY_EXISTS,
+    ZEJF_ERR_LOG_NUMBER,
+    ZEJF_ERR_VALUE,
+    ZEJF_ERR_NO_FREE_SLOTS,
+    ZEJF_ERR_REQUEST_ALREADY_EXISTS,
+    ZEJF_ERR_IO,
+    ZEJF_ERR_FILE_DOESNT_EXIST,
+    ZEJF_ERR_SEND_UNABLE
+} zejf_err;
 
 #define CHECKSUM_BYPASS_VALUE 0
 
@@ -55,8 +64,8 @@ typedef struct interface_t
     int uid;
     enum interface_type_t type;
     int handle;
-    uint32_t rx_id;
-    uint32_t tx_id;
+    uint32_t rx_count;
+    uint32_t tx_count;
 } Interface;
 
 typedef struct variable_info_t
@@ -96,8 +105,8 @@ typedef struct data_request_t
 enum commands
 {
     RIP = 0x01, // device info
-    ACK = 0x02, // acknowledgement
-    ID_SYNC = 0x03, // ?
+    //ACK = 0x02, // acknowledgement
+    //ID_SYNC = 0x03, // ?
     DATA_PROVIDE = 0x04, // send info about variables that device provides
     DATA_DEMAND = 0x05, // send info about variables that device wants to receive
     DATA_LOG = 0x06, // send data log
@@ -134,7 +143,7 @@ typedef struct packet_t
     Interface *destination_interface;
     uint32_t time_received;
     uint32_t time_sent;
-    uint32_t tx_id;
+    uint32_t flags;
     uint32_t checksum;
     uint16_t from;
     uint16_t to;

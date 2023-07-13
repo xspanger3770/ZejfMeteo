@@ -1,0 +1,12 @@
+routing_init
+routing_table_update
+routing_entry_add_demanded_variable
+routing_entry_add_provided_variable
+network_send_routing_info
+network_send_everywhere
+packet_from_string
+packet_to_string
+network_push_packet
+process_rip_packet
+network_init
+prepare_and_send

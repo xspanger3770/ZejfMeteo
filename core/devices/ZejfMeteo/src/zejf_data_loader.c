@@ -1,6 +1,3 @@
-#include "zejf_data_loader.h"
-#include "zejf_api.h"
-#include "zejf_meteo.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,8 +9,11 @@
 #include <time.h>
 #include <unistd.h>
 
-int mkpath(char *file_path, mode_t mode)
-{
+#include "zejf_api.h"
+#include "zejf_data_loader.h"
+#include "zejf_meteo.h"
+
+int mkpath(char *file_path, mode_t mode) {
     for (char *p = strchr(file_path + 1, '/'); p; p = strchr(p + 1, '/')) {
         *p = '\0';
         if (mkdir(file_path, mode) == -1) {
@@ -58,8 +58,7 @@ int mkpath(char *file_path, mode_t mode)
     return day;
 }*/
 
-void str_append(char **end_ptr, char *str)
-{
+void str_append(char **end_ptr, char *str) {
     size_t len = strlen(str);
     memcpy(*end_ptr, str, len);
     *end_ptr += len;
@@ -67,8 +66,7 @@ void str_append(char **end_ptr, char *str)
 
 char months[12][10] = { "January\0", "February\0", "March\0", "April\0", "May\0", "June\0", "July\0", "August\0", "September\0", "October\0", "November\0", "December\0" };
 
-void zejf_day_path(char *buff, uint32_t hour_number)
-{
+void zejf_day_path(char *buff, uint32_t hour_number) {
     time_t now = (time_t) hour_number * 60 * 60;
     struct tm *t = localtime(&now);
 
@@ -89,10 +87,9 @@ void zejf_day_path(char *buff, uint32_t hour_number)
     *end_ptr = '\0';
 }
 
-bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
-{
+zejf_err hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size) {
     if (buffer == NULL) {
-        return false;
+        return ZEJF_ERR_NULL;
     }
 
     char path_buff[128];
@@ -109,14 +106,14 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
         ZEJF_LOG(1, "Creating path %s\n", path_only);
         if (mkpath(path_only, 0700) != 0) {
             perror("mkdir");
-            return false;
+            return ZEJF_ERR_IO;
         }
     }
 
     FILE *actual_file = fopen(path_buff, "wb");
     if (actual_file == NULL) {
-        perror("fopen");
-        return false;
+        printf("SAVE: %s: %s\n", path_buff, strerror(errno));
+        return ZEJF_ERR_IO;
     }
 
     ZEJF_LOG(0, "%ld bytes will be written to [%s]\n", total_size, path_buff);
@@ -125,18 +122,21 @@ bool hour_save(uint32_t hour_number, uint8_t *buffer, size_t total_size)
 
     fclose(actual_file);
 
-    return result;
+    return result ? ZEJF_OK : ZEJF_ERR_IO;
 }
 
-size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
-{
+zejf_err hour_load(uint8_t **data_buffer, size_t *size, uint32_t hour_number) {
     char path_buff[128];
     zejf_day_path(path_buff, hour_number);
 
+    if (access(path_buff, F_OK) != 0) {
+        return ZEJF_ERR_FILE_DOESNT_EXIST;
+    }
+
     FILE *file = fopen(path_buff, "rb");
     if (file == NULL) {
-        perror("fopen");
-        return 0;
+        printf("LOAD: %s: %s\n", path_buff, strerror(errno));
+        return ZEJF_ERR_IO;
     }
 
     fseek(file, 0, SEEK_END);
@@ -168,5 +168,14 @@ size_t hour_load(uint8_t **data_buffer, uint32_t hour_number)
 close:
     fclose(file);
 
-    return fsize;
+    if (fsize <= 0) {
+        if ((*data_buffer) != NULL) {
+            free(*data_buffer);
+            *data_buffer = NULL;
+        }
+        return ZEJF_ERR_IO;
+    }
+
+    *size = fsize;
+    return ZEJF_OK;
 }
