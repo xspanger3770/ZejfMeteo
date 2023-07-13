@@ -2,6 +2,7 @@ package main;
 
 import data.DataManager;
 import exception.ApplicationErrorHandler;
+import exception.FatalApplicationException;
 import exception.FatalIOException;
 import exception.RuntimeApplicationException;
 import org.tinylog.Logger;
@@ -42,7 +43,11 @@ public class ZejfMeteo {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
-                    destroy();
+                    try {
+                        destroy();
+                    } catch (FatalApplicationException ex) {
+                        ZejfMeteo.handleException(ex);
+                    }
                 }
             });
 
@@ -51,7 +56,7 @@ public class ZejfMeteo {
         });
     }
 
-    private static void destroy() {
+    private static void destroy() throws FatalApplicationException {
         dataManager.saveAll();
     }
 
@@ -66,6 +71,10 @@ public class ZejfMeteo {
         }
 
         errorHandler.handleException(e);
+    }
+
+    public static DataManager getDataManager() {
+        return dataManager;
     }
 
     public static ZejfFrame getFrame() {

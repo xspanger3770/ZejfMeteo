@@ -58,7 +58,7 @@ public class SimpleRealtimePanel extends JPanel {
     static class DisplayedVariable{
         private final int decimals;
         int variableId;
-        double lastValue = DataManager.VAL_ERROR;
+        double lastValue = DataManager.VALUE_EMPTY;
         String name;
         String units;
 

@@ -8,13 +8,15 @@ public class DataVariable implements Serializable {
     private final int id;
     private final int samplesPerHour;
 
+    private int lastLog = 0;
+
     private final double[] data;
 
     public DataVariable(int id, int samplesPerHour){
         this.id = id;
         this.samplesPerHour = samplesPerHour;
         this.data = new double[samplesPerHour];
-        Arrays.fill(data, DataManager.VAL_ERROR);
+        Arrays.fill(data, DataManager.VALUE_EMPTY);
     }
 
     public int getId() {
@@ -27,5 +29,26 @@ public class DataVariable implements Serializable {
 
     public double[] getData() {
         return data;
+    }
+
+    public boolean log(int sampleNumber, double value) {
+        if(sampleNumber < 0 || sampleNumber >= samplesPerHour){
+            return false;
+        }
+
+        if (data[sampleNumber] != DataManager.VALUE_EMPTY &&
+                data[sampleNumber] != DataManager.VALUE_NOT_MEASURED &&
+                        (value == DataManager.VALUE_EMPTY || value == DataManager.VALUE_NOT_MEASURED)) {
+            return false; // cannot rewrite wrong value
+        }
+
+        System.out.println("Logged "+value+" ["+id+"@"+samplesPerHour+"]");
+
+        data[sampleNumber] = value;
+        if(sampleNumber > lastLog){
+            lastLog = sampleNumber;
+        }
+
+        return true;
     }
 }

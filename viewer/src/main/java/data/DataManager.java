@@ -7,20 +7,36 @@ import main.ZejfMeteo;
 import time.TimeUtils;
 
 import java.io.*;
-import java.sql.Time;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataManager {
 
     public static final int PERMANENTLY_LOADED_HOURS = 24;
-    public static final double VAL_ERROR = -999.0;
-    public static final double VAL_NOT_MEASURED = -998.0;
+    public static final double VALUE_EMPTY = -999.0;
+    public static final double VALUE_NOT_MEASURED = -998.0;
+    private static final long DATA_LOAD_TIME = 15 * 1000 * 60L;
     private final List<DataHour> dataHours;
+
+    private List<VariableCalculation> variableCalculations;
+
+    private DataHour lastDatahour = null;
 
     public static final File DATA_FOLDER = new File(ZejfMeteo.MAIN_FOLDER, "/data/");
 
+    public static final File VARIABLE_CALCULATIONS_FILE = new File(DATA_FOLDER, "variable_calculations.dat");
+
+    private final ReadWriteLock dataLock = new ReentrantReadWriteLock();
+
+    private final Lock dataReadLock = dataLock.readLock();
+
+    private final Lock dataWriteLock = dataLock.writeLock();
+
     public DataManager(){
         dataHours = new LinkedList<>();
+        variableCalculations = new LinkedList<>();
 
         load();
 
@@ -28,12 +44,33 @@ public class DataManager {
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                saveAll();
+                try {
+                    removeOld();
+                    saveAll();
+                }catch(FatalApplicationException e){
+                    ZejfMeteo.handleException(e);
+                }
             }
         };
 
         // Schedule the task to run every two minutes, starting from now
-        timer.schedule(task, 30*1000, 2 * 60 * 1000);
+        timer.schedule(task, 30 * 1000, 2 * 60 * 1000);
+    }
+
+    private void removeOld() throws FatalApplicationException {
+        dataWriteLock.lock();
+        try {
+            Iterator<DataHour> iterator = dataHours.iterator();
+            while(iterator.hasNext()){
+                DataHour dataHour = iterator.next();
+                if(System.currentTimeMillis() - dataHour.getLastUse() > DATA_LOAD_TIME){
+                    saveHour(dataHour);
+                    iterator.remove();
+                }
+            }
+        }finally {
+            dataWriteLock.unlock();
+        }
     }
 
     public static final String[] MONTHS = new String[] { "January", "February", "March", "April", "May", "June", "July",
@@ -54,6 +91,38 @@ public class DataManager {
 
             calendar.add(Calendar.HOUR, -1);
         }
+
+        try {
+            loadVariableCalculations();
+        } catch (FatalApplicationException e) {
+            ZejfMeteo.handleException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void loadVariableCalculations() throws FatalApplicationException{
+        try {
+            if(!VARIABLE_CALCULATIONS_FILE.exists()){
+                variableCalculations = new LinkedList<>();
+                return;
+            }
+
+            ObjectInputStream in = new ObjectInputStream(new FileInputStream(VARIABLE_CALCULATIONS_FILE));
+            variableCalculations = (List<VariableCalculation>) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new FatalApplicationException(e);
+        }
+    }
+
+
+    private void saveVariableCalculations() throws FatalApplicationException {
+        ObjectOutputStream out;
+        try {
+            out = new ObjectOutputStream(new FileOutputStream(VARIABLE_CALCULATIONS_FILE));
+            out.writeObject(variableCalculations);
+        } catch (IOException e) {
+            throw new FatalApplicationException(e);
+        }
     }
 
     public DataHour dataHourFind(long hourNumber){
@@ -66,7 +135,12 @@ public class DataManager {
     }
 
     public DataHour dataHourGet(Calendar calendar, boolean load, boolean createNew) throws FatalApplicationException{
-        DataHour result = dataHourFind(TimeUtils.getHourNumber(calendar));
+        long hourNumber = TimeUtils.getHourNumber(calendar);
+        if(lastDatahour != null && lastDatahour.getHourNumber() == hourNumber){
+            return lastDatahour;
+        }
+
+        DataHour result = dataHourFind(hourNumber);
 
         boolean add = false;
 
@@ -82,6 +156,8 @@ public class DataManager {
         if(result != null && add){
             dataHours.add(result);
         }
+
+        lastDatahour = result;
 
         return result;
     }
@@ -101,14 +177,17 @@ public class DataManager {
 
         try{
             ObjectInputStream in = new ObjectInputStream(new FileInputStream(file));
-            return (DataHour) in.readObject();
+            DataHour result =(DataHour) in.readObject();
+            System.out.println("loaded "+result.getHourNumber()+", "+result.getVariablesRaw().size());
+            return result;
         } catch(ClassNotFoundException | InvalidClassException e) {
             //throw new FatalApplicationException("Unable to load", e);
-            File brokenFile = new File(file.getAbsolutePath() + "_err_"+System.currentTimeMillis());
+            File brokenFile = new File(file.getAbsolutePath() + "_broken");
             if(!file.renameTo(brokenFile)){
                 throw new FatalApplicationException(new IOException("Unable to rename broken file "+brokenFile.getAbsolutePath()));
             }
-            throw new RuntimeApplicationException(String.format("Could not load %s, renamed to %s", file.getName(), brokenFile.getName()));
+            System.err.println((String.format("Could not load %s, renamed to %s", file.getName(), brokenFile.getName())));
+            return null;
         } catch (IOException e) {
             throw new FatalIOException(e);
         }
@@ -118,8 +197,7 @@ public class DataManager {
         if(dataHour == null || !dataHour.isModified()){
             return;
         }
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(dataHour.getHourNumber() * 1000 * 60 * 60L);
+        Calendar calendar = TimeUtils.toCalendar(dataHour.getHourNumber());
         File file = getDataHourFile(calendar);
         if (!file.getParentFile().exists()) {
             if(!file.getParentFile().mkdirs()){
@@ -136,14 +214,26 @@ public class DataManager {
         }
     }
 
-    public void saveAll(){
-        for(DataHour dataHour : dataHours){
-            try {
+    public void saveAll() throws FatalApplicationException{
+        dataReadLock.lock();
+        try {
+            for (DataHour dataHour : dataHours) {
                 saveHour(dataHour);
-            } catch (FatalApplicationException e) {
-                ZejfMeteo.handleException(e);
             }
+        }finally {
+            dataReadLock.unlock();
         }
+
+        saveVariableCalculations();
     }
 
+    public void log(int variableId, int samplesPerHour, long hourNumber, int sampleNumber, double value) throws FatalApplicationException{
+        dataWriteLock.lock();
+        try{
+            DataHour dataHour = dataHourGet(TimeUtils.toCalendar(hourNumber), true, true);
+            dataHour.log(variableId, samplesPerHour, sampleNumber, value);
+        }finally {
+            dataWriteLock.unlock();
+        }
+    }
 }
