@@ -42,10 +42,6 @@ public class DataManager {
 
         load();
 
-        if(variableCalculations.isEmpty()){
-            variableCalculations.add(new VariableComputation(11, 720, "T2M", "C", new DirectComputation()));
-        }
-
         Timer timer = new Timer();
         TimerTask taskAutosave = new TimerTask() {
             @Override

@@ -20,7 +20,7 @@ public class ZejfFrame extends JFrame {
 
     public ZejfFrame(){
         setTitle("ZejfMeteoViewer "+ ZejfMeteo.VERSION);
-        getContentPane().setPreferredSize(new Dimension(1000, 700));
+        getContentPane().setPreferredSize(new Dimension(600, 400));
         setResizable(true);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -50,37 +50,44 @@ public class ZejfFrame extends JFrame {
         JMenu menuConnection = new JMenu("Connection");
 
         JMenuItem socketItem = new JMenuItem("Socket");
-        socketItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                if(socketManager.isSocketRunning()){
-                    int result = JOptionPane.showConfirmDialog(ZejfFrame.this,
-                            "Disconnect from " + Settings.ADDRESS + ":" + Settings.PORT + "?", "Server",
-                            JOptionPane.YES_NO_OPTION);
-                    if (result != 0) {
-                        return;
-                    }
-
-                    try {
-                        socketManager.close();
-                    } catch(RuntimeApplicationException e){
-                        ZejfMeteo.handleException(e);
-                    }
+        socketItem.addActionListener(actionEvent -> {
+            if(socketManager.isSocketRunning()){
+                int result = JOptionPane.showConfirmDialog(ZejfFrame.this,
+                        "Disconnect from " + Settings.ADDRESS + ":" + Settings.PORT + "?", "Server",
+                        JOptionPane.YES_NO_OPTION);
+                if (result != 0) {
+                    return;
                 }
 
-                if(selectAddress()){
-                    try {
-                        socketManager.connect();
-                    }catch(RuntimeApplicationException e){
-                        ZejfMeteo.handleException(e);
-                    }
+                try {
+                    socketManager.close();
+                } catch(RuntimeApplicationException e){
+                    ZejfMeteo.handleException(e);
+                }
+            }
+
+            if(selectAddress()){
+                try {
+                    socketManager.connect();
+                }catch(RuntimeApplicationException e){
+                    ZejfMeteo.handleException(e);
                 }
             }
         });
 
         menuConnection.add(socketItem);
 
+        JMenuItem itemComputations = new JMenuItem("Manage Variables");
+        itemComputations.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+                new ComputationsManager(ZejfFrame.this).setVisible(true);
+            }
+        });
+
         JMenu menuOptions = new JMenu("Options");
+        menuOptions.add(itemComputations);
+
         menuOptions.add(new JMenuItem("Settings"));
 
         jMenuBar.add(menuConnection);

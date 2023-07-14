@@ -9,12 +9,12 @@ import java.util.UUID;
 
 public class VariableComputation implements Serializable {
 
-    private final int variableId;
-    private final int samplesPerHour;
+    private int variableId;
+    private int samplesPerHour;
 
-    private final String displayName;
+    private String displayName;
 
-    private final String units;
+    private String units;
 
     private final ComputationMode computationMode;
 
@@ -68,5 +68,25 @@ public class VariableComputation implements Serializable {
 
     public boolean calculate(DataManager dataManager, VariableComputation calculation, DataHour dataHour, ComputedVariable computedVariable) {
         return getCalculationMode().calculateValue(dataManager, calculation, dataHour, computedVariable);
+    }
+
+    public ComputationMode getComputationMode() {
+        return computationMode;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public void setSamplesPerHour(int samplesPerHour) {
+        this.samplesPerHour = samplesPerHour;
+    }
+
+    public void setVariableId(int variableId) {
+        this.variableId = variableId;
+    }
+
+    public void setUnits(String units) {
+        this.units = units;
     }
 }
