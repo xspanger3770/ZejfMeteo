@@ -1,11 +1,14 @@
 package data;
 
+import data.computation.ComputedVariable;
+import data.computation.VariableComputation;
+
 import java.io.Serializable;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class DataHour implements Serializable {
+
+    private transient DataManager dataManager;
 
     private final long hourNumber;
 
@@ -14,12 +17,14 @@ public class DataHour implements Serializable {
     private transient long lastUse = System.currentTimeMillis();
 
     private final List<DataVariable> variablesRaw;
-    private final List<ComputedVariable> variablesComputed;
+    private final Map<UUID, ComputedVariable> variablesComputed;
+    private transient boolean computationNeeded;
 
-    public DataHour(long hourNumber){
+    public DataHour(long hourNumber, DataManager dataManager){
+        this.dataManager = dataManager;
         this.hourNumber = hourNumber;
         variablesRaw = new LinkedList<>();
-        variablesComputed = new LinkedList<>();
+        variablesComputed = new HashMap<>();
     }
 
     public long getHourNumber() {
@@ -34,16 +39,23 @@ public class DataHour implements Serializable {
         return lastUse;
     }
 
-    public void log(int variableId, int samplesPerHour, int sampleNumber, double value) {
+    public boolean log(int variableId, int samplesPerHour, int sampleNumber, double value) {
         lastUse = System.currentTimeMillis();
 
         DataVariable dataVariable = getVariable(variableId, samplesPerHour, true);
-        if(dataVariable.log(sampleNumber, value) && !modified){
+        boolean result = dataVariable.log(sampleNumber, value);
+        if(result && !modified){
             modified = true;
         }
+
+        if(result && !computationNeeded){
+            computationNeeded = true;
+        }
+
+        return result;
     }
 
-    private DataVariable getVariable(int variableId, int samplesPerHour, boolean create) {
+    public DataVariable getVariable(int variableId, int samplesPerHour, boolean create) {
         DataVariable result = findVariable(variableId, samplesPerHour);
         if(result == null && create){
             result = new DataVariable(variableId, samplesPerHour);
@@ -66,22 +78,33 @@ public class DataHour implements Serializable {
         ComputedVariable result = findComputedVariable(uuid);
         if(result == null && create){
             result = new ComputedVariable(samplesPerHour, uuid);
-            variablesComputed.add(result);
+            variablesComputed.put(uuid, result);
         }
 
         return result;
     }
 
     private ComputedVariable findComputedVariable(UUID uuid) {
-        for(ComputedVariable computedVariable:variablesComputed){
-            if(computedVariable.getUuid() == uuid){
-                return computedVariable;
-            }
-        }
-        return null;
+        return variablesComputed.get(uuid);
     }
 
     public List<DataVariable> getVariablesRaw() {
         return variablesRaw;
+    }
+
+    public void runComputations(DataManager dataManager) {
+        if(this.dataManager == null) {
+            this.dataManager = dataManager;
+        }
+        for(VariableComputation calculation : dataManager.getVariableCalculations()) {
+            variablesComputed.putIfAbsent(calculation.getUuid(), new ComputedVariable(calculation.getSamplesPerHour(), calculation.getUuid()));
+            if(variablesComputed.get(calculation.getUuid()).runCalculation(dataManager, calculation, this)){
+                this.modified = true;
+            }
+        }
+    }
+
+    public boolean isComputationNeeded() {
+        return computationNeeded;
     }
 }

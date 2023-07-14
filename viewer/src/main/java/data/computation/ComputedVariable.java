@@ -1,8 +1,12 @@
-package data;
+package data.computation;
 
+import data.DataHour;
+import data.DataManager;
+
+import java.io.Serializable;
 import java.util.UUID;
 
-public class ComputedVariable {
+public class ComputedVariable implements Serializable {
 
     private final int samplesPerHour;
 
@@ -30,5 +34,10 @@ public class ComputedVariable {
 
     public int getSamplesPerHour() {
         return samplesPerHour;
+    }
+
+    public boolean runCalculation(DataManager dataManager, VariableComputation calculation, DataHour dataHour) {
+        System.out.println("RUNCALC");
+        return  calculation.calculate(dataManager, calculation, dataHour, this);
     }
 }

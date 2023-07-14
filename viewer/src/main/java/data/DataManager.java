@@ -1,5 +1,7 @@
 package data;
 
+import data.computation.DirectComputation;
+import data.computation.VariableComputation;
 import exception.FatalApplicationException;
 import exception.FatalIOException;
 import exception.RuntimeApplicationException;
@@ -20,7 +22,7 @@ public class DataManager {
     private static final long DATA_LOAD_TIME = 15 * 1000 * 60L;
     private final List<DataHour> dataHours;
 
-    private List<VariableCalculation> variableCalculations;
+    private List<VariableComputation> variableCalculations;
 
     private DataHour lastDatahour = null;
 
@@ -40,8 +42,12 @@ public class DataManager {
 
         load();
 
+        if(variableCalculations.isEmpty()){
+            variableCalculations.add(new VariableComputation(11, 720, "T2M", "C", new DirectComputation()));
+        }
+
         Timer timer = new Timer();
-        TimerTask task = new TimerTask() {
+        TimerTask taskAutosave = new TimerTask() {
             @Override
             public void run() {
                 try {
@@ -52,9 +58,25 @@ public class DataManager {
                 }
             }
         };
+        TimerTask taskCompute = new TimerTask() {
+            @Override
+            public void run() {
+                dataWriteLock.lock();
+                try {
+                    for(DataHour dh:dataHours) {
+                        if(dh.isComputationNeeded()) {
+                            dh.runComputations(DataManager.this);
+                        }
+                    }
+                } finally {
+                    dataWriteLock.unlock();
+                }
+            }
+        };
 
         // Schedule the task to run every two minutes, starting from now
-        timer.schedule(task, 30 * 1000, 2 * 60 * 1000);
+        timer.schedule(taskAutosave, 30 * 1000, 2 * 60 * 1000);
+        timer.schedule(taskCompute, 1000, 1000);
     }
 
     private void removeOld() throws FatalApplicationException {
@@ -108,7 +130,7 @@ public class DataManager {
             }
 
             ObjectInputStream in = new ObjectInputStream(new FileInputStream(VARIABLE_CALCULATIONS_FILE));
-            variableCalculations = (List<VariableCalculation>) in.readObject();
+            variableCalculations = (List<VariableComputation>) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
             throw new FatalApplicationException(e);
         }
@@ -134,8 +156,7 @@ public class DataManager {
         return null;
     }
 
-    public DataHour dataHourGet(Calendar calendar, boolean load, boolean createNew) throws FatalApplicationException{
-        long hourNumber = TimeUtils.getHourNumber(calendar);
+    public DataHour dataHourGet(long hourNumber, boolean load, boolean createNew) throws FatalApplicationException {
         if(lastDatahour != null && lastDatahour.getHourNumber() == hourNumber){
             return lastDatahour;
         }
@@ -145,12 +166,12 @@ public class DataManager {
         boolean add = false;
 
         if(result == null && load){
-            result = loadHour(calendar);
+            result = loadHour(TimeUtils.toCalendar(hourNumber));
             add = true;
         }
 
         if(result == null && createNew){
-            result = new DataHour(TimeUtils.getHourNumber(calendar));
+            result = new DataHour(hourNumber, this);
         }
 
         if(result != null && add){
@@ -160,6 +181,10 @@ public class DataManager {
         lastDatahour = result;
 
         return result;
+    }
+
+    public DataHour dataHourGet(Calendar calendar, boolean load, boolean createNew) throws FatalApplicationException{
+        return dataHourGet(TimeUtils.getHourNumber(calendar), load, createNew);
     }
 
     public static File getDataHourFile(Calendar calendar){
@@ -178,6 +203,7 @@ public class DataManager {
         try{
             ObjectInputStream in = new ObjectInputStream(new FileInputStream(file));
             DataHour result =(DataHour) in.readObject();
+            result.runComputations(this);
             System.out.println("loaded "+result.getHourNumber()+", "+result.getVariablesRaw().size());
             return result;
         } catch(ClassNotFoundException | InvalidClassException e) {
@@ -235,5 +261,9 @@ public class DataManager {
         }finally {
             dataWriteLock.unlock();
         }
+    }
+
+    public List<VariableComputation> getVariableCalculations() {
+        return variableCalculations;
     }
 }
