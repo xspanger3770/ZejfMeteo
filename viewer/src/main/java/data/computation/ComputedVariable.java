@@ -10,6 +10,8 @@ public class ComputedVariable implements Serializable {
 
     private final int samplesPerHour;
 
+    private int lastLog = 0;
+
     private final UUID uuid;
 
     private final ComputedLog[] computedLogs;
@@ -37,7 +39,14 @@ public class ComputedVariable implements Serializable {
     }
 
     public boolean runCalculation(DataManager dataManager, VariableComputation calculation, DataHour dataHour) {
-        System.out.println("RUNCALC");
-        return  calculation.calculate(dataManager, calculation, dataHour, this);
+        return calculation.calculate(dataManager, calculation, dataHour, this);
+    }
+
+    public ComputedLog getLastLog() {
+        return computedLogs[lastLog];
+    }
+
+    public void setLastLog(int sample) {
+        this.lastLog = sample;
     }
 }

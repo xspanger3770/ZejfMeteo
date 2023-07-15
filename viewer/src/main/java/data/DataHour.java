@@ -74,7 +74,7 @@ public class DataHour implements Serializable {
         return null;
     }
 
-    private ComputedVariable getComputedVariable(UUID uuid, int samplesPerHour, boolean create) {
+    public ComputedVariable getComputedVariable(UUID uuid, int samplesPerHour, boolean create) {
         ComputedVariable result = findComputedVariable(uuid);
         if(result == null && create){
             result = new ComputedVariable(samplesPerHour, uuid);

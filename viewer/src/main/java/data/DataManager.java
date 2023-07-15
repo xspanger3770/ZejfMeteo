@@ -1,6 +1,8 @@
 package data;
 
-import data.computation.DirectComputation;
+import data.computation.ComputationStatus;
+import data.computation.ComputedLog;
+import data.computation.ComputedVariable;
 import data.computation.VariableComputation;
 import exception.FatalApplicationException;
 import exception.FatalIOException;
@@ -261,5 +263,58 @@ public class DataManager {
 
     public List<VariableComputation> getVariableCalculations() {
         return variableCalculations;
+    }
+
+    public ComputedLog getLastValue(VariableComputation computation) {
+        dataReadLock.lock();
+        try {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(new Date());
+            for(int i = 0; i < 24; i++){
+                DataHour dh = dataHourGet(calendar, true, false);
+                if(dh == null){
+                    calendar.add(Calendar.HOUR, -1);
+                    continue;
+                }
+                ComputedVariable computedVariable = dh.getComputedVariable(computation.getUuid(), computation.getSamplesPerHour(), false);
+                if(computedVariable == null){
+                    calendar.add(Calendar.HOUR, -1);
+                    continue;
+                }
+
+                ComputedLog computedLog = computedVariable.getLastLog();
+                if(computedLog.getStatus() == ComputationStatus.FINISHED){
+                    return computedLog;
+                }
+
+                next:
+                calendar.add(Calendar.HOUR, -1);
+            }
+        } catch (FatalApplicationException e) {
+            ZejfMeteo.handleException(e);
+        } finally {
+            dataReadLock.unlock();
+        }
+
+        return null;
+    }
+
+    public ComputedLog getValue(VariableComputation computation, Calendar calendar){
+        try {
+            DataHour dh = dataHourGet(calendar, true, false);
+            if(dh == null){
+                return null;
+            }
+            ComputedVariable computedVariable = dh.getComputedVariable(computation.getUuid(), computation.getSamplesPerHour(), false);
+            if(computedVariable == null){
+                return null;
+            }
+
+            return computedVariable.getComputedLogs()[TimeUtils.getSampleNumber(calendar, computation.getSamplesPerHour())];
+        } catch (FatalApplicationException e) {
+            ZejfMeteo.handleException(e);
+        }
+
+        return null;
     }
 }

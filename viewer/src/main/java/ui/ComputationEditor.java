@@ -45,9 +45,7 @@ public class ComputationEditor extends JDialog {
             });
 
             JButton cancelButton = new JButton("Cancel");
-            cancelButton.addActionListener(e -> {
-                ComputationEditor.super.dispose();
-            });
+            cancelButton.addActionListener(e -> ComputationEditor.super.dispose());
 
             add(variableIdLabel);
             add(variableIdField);
@@ -69,13 +67,8 @@ public class ComputationEditor extends JDialog {
             String displayName = displayNameField.getText();
             String units = unitsField.getText();
 
-            variableComputation.setVariableId(variableId);
-            variableComputation.setSamplesPerHour(samplesPerHour);
-            variableComputation.setDisplayName(displayName);
-            variableComputation.setUnits(units);
+            ZejfMeteo.getDataManager().getVariableCalculations().remove(variableComputation);
+            ZejfMeteo.getDataManager().getVariableCalculations().add(new VariableComputation(variableId, samplesPerHour, displayName, units, variableComputation.getComputationMode()));
 
-            if(!ZejfMeteo.getDataManager().getVariableCalculations().contains(variableComputation)){
-                ZejfMeteo.getDataManager().getVariableCalculations().add(variableComputation);
-            }
         }
     }

@@ -36,6 +36,7 @@ public class DirectComputation extends ComputationMode {
 
             log.setValue(val);
             log.setStatus(ComputationStatus.FINISHED);
+            computedVariable.setLastLog(sample);
             result = true;
             System.out.println("COMPUTEDED "+sample+"@"+computation.getVariableId());
         }
