@@ -369,7 +369,7 @@ static void wspd_callback(uint gpio, uint32_t events)
     if (gpio == WSPD_PIN) {
         wspd_c++;
 
-        if(events & GPIO_IRQ_EDGE_RISE){
+        if(events == GPIO_IRQ_EDGE_RISE){
             uint64_t current_us = to_us_since_boot(get_absolute_time());
             if(gust_measured && time_set){
                 double gust = 2.4 * (1000000.0 / (current_us - last_wspd_callback));
