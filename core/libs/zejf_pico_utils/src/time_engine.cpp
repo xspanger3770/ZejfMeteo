@@ -20,8 +20,9 @@ static uint32_t time_check_count = 0;
 volatile uint32_t millis_since_boot = 0;
 volatile uint32_t millis_overflows = 0;
 
-void time_engine_init(void){
-     rtc_init();
+void time_engine_init(i2c_inst_t* i2c) {
+    ds3231_rtc = {i2c};
+    rtc_init();
 
     time_t time;
 
@@ -106,8 +107,8 @@ bool ds3231_get(time_t *time) {
 
     bool res = true;
 
-    res &= ds3231_rtc.read_date(&date, &month, &year, &day);
-    res &= ds3231_rtc.read_time(&hour, &min, &sec);
+    res = res && ds3231_rtc.read_date(&date, &month, &year, &day);
+    res = res && ds3231_rtc.read_time(&hour, &min, &sec);
 
     if (res) {
         datetime_t dt;
@@ -127,8 +128,8 @@ bool ds3231_get(time_t *time) {
 bool ds3231_set(datetime_t dt) {
     bool res = true;
 
-    res &= ds3231_rtc.set_date(dt.day, dt.month, (dt.year - 2000), dt.dotw);
-    res &= ds3231_rtc.set_time(dt.hour, dt.min, dt.sec);
+    res = res && ds3231_rtc.set_date(dt.day, dt.month, (dt.year - 2000), dt.dotw);
+    res = res && ds3231_rtc.set_time(dt.hour, dt.min, dt.sec);
 
     return res;
 }

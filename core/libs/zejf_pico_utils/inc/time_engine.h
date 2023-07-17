@@ -22,6 +22,6 @@ bool ds3231_set(datetime_t dt);
 void receive_time(char* msg);
 void time_check(void);
 void update_millis(void);
-void time_engine_init(void);
+void time_engine_init(i2c_inst_t* i2c);
 
 #endif //_DS3231_ENGINE_H

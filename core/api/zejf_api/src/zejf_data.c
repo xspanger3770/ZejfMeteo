@@ -177,17 +177,17 @@ DataHour *hour_deserialize(uint8_t *data, size_t total_size) {
     uint16_t total_variable_count = 0;
     hour->variable_count = 0;
 
-    result &= deserialize(&hour->checksum, data, &ptr, 4, total_size);
-    result &= deserialize(&hour->hour_id, data, &ptr, 4, total_size);
-    result &= deserialize(&total_variable_count, data, &ptr, 2, total_size);
-    result &= deserialize(&hour->flags, data, &ptr, 1, total_size);
+    result = result && deserialize(&hour->checksum, data, &ptr, 4, total_size);
+    result = result && deserialize(&hour->hour_id, data, &ptr, 4, total_size);
+    result = result && deserialize(&total_variable_count, data, &ptr, 2, total_size);
+    result = result && deserialize(&hour->flags, data, &ptr, 1, total_size);
 
     for (uint32_t i = 0; i < total_variable_count; i++) {
         uint32_t samples_per_hour = 0;
         uint16_t variable_id = 0;
 
-        result &= deserialize(&samples_per_hour, data, &ptr, 4, total_size);
-        result &= deserialize(&variable_id, data, &ptr, 2, total_size);
+        result = result && deserialize(&samples_per_hour, data, &ptr, 4, total_size);
+        result = result && deserialize(&variable_id, data, &ptr, 2, total_size);
 
         if (!result) {
             goto error;
@@ -198,22 +198,22 @@ DataHour *hour_deserialize(uint8_t *data, size_t total_size) {
             .samples_per_hour = samples_per_hour
         };
 
-        result &= (hour_add_variable(hour, info) == ZEJF_OK);
+        result = result && (hour_add_variable(hour, info) == ZEJF_OK);
 
         if (!result) {
             goto error;
         }
 
-        result &= deserialize(hour->variables[hour->variable_count - 1].data, data, &ptr, sizeof(float) * samples_per_hour, total_size);
+        result = result && deserialize(hour->variables[hour->variable_count - 1].data, data, &ptr, sizeof(float) * samples_per_hour, total_size);
 
         if (!result) {
             goto error;
         }
     }
 
-    result &= ptr == total_size; // must use all
+    result = result && ptr == total_size; // must use all
 
-    result &= hour_calculate_checksum(hour) == hour->checksum;
+    result = result && hour_calculate_checksum(hour) == hour->checksum;
 
     if (!result) {
     error:
