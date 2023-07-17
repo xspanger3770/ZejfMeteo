@@ -25,7 +25,7 @@ static void init_all() {
     htu_initialised = htu21_init(I2C_INST, I2C_SDA, I2C_SCK, I2C_SPEED);
     ZEJF_LOG(1, "htu_initialised = %d\n", htu_initialised);
 
-    time_engine_init();
+    time_engine_init(I2C_INST);
 
     gpio_init(RR_PIN);
     gpio_set_dir(RR_PIN, GPIO_IN);

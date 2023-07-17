@@ -27,7 +27,7 @@ static void init_all()
     BMP085_setI2C(I2C_INST, I2C_SDA, I2C_SCK);
     bmp_initialised = BMP085_init(BMP085_ULTRAHIGHRES, true) == 1;
 
-    time_engine_init();
+    time_engine_init(I2C_INST);
 
     gpio_init(WSPD_PIN);
     gpio_set_dir(WSPD_PIN, GPIO_IN);

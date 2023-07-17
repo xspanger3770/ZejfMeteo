@@ -83,7 +83,7 @@ void network_process_packet(Packet *packet) {
         send_msg(packet->from, "  Status of ZejfWind:\n    time_set=%d\n    bmp_initialised=%d", time_set, bmp_initialised);
         send_msg(packet->from, "    queue_lock=%d\n    queue_size=%d\n    wspd_count=%d", queue_lock, logs_queue.size(), wspd_c);
         send_msg(packet->from, "    millis_since_boot=%d\n    millis_overflows=%d", millis_since_boot, millis_overflows);
-        send_msg(packet->from, "    rebooted_by_watchdog=%d\n   onboard_temperature=%.1f˚C", rebooted_by_watchdog, temperature);
+        send_msg(packet->from, "    rebooted_by_watchdog=%d\n    onboard_temperature=%.1f˚C", rebooted_by_watchdog, temperature);
         send_msg(packet->from, "    ds3231_working=%d\n", ds3231_working);
         send_sd_card_msgs(packet->from);
         send_tcp_msgs(packet->from);
