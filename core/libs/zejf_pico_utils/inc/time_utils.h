@@ -5,6 +5,8 @@
 #include <time.h>
 
 #define DAY_SECS (24 * 60 * 60)
+#define EVERY_MINUTE (60)
+#define SECONDS_5 (60 * 12)
 
 time_t unix_time(datetime_t dt);
 

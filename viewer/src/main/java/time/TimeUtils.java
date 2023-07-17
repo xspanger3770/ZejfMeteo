@@ -13,4 +13,14 @@ public class TimeUtils {
         calendar.setTimeInMillis(hourNumber * (1000 * 60 * 60L));
         return calendar;
     }
+
+    public static void moveBy(Calendar calendar, int samplesPerHour, int steps){
+        int secondsPerStep = 3600 / samplesPerHour;
+        calendar.add(Calendar.SECOND, secondsPerStep * steps);
+    }
+
+    public static int getSampleNumber(Calendar calendar, int samplesPerHour){
+        int secs = calendar.get(Calendar.SECOND) + 60 * calendar.get(Calendar.MINUTE);
+        return (secs * samplesPerHour) / 3600;
+    }
 }

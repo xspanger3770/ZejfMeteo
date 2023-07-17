@@ -1,6 +1,8 @@
-package data;
+package data.computation;
 
-public class ComputedLog {
+import java.io.Serializable;
+
+public class ComputedLog implements Serializable {
 
     private double value = 0.0;
     private ComputationStatus status = ComputationStatus.EMPTY;

@@ -86,7 +86,7 @@ typedef struct
 bool bmp_reset(bmp_t *bmp) {
     uint8_t data_buffer[] = { BMP_RESET_REG, BMP_RESET_VAL };
 
-    bool res = i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false);
+    bool res = i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false, delayed_by_ms(get_absolute_time(), 1000)) == 2;
 
 #ifdef DEBUG
     printf("INFO: Successfully reset sensor.\n");
@@ -103,8 +103,8 @@ bool bmp_check_chip_id(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &chip_id_reg, 1, true) == 1;
-    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, chip_id_val, 1, false) == 1;
+    res = res && i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, &chip_id_reg, 1, true, delayed_by_ms(get_absolute_time(), 1000)) == 1;
+    res = res && i2c_read_blocking_until(bmp->i2c.inst, bmp->i2c.addr, chip_id_val, 1, false, delayed_by_ms(get_absolute_time(), 1000)) == 1;
 
     if (chip_id_val[0] != BMP_SENSOR_ID_VAL) {
 #ifdef DEBUG
@@ -127,7 +127,7 @@ bool bmp_set_oversampling_rate(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false) == 2;
+    res = res && i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false, delayed_by_ms(get_absolute_time(), 1000)) == 2;
 
 #ifdef DEBUG
     printf("INFO: Successfully configured oversampling rate.\n");
@@ -142,8 +142,8 @@ bool bmp_get_calib_coeffs(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &calib_coeffs_reg, 1, true) == 1;
-    res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, calib_coeffs_val, BMP_CAL_LEN, false) == BMP_CAL_LEN;
+    res = res && i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, &calib_coeffs_reg, 1, true, delayed_by_ms(get_absolute_time(), 1000)) == 1;
+    res = res && i2c_read_blocking_until(bmp->i2c.inst, bmp->i2c.addr, calib_coeffs_val, BMP_CAL_LEN, false, delayed_by_ms(get_absolute_time(), 1000)) == BMP_CAL_LEN;
 
     if(!res){
         return false;
@@ -208,10 +208,10 @@ bool bmp_read_uncalibrated_temperature(bmp_t *bmp) {
 
     bool res = true;
 
-    res &=
-            i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &temp_reg, 1, true) == 1;
-    res &=
-            i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, temp_val, 3, false) == 3;
+    res = res &&
+            i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, &temp_reg, 1, true, delayed_by_ms(get_absolute_time(), 1000)) == 1;
+    res = res &&
+            i2c_read_blocking_until(bmp->i2c.inst, bmp->i2c.addr, temp_val, 3, false, delayed_by_ms(get_absolute_time(), 1000)) == 3;
 
     if(!res){
         return false;
@@ -228,10 +228,10 @@ bool bmp_read_uncalibrated_pressure(bmp_t *bmp) {
 
     bool res = true;
 
-    res &=
-            i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &pres_reg, 1, true) == 1;
-    res &=
-            i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, pres_val, 3, false) == 3;
+    res = res &&
+            i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, &pres_reg, 1, true, delayed_by_ms(get_absolute_time(), 1000)) == 1;
+    res = res &&
+            i2c_read_blocking_until(bmp->i2c.inst, bmp->i2c.addr, pres_val, 3, false, delayed_by_ms(get_absolute_time(), 1000)) == 3;
 
     bmp->pressure = (pres_val[2] << 16) | (pres_val[1] << 8) | pres_val[0];
 
@@ -286,27 +286,24 @@ bool bmp_calculate_altitude(bmp_t *bmp) {
 bool bmp_get_pressure_temperature(bmp_t *bmp) {
     bool res = true;
 
-    {
-        uint8_t data_buffer[] = { BMP_MODE_REG, BMP_MODE_VAL };
-
-        res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false) == 2;
+    
+    uint8_t data_buffer[] = { BMP_MODE_REG, BMP_MODE_VAL };
+    res = res && i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, data_buffer, 2, false, delayed_by_ms(get_absolute_time(), 1000)) == 2;
+    
+    uint8_t status = 0x00;
+    while (res && (status & 0x60) != 0x60) {
+        uint8_t status_reg = BMP_STATUS_REG;
+        res = res && i2c_write_blocking_until(bmp->i2c.inst, bmp->i2c.addr, &status_reg, 1, true, delayed_by_ms(get_absolute_time(), 1000)) == 1;
+        res = res && i2c_read_blocking_until(bmp->i2c.inst, bmp->i2c.addr, &status, 1, false, delayed_by_ms(get_absolute_time(), 1000)) == 1;
+        busy_wait_ms(1);
     }
+    
 
-    {
-        uint8_t status = 0x00;
-        while (res && (status & 0x60) != 0x60) {
-            uint8_t status_reg = BMP_STATUS_REG;
-            res &= i2c_write_blocking(bmp->i2c.inst, bmp->i2c.addr, &status_reg, 1, true) == 1;
-            res &= i2c_read_blocking(bmp->i2c.inst, bmp->i2c.addr, &status, 1, false) == 1;
-            busy_wait_ms(1);
-        }
-    }
-
-    res &= bmp_read_uncalibrated_temperature(bmp);
-    res &= bmp_read_uncalibrated_pressure(bmp);
-    res &= bmp_calibrate_temperature(bmp);
-    res &= bmp_calibrate_pressure(bmp);
-    res &= bmp_calculate_altitude(bmp);
+    res = res && bmp_read_uncalibrated_temperature(bmp);
+    res = res && bmp_read_uncalibrated_pressure(bmp);
+    res = res && bmp_calibrate_temperature(bmp);
+    res = res && bmp_calibrate_pressure(bmp);
+    res = res && bmp_calculate_altitude(bmp);
 
     return res;
 }
@@ -330,10 +327,10 @@ bool bmp_init(bmp_t *bmp) {
 
     bool res = true;
 
-    res &= (bmp_reset(bmp));
-    res &= (bmp_check_chip_id(bmp));
-    res &= (bmp_set_oversampling_rate(bmp));
-    res &= (bmp_get_calib_coeffs(bmp));
+    res = res && (bmp_reset(bmp));
+    res = res && (bmp_check_chip_id(bmp));
+    res = res && (bmp_set_oversampling_rate(bmp));
+    res = res && (bmp_get_calib_coeffs(bmp));
 
     return res;
 }

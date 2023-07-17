@@ -33,7 +33,7 @@ uint8_t gencrc(uint8_t *data, size_t len) {
 bool htu21_reset(){
     uint8_t buf[1];
     buf[0] = HTU_COMMAND_SOFT_RESET;
-    bool res = i2c_write_blocking_until(i2c_inst, HTU_ADDR, buf, 1, false, delayed_by_ms(get_absolute_time(), 5000)) == 1;
+    bool res = i2c_write_blocking_until(i2c_inst, HTU_ADDR, buf, 1, false, delayed_by_ms(get_absolute_time(), 1000)) == 1;
     return res;
 }
 
@@ -58,13 +58,13 @@ double htu_get(uint8_t command, bool* valid){
     }
     uint8_t buf[1];
     buf[0] = command;
-    if (i2c_write_blocking_until(i2c_inst, HTU_ADDR, buf, 1, false, delayed_by_ms(get_absolute_time(), 5000)) != 1) {
+    if (i2c_write_blocking_until(i2c_inst, HTU_ADDR, buf, 1, false, delayed_by_ms(get_absolute_time(), 1000)) != 1) {
         *valid = false;
         return -1;
     }
 
     uint8_t in[3] = { 0 };
-    if (i2c_read_blocking_until(i2c_inst, HTU_ADDR, in, 3, false, delayed_by_ms(get_absolute_time(), 5000)) != 3) {
+    if (i2c_read_blocking_until(i2c_inst, HTU_ADDR, in, 3, false, delayed_by_ms(get_absolute_time(), 1000)) != 3) {
         *valid = false;
         return -1;
     }

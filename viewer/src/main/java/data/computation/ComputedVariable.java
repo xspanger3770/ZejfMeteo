@@ -1,10 +1,16 @@
-package data;
+package data.computation;
 
+import data.DataHour;
+import data.DataManager;
+
+import java.io.Serializable;
 import java.util.UUID;
 
-public class ComputedVariable {
+public class ComputedVariable implements Serializable {
 
     private final int samplesPerHour;
+
+    private int lastLog = 0;
 
     private final UUID uuid;
 
@@ -30,5 +36,17 @@ public class ComputedVariable {
 
     public int getSamplesPerHour() {
         return samplesPerHour;
+    }
+
+    public boolean runCalculation(DataManager dataManager, VariableComputation calculation, DataHour dataHour) {
+        return calculation.calculate(dataManager, calculation, dataHour, this);
+    }
+
+    public ComputedLog getLastLog() {
+        return computedLogs[lastLog];
+    }
+
+    public void setLastLog(int sample) {
+        this.lastLog = sample;
     }
 }

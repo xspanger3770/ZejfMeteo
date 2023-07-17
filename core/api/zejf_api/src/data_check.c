@@ -61,6 +61,10 @@ zejf_err data_check_send(uint16_t to, VariableInfo variable, uint32_t hour_num, 
     uint32_t check_number = 0;
     zejf_err rv = calculate_data_check(variable, hour_num, log_num, &check_number);
 
+    if(check_number == variable.samples_per_hour){
+        return ZEJF_OK; // no need to check when we have everything
+    }
+
     if(rv != ZEJF_OK){
         return rv;
     }
@@ -110,6 +114,7 @@ zejf_err data_check_receive(Packet *packet) {
 
 void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, uint32_t hours, TIME_TYPE time) {
     // to avoid sending entire hour when just one recent log is missing
+    // what?
 
     if (hours > 24 * 5) {
         hours = 24 * 5;

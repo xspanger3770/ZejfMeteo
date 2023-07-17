@@ -47,13 +47,14 @@ public class ApplicationErrorHandler implements Thread.UncaughtExceptionHandler 
 	int i = 0;
 
 	private void showDetailedError(Throwable e) {
-		final Object[] options = getOptionsForDialog(true);
-		JOptionPane.showOptionDialog(frame, createDetailedPane(e), "Fatal Error", JOptionPane.DEFAULT_OPTION,
-				JOptionPane.ERROR_MESSAGE, null, options, null);
 		i++;
 		if (i == 2) {
 			System.exit(0);
 		}
+		final Object[] options = getOptionsForDialog(true);
+		JOptionPane.showOptionDialog(frame, createDetailedPane(e), "Fatal Error", JOptionPane.DEFAULT_OPTION,
+				JOptionPane.ERROR_MESSAGE, null, options, null);
+		i = 0;
 	}
 
 	private Component createDetailedPane(Throwable e) {

@@ -19,6 +19,7 @@ add_subdirectory(../../api/zejf_api zejf_api)
 add_subdirectory(../../libs/ libs)
 
 target_include_directories(zejf_api PUBLIC src)
+target_include_directories(zejf_pico_utils PUBLIC ./src/)
 
 file(GLOB MY_SOURCES "src/*.c*")
 
@@ -34,6 +35,7 @@ target_link_libraries(zejf_outside
     hardware_adc
     tcp_handler
     htu21
+    ds3231
 )
 
 pico_set_program_name(zejf_outside "zejf_outside")
