@@ -34,7 +34,9 @@ static int htu_next_reset = 1;
 
 static volatile uint64_t last_rr_callback = 0;
 static volatile bool rr_measured = false;
-static volatile double latest_max_rain_rate = 0.0;
+
+static volatile double rain_rate_last = 0.0;
+static volatile double rain_rate_displayed = 0.0;
 
 class htu_log : public zejf_log
 {
@@ -177,8 +179,14 @@ bool process_measurements(struct repeating_timer *) {
     uint16_t _rr_c = rr_c_temp - rr_c_last;
     rr_c_last = rr_c_temp;
 
-    if (rr_measured && (millis_since_boot - last_rr_callback / 1000) >= (15 * 1000 * 60)) {
-        latest_max_rain_rate = 0.0;
+    if(rain_rate_last != 0.0 && rain_rate_last != rain_rate_displayed){
+        rain_rate_displayed = rain_rate_last;
+    }
+
+    rain_rate_last = 0.0;
+
+    if (rr_measured && (millis_since_boot - last_rr_callback / 1000) >= (15 * 1000 * 60l)) {
+        rain_rate_displayed = 0.0;
     }
 
     if (!time_set) {
@@ -187,7 +195,7 @@ bool process_measurements(struct repeating_timer *) {
 
     measure_voltages();
 
-    current_rr_log.sample(_rr_c, latest_max_rain_rate);
+    current_rr_log.sample(_rr_c, rain_rate_displayed);
 
     if (queue_lock) {
         return true;
@@ -239,6 +247,7 @@ bool htu_measure(struct repeating_timer *) {
     if (!m.valid) {
         htu_errors++;
         htu_initialised = 0;
+        return true;
     }
 
     if (!time_set) {
@@ -263,8 +272,8 @@ void rr_callback(uint gpio, uint32_t) {
         uint64_t current_us = to_us_since_boot(get_absolute_time());
         if (rr_measured) {
             double rain_rate = (RR_COEFF * 60.0 * 60.0) * (1000000.0 / (current_us - last_rr_callback));
-            if ((rain_rate >= 0 && rain_rate < 2000.0) && rain_rate > latest_max_rain_rate) {
-                latest_max_rain_rate = rain_rate;
+            if ((rain_rate >= 0 && rain_rate < 2000.0) && rain_rate > rain_rate_last) {
+                rain_rate_last = rain_rate;
             }
         }
         last_rr_callback = current_us;

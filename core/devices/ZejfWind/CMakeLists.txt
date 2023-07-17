@@ -17,6 +17,7 @@ add_subdirectory(../../api/zejf_api build/zejf_api)
 add_subdirectory(../../libs/ build/libs)
 
 target_include_directories(zejf_api PUBLIC src)
+target_include_directories(zejf_pico_utils PUBLIC src)
 
 file(GLOB MY_SOURCES "src/*.c*")
 

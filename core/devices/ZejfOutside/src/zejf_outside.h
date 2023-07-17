@@ -1,8 +1,6 @@
 #ifndef _ZEJF_OUTSIDE_H
 #define _ZEJF_OUTSIDE_H
 
-#include "time_engine.h"
-
 #define I2C_INST i2c0
 #define I2C_SDA 16
 #define I2C_SCK 17
