@@ -158,6 +158,7 @@ void *packet_sender_start(void *arg) {
         pthread_mutex_lock(&zejf_lock);
 
         network_process_packets(current_millis());
+        data_requests_process(current_millis());
 
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);

@@ -109,6 +109,7 @@ zejf_err process_id_request(Packet *packet, TIME_TYPE time) {
     char buff[PACKET_MAX_LENGTH];
 
     zejf_err rv = packet_to_string(pack, buff, PACKET_MAX_LENGTH);
+    packet_destroy(pack);
 
     if (rv != ZEJF_OK) {
         return rv;
@@ -138,8 +139,10 @@ zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
 
     if (packet->command == ID_REQUEST) {
         if (process_id_request(packet, time) != ZEJF_OK) {
+            packet_destroy(packet);
             return ZEJF_ERR_GENERIC;
         }
+        packet_destroy(packet);
         return ZEJF_OK;
     }
 
@@ -175,6 +178,7 @@ zejf_err network_send_packet(Packet *packet, TIME_TYPE time) {
         ZEJF_LOG(2, "THIS SHOULD HAVE NEVER HAPPENED (%d)\n", rv);
         // fun fact: it happened     edit: many times
         // fun fact: IT HAPPENED AGAIN
+        packet_destroy(packet);
         return ZEJF_ERR_OUT_OF_MEMORY;
     }
 

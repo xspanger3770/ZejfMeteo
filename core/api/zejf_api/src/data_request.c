@@ -113,6 +113,8 @@ void data_requests_process(TIME_TYPE time) {
         }
 
         if (request_finished(request) || request->errors > 50) {
+            printf("Request finished with %d errors\n", request->errors);
+            
             data_request_destroy(list_pop(data_requests_queue));
             request = NULL;
             request_count++;
