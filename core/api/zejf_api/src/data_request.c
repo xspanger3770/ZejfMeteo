@@ -99,6 +99,10 @@ zejf_err data_request_receive(Packet *packet) {
     return data_request_add(packet->from, variable, hour_number, start_log, end_log);
 }
 
+bool data_requests_ready(void) {
+    return !list_is_empty(data_requests_queue);
+}
+
 bool request_finished(DataRequest *request) {
     return request->current_log > request->end_log;
 }
@@ -113,8 +117,6 @@ void data_requests_process(TIME_TYPE time) {
         }
 
         if (request_finished(request) || request->errors > 50) {
-            printf("Request finished with %d errors\n", request->errors);
-            
             data_request_destroy(list_pop(data_requests_queue));
             request = NULL;
             request_count++;

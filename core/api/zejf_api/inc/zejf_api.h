@@ -29,6 +29,8 @@ void run_data_check(uint32_t current_hour_num, uint32_t current_millis_in_hour, 
 
 void data_requests_process(TIME_TYPE time);
 
+bool data_requests_ready(void);
+
 //* =========== ROUTING ========== */
 
 // check for inactive members of routing table
@@ -79,5 +81,7 @@ void get_provided_variables(uint16_t *provide_count, const VariableInfo **provid
 void get_demanded_variables(uint16_t *demand_count, uint16_t **demanded_variables);
 
 void print_routing_table(uint32_t time);
+
+bool network_has_packets(void);
 
 #endif

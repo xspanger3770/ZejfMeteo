@@ -23,4 +23,12 @@ public class TimeUtils {
         int secs = calendar.get(Calendar.SECOND) + 60 * calendar.get(Calendar.MINUTE);
         return (secs * samplesPerHour) / 3600;
     }
+
+    public static void round(Calendar calendar, int samplesPerHour) {
+        int sample = getSampleNumber(calendar, samplesPerHour);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        moveBy(calendar, samplesPerHour, sample);
+    }
 }

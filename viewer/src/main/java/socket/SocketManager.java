@@ -21,7 +21,7 @@ public class SocketManager {
     private Thread socketThread;
     private volatile boolean socketRunning = false;
     private Socket socket;
-    private ZejfCommunicator reader;
+    private ZejfCommunicator zejfCommunicator;
 
     public SocketManager(){
         ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
@@ -71,7 +71,7 @@ public class SocketManager {
     }
 
     private void runReader() throws IOException{
-        reader = new ZejfCommunicator(socket.getInputStream(), socket.getOutputStream()){
+        zejfCommunicator = new ZejfCommunicator(socket.getInputStream(), socket.getOutputStream()){
             @Override
             public void onClose() {
                 socketRunning = false;
@@ -80,7 +80,7 @@ public class SocketManager {
 
             @Override
             public void onReceive(Packet packet) {
-                System.out.printf("Packet command %d from %d to %d: %s\n", packet.command(), packet.from(), packet.to(), packet.message());
+                //System.out.printf("Packet command %d from %d to %d: %s\n", packet.command(), packet.from(), packet.to(), packet.message());
                 if(packet.command() == ZejfCommunicator.COMMAND_DATA_LOG) {
                     try {
                         String msg = packet.message();
@@ -94,11 +94,22 @@ public class SocketManager {
                     } catch(Exception e){
                         e.printStackTrace();
                     }
+                }else if(packet.command() == ZejfCommunicator.COMMAND_VARIABLE_INFO){
+                    try {
+                        String msg = packet.message();
+                        String[] data = msg.split(",");
+                        int variableId = Integer.parseInt(data[0]);
+                        int samplesPerHour = Integer.parseInt(data[1]);
+                        long hourNumber = Long.parseLong(data[2]);
+                        ZejfMeteo.getDataManager().create(variableId, samplesPerHour, hourNumber);
+                    } catch(Exception e){
+                        e.printStackTrace();
+                    }
                 }
             }
         };
 
-        reader.run();
+        zejfCommunicator.run();
         ZejfMeteo.getFrame().setStatus(String.format("Connected to %s:%d", socket.getInetAddress().getHostAddress(), socket.getPort()));
     }
 
@@ -114,5 +125,9 @@ public class SocketManager {
                 throw new RuntimeApplicationException("Cannot close socket", e);
             }
         }
+    }
+
+    public ZejfCommunicator getZejfCommunicator() {
+        return zejfCommunicator;
     }
 }

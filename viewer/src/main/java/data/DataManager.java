@@ -12,9 +12,7 @@ import time.TimeUtils;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class DataManager {
 
@@ -22,7 +20,7 @@ public class DataManager {
     public static final double VALUE_EMPTY = -999.0;
     public static final double VALUE_NOT_MEASURED = -998.0;
     private static final long DATA_LOAD_TIME = 15 * 1000 * 60L;
-    private final List<DataHour> dataHours;
+    private final Queue<DataHour> dataHours;
 
     private List<VariableComputation> variableCalculations;
 
@@ -32,14 +30,8 @@ public class DataManager {
 
     public static final File VARIABLE_CALCULATIONS_FILE = new File(DATA_FOLDER, "variable_calculations.dat");
 
-    private final ReadWriteLock dataLock = new ReentrantReadWriteLock();
-
-    private final Lock dataReadLock = dataLock.readLock();
-
-    private final Lock dataWriteLock = dataLock.writeLock();
-
     public DataManager(){
-        dataHours = new LinkedList<>();
+        dataHours = new ConcurrentLinkedQueue<>();
         variableCalculations = new LinkedList<>();
 
         load();
@@ -59,37 +51,37 @@ public class DataManager {
         TimerTask taskCompute = new TimerTask() {
             @Override
             public void run() {
-                dataWriteLock.lock();
-                try {
-                    for(DataHour dh:dataHours) {
-                        if(dh.isComputationNeeded()) {
-                            dh.runComputations(DataManager.this);
-                        }
+                for(DataHour dh:dataHours) {
+                    if(dh.isComputationNeeded()) {
+                        dh.runComputations(DataManager.this);
                     }
-                } finally {
-                    dataWriteLock.unlock();
+                }
+            }
+        };
+
+        TimerTask taskDataChecks = new TimerTask() {
+            @Override
+            public void run() {
+                for(DataHour dh:dataHours) {
+                    dh.runDataChecks();
                 }
             }
         };
 
         // Schedule the task to run every two minutes, starting from now
         timer.schedule(taskAutosave, 30 * 1000, 2 * 60 * 1000);
+        timer.schedule(taskDataChecks, 1000, 1000 );
         timer.schedule(taskCompute, 1000, 1000);
     }
 
     private void removeOld() throws FatalApplicationException {
-        dataWriteLock.lock();
-        try {
-            Iterator<DataHour> iterator = dataHours.iterator();
-            while(iterator.hasNext()){
-                DataHour dataHour = iterator.next();
-                if(System.currentTimeMillis() - dataHour.getLastUse() > DATA_LOAD_TIME){
-                    saveHour(dataHour);
-                    iterator.remove();
-                }
+        Iterator<DataHour> iterator = dataHours.iterator();
+        while(iterator.hasNext()){
+            DataHour dataHour = iterator.next();
+            if(System.currentTimeMillis() - dataHour.getLastUse() > DATA_LOAD_TIME){
+                saveHour(dataHour);
+                iterator.remove();;
             }
-        }finally {
-            dataWriteLock.unlock();
         }
     }
 
@@ -104,7 +96,7 @@ public class DataManager {
 
         for(int i = 0; i < PERMANENTLY_LOADED_HOURS; i++){
             try {
-                dataHourGet(calendar, true, true);
+                dataHourGet(calendar, true);
             } catch (FatalApplicationException | RuntimeApplicationException e) {
                 ZejfMeteo.handleException(e);
             }
@@ -145,17 +137,18 @@ public class DataManager {
         }
     }
 
-    public DataHour dataHourFind(long hourNumber){
-        for(DataHour dataHour:dataHours){
-            if(dataHour.getHourNumber() == hourNumber){
+    private DataHour dataHourFind(long hourNumber){
+        for (DataHour dataHour : dataHours) {
+            if (dataHour.getHourNumber() == hourNumber) {
                 return dataHour;
             }
         }
+
         return null;
     }
 
-    public DataHour dataHourGet(long hourNumber, boolean load, boolean createNew) throws FatalApplicationException {
-        if(lastDatahour != null && lastDatahour.getHourNumber() == hourNumber){
+    public DataHour dataHourGet(long hourNumber, boolean load) throws FatalApplicationException {
+        if (lastDatahour != null && lastDatahour.getHourNumber() == hourNumber) {
             return lastDatahour;
         }
 
@@ -163,26 +156,26 @@ public class DataManager {
 
         boolean add = false;
 
-        if(result == null && load){
+        if (result == null && load) {
             result = loadHour(TimeUtils.toCalendar(hourNumber));
             add = true;
         }
 
-        if(result == null && createNew){
+        if (result == null) {
             result = new DataHour(hourNumber, this);
+            add = true;
         }
 
-        if(result != null && add){
+        if (add) {
             dataHours.add(result);
         }
 
         lastDatahour = result;
-
         return result;
     }
 
-    public DataHour dataHourGet(Calendar calendar, boolean load, boolean createNew) throws FatalApplicationException{
-        return dataHourGet(TimeUtils.getHourNumber(calendar), load, createNew);
+    public DataHour dataHourGet(Calendar calendar, boolean load) throws FatalApplicationException{
+        return dataHourGet(TimeUtils.getHourNumber(calendar), load);
     }
 
     public static File getDataHourFile(Calendar calendar){
@@ -233,32 +226,23 @@ public class DataManager {
         try {
             ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(file));
             out.writeObject(dataHour);
+            dataHour.saved();
         } catch (IOException e) {
             throw new FatalApplicationException("Unable to save", e);
         }
     }
 
     public void saveAll() throws FatalApplicationException{
-        dataReadLock.lock();
-        try {
-            for (DataHour dataHour : dataHours) {
-                saveHour(dataHour);
-            }
-        }finally {
-            dataReadLock.unlock();
+        for (DataHour dataHour : dataHours) {
+            saveHour(dataHour);
         }
 
         saveVariableCalculations();
     }
 
     public void log(int variableId, int samplesPerHour, long hourNumber, int sampleNumber, double value) throws FatalApplicationException{
-        dataWriteLock.lock();
-        try{
-            DataHour dataHour = dataHourGet(TimeUtils.toCalendar(hourNumber), true, true);
-            dataHour.log(variableId, samplesPerHour, sampleNumber, value);
-        }finally {
-            dataWriteLock.unlock();
-        }
+        DataHour dataHour = dataHourGet(TimeUtils.toCalendar(hourNumber), true);
+        dataHour.log(variableId, samplesPerHour, sampleNumber, value);
     }
 
     public List<VariableComputation> getVariableCalculations() {
@@ -266,12 +250,11 @@ public class DataManager {
     }
 
     public ComputedLog getLastValue(VariableComputation computation) {
-        dataReadLock.lock();
         try {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(new Date());
             for(int i = 0; i < 24; i++){
-                DataHour dh = dataHourGet(calendar, true, false);
+                DataHour dh = dataHourGet(calendar, true);
                 if(dh == null){
                     calendar.add(Calendar.HOUR, -1);
                     continue;
@@ -287,13 +270,10 @@ public class DataManager {
                     return computedLog;
                 }
 
-                next:
                 calendar.add(Calendar.HOUR, -1);
             }
         } catch (FatalApplicationException e) {
             ZejfMeteo.handleException(e);
-        } finally {
-            dataReadLock.unlock();
         }
 
         return null;
@@ -301,7 +281,7 @@ public class DataManager {
 
     public ComputedLog getValue(VariableComputation computation, Calendar calendar){
         try {
-            DataHour dh = dataHourGet(calendar, true, false);
+            DataHour dh = dataHourGet(calendar, true);
             if(dh == null){
                 return null;
             }
@@ -316,5 +296,12 @@ public class DataManager {
         }
 
         return null;
+    }
+
+    public void create(int variableId, int samplesPerHour, long hourNumber) throws FatalApplicationException{
+        DataHour dataHour = dataHourGet(TimeUtils.toCalendar(hourNumber), true);
+        if(dataHour != null){
+            dataHour.getVariable(variableId, samplesPerHour, true);
+        }
     }
 }

@@ -266,6 +266,10 @@ void network_process_packets(TIME_TYPE time) {
     network_send_tx(time);
 }
 
+bool network_has_packets(void) {
+    return !list_is_empty(rx_queue) || !list_is_empty(tx_queue);
+}
+
 void network_process_rx(TIME_TYPE time) {
     Packet *packet = (Packet *) list_pop(rx_queue);
     if (packet != NULL) {

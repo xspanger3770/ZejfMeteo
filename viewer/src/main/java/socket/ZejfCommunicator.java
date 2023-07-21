@@ -1,5 +1,7 @@
 package socket;
 
+import data.DataHour;
+import data.DataVariable;
 import org.tinylog.Logger;
 
 import java.io.IOException;
@@ -18,6 +20,10 @@ public class ZejfCommunicator {
     public static final int COMMAND_ID_REQUEST = 0x0f;
     public static final int COMMAND_ID_INFO = 0x10;
     public static final int COMMAND_DATA_SUBSCRIBE = 0x11;
+    public static final int COMMAND_VARIABLES_REQUEST = 0x0d;
+
+    public static final int COMMAND_DATA_CHECK = 0x08;
+    public static final int COMMAND_VARIABLE_INFO = 0x0e;
     private final InputStream inputStream;
     private final OutputStream outputStream;
 
@@ -127,4 +133,19 @@ public class ZejfCommunicator {
 
     }
 
+    public void sendVariablesRequest(DataHour dataHour) throws IOException{
+        sendPacket(create_packet(serverDeviceId, COMMAND_VARIABLES_REQUEST, String.valueOf(dataHour.getHourNumber())));
+    }
+
+    public void sendDataCheck(DataVariable dataVariable, long hourNum) throws IOException {
+        int checkNumber = dataVariable.calculateDataCheck();
+        if(checkNumber == dataVariable.getSamplesPerHour()){
+            return;
+        }
+
+        String str= String.format("%d,%d,%d,%d,%d", dataVariable.getId(), dataVariable.getSamplesPerHour(), hourNum, dataVariable.getSamplesPerHour(), checkNumber);
+
+        System.err.println("DATA CHECK H"+hourNum+" "+dataVariable.getId()+"@"+dataVariable.getSamplesPerHour()+": "+checkNumber+" ["+str+"]");
+        sendPacket(create_packet(serverDeviceId, COMMAND_DATA_CHECK, str));
+    }
 }

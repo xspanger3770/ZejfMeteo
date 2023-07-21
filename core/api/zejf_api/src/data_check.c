@@ -107,7 +107,6 @@ zejf_err data_check_receive(Packet *packet) {
 
     if (our_check_number > check_number) {
         zejf_err rv = data_request_add(packet->from, variable, hour_num, 0, log_num);
-        ZEJF_LOG(1, "rv %d\n", rv);
         return rv;
     }
 

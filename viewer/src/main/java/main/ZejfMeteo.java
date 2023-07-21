@@ -6,6 +6,7 @@ import exception.FatalApplicationException;
 import exception.FatalIOException;
 import exception.RuntimeApplicationException;
 import org.tinylog.Logger;
+import socket.SocketManager;
 import ui.ZejfFrame;
 
 import javax.swing.*;
@@ -16,11 +17,13 @@ import java.io.IOException;
 
 public class ZejfMeteo {
 
-    public static final String VERSION = "0.0.1";
+    public static final String VERSION = "0.1.0";
     public static final File MAIN_FOLDER = new File("./ZejfMeteoViewer");
     private static ZejfFrame frame;
     private static ApplicationErrorHandler errorHandler;
     private static DataManager dataManager;
+
+    private static SocketManager socketManager;
 
     public static void main(String[] args) throws Exception {
         if(!MAIN_FOLDER.exists()){
@@ -32,6 +35,7 @@ public class ZejfMeteo {
         errorHandler = new ApplicationErrorHandler(frame);
         Thread.setDefaultUncaughtExceptionHandler(errorHandler);
 
+        socketManager = new SocketManager();
         dataManager = new DataManager();
 
         Settings.loadProperties();
@@ -77,5 +81,9 @@ public class ZejfMeteo {
 
     public static ZejfFrame getFrame() {
         return frame;
+    }
+
+    public static SocketManager getSocketManager() {
+        return socketManager;
     }
 }

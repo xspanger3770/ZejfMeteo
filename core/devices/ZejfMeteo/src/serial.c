@@ -76,7 +76,7 @@ zejf_err network_send_via(char *msg, int length, Interface *interface, TIME_TYPE
             return ZEJF_OK;
         }
     }
-        // intentionaly no break here
+    __attribute__ ((fallthrough));
     case TCP: {
         char msg2[PACKET_MAX_LENGTH];
         snprintf(msg2, PACKET_MAX_LENGTH, "%s\n", msg);
@@ -157,8 +157,16 @@ void *packet_sender_start(void *arg) {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pthread_mutex_lock(&zejf_lock);
 
-        network_process_packets(current_millis());
-        data_requests_process(current_millis());
+        uint64_t millis = current_millis();
+        unsigned int counter = 0;
+
+        while((network_has_packets() || data_requests_ready()) && counter < 10000) {
+            network_process_packets(millis);
+            if(!network_has_packets()){
+                data_requests_process(millis);
+            }
+            counter++;
+        }
 
         pthread_mutex_unlock(&zejf_lock);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);

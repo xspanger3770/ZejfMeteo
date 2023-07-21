@@ -44,13 +44,7 @@ void zejf_pico_run(void) {
     rebooted_by_watchdog = watchdog_enable_caused_reboot();
 
     while (true) {
-        watchdog_update();
-
         cyw43_arch_poll();
-
-        data_requests_process(millis_since_boot);
-        network_process_packets(millis_since_boot);
-        routing_table_check(millis_since_boot);
 
         watchdog_update();
 
@@ -74,8 +68,8 @@ void zejf_pico_run(void) {
         if (rip_n != last_rip) {
             network_send_routing_info(millis_since_boot);
             zejf_tcp_check_connect();
-            watchdog_update();
             time_check();
+            watchdog_update();
             last_rip = rip_n;
         }
 
@@ -86,7 +80,18 @@ void zejf_pico_run(void) {
 
         if (save_n != last_save) {
             data_save();
+            watchdog_update();
             last_save = save_n;
+        }
+
+        data_requests_process(millis_since_boot);
+        routing_table_check(millis_since_boot);
+
+        unsigned int counter = 0;
+        while(network_has_packets() && counter < 10000){
+            network_process_packets(millis_since_boot);
+            watchdog_update();
+            counter++;
         }
     }
 }

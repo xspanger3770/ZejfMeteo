@@ -38,7 +38,7 @@ public class DirectComputation extends ComputationMode {
             log.setStatus(ComputationStatus.FINISHED);
             computedVariable.setLastLog(sample);
             result = true;
-            System.out.println("COMPUTEDED "+sample+"@"+computation.getVariableId());
+            //System.out.println("COMPUTEDED "+sample+"@"+computation.getVariableId()+";"+dataHour.getHourNumber());
         }
 
         return result;
