@@ -209,6 +209,7 @@ bool process_measurements(struct repeating_timer *)
         return true;
     }
 
+    adc_select_input(0);
     uint16_t adc_val = adc_read();
     double wdir = (get_wdir(adc_val) + WIND_CORRECTION);
     if (wdir > 360) {

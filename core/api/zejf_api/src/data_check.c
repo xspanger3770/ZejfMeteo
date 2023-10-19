@@ -103,10 +103,11 @@ zejf_err data_check_receive(Packet *packet) {
         return rv;
     }
 
-    ZEJF_LOG(0, "DATA CHECK hour %" SCNu32 " variable %" SCNu16 " [our %" SCNu32 " vs their %" SCNu32 "]\n", hour_num, variable.id, our_check_number, check_number);
+    ZEJF_LOG(1, "DATA CHECK hour %" SCNu32 " variable %" SCNu16 " [our %" SCNu32 " vs their %" SCNu32 "]\n", hour_num, variable.id, our_check_number, check_number);
 
     if (our_check_number > check_number) {
-        return data_request_add(packet->from, variable, hour_num, 0, log_num);
+        zejf_err rv = data_request_add(packet->from, variable, hour_num, 0, log_num);
+        return rv;
     }
 
     return ZEJF_OK;

@@ -2,12 +2,19 @@ package data;
 
 import data.computation.ComputedVariable;
 import data.computation.VariableComputation;
+import exception.RuntimeApplicationException;
+import main.ZejfMeteo;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class DataHour implements Serializable {
 
+    private static final long VARIABLE_CHECK_INTERVAL = 1000 * 60 * 10;
+    private static final long DATA_CHECK_INTERVAL = 1000 * 60 * 10;
     private transient DataManager dataManager;
 
     private final long hourNumber;
@@ -16,15 +23,17 @@ public class DataHour implements Serializable {
 
     private transient long lastUse = System.currentTimeMillis();
 
-    private final List<DataVariable> variablesRaw;
+    private transient long lastVariablesCheck = 0;
+
+    private final Queue<DataVariable> variablesRaw;
     private final Map<UUID, ComputedVariable> variablesComputed;
     private transient boolean computationNeeded;
 
     public DataHour(long hourNumber, DataManager dataManager){
         this.dataManager = dataManager;
         this.hourNumber = hourNumber;
-        variablesRaw = new LinkedList<>();
-        variablesComputed = new HashMap<>();
+        variablesRaw = new ConcurrentLinkedQueue<>();
+        variablesComputed = new ConcurrentHashMap<>();
     }
 
     public long getHourNumber() {
@@ -62,6 +71,8 @@ public class DataHour implements Serializable {
             variablesRaw.add(result);
         }
 
+        lastUse = System.currentTimeMillis();
+
         return result;
     }
 
@@ -81,6 +92,8 @@ public class DataHour implements Serializable {
             variablesComputed.put(uuid, result);
         }
 
+        lastUse = System.currentTimeMillis();
+
         return result;
     }
 
@@ -88,7 +101,7 @@ public class DataHour implements Serializable {
         return variablesComputed.get(uuid);
     }
 
-    public List<DataVariable> getVariablesRaw() {
+    public Queue<DataVariable> getVariablesRaw() {
         return variablesRaw;
     }
 
@@ -98,13 +111,40 @@ public class DataHour implements Serializable {
         }
         for(VariableComputation calculation : dataManager.getVariableCalculations()) {
             variablesComputed.putIfAbsent(calculation.getUuid(), new ComputedVariable(calculation.getSamplesPerHour(), calculation.getUuid()));
+            // todo remove unused
             if(variablesComputed.get(calculation.getUuid()).runCalculation(dataManager, calculation, this)){
                 this.modified = true;
             }
+        }
+
+        runDataChecks();
+    }
+
+    public void runDataChecks(){
+        if(!ZejfMeteo.getSocketManager().isSocketRunning() || ZejfMeteo.getSocketManager().getZejfCommunicator() == null){
+            return;
+        }
+        try {
+            if (System.currentTimeMillis() - lastVariablesCheck >= VARIABLE_CHECK_INTERVAL) {
+                ZejfMeteo.getSocketManager().getZejfCommunicator().sendVariablesRequest(this);
+                this.lastVariablesCheck = System.currentTimeMillis();
+            }
+
+            for(DataVariable dataVariable : variablesRaw){
+                if (System.currentTimeMillis() - dataVariable.getLastDataCheck() >= DATA_CHECK_INTERVAL) {
+                    ZejfMeteo.getSocketManager().getZejfCommunicator().sendDataCheck(dataVariable, hourNumber);
+                }
+            }
+        }catch(IOException e){
+            throw new RuntimeApplicationException("", e);
         }
     }
 
     public boolean isComputationNeeded() {
         return computationNeeded;
+    }
+
+    public void saved() {
+        this.modified = false;
     }
 }

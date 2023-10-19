@@ -99,6 +99,10 @@ zejf_err data_request_receive(Packet *packet) {
     return data_request_add(packet->from, variable, hour_number, start_log, end_log);
 }
 
+bool data_requests_ready(void) {
+    return !list_is_empty(data_requests_queue);
+}
+
 bool request_finished(DataRequest *request) {
     return request->current_log > request->end_log;
 }

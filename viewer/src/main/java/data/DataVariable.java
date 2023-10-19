@@ -12,6 +12,8 @@ public class DataVariable implements Serializable {
 
     private final double[] data;
 
+    private transient long lastDataCheck = 0;
+
     public DataVariable(int id, int samplesPerHour){
         this.id = id;
         this.samplesPerHour = samplesPerHour;
@@ -42,7 +44,7 @@ public class DataVariable implements Serializable {
             return false; // cannot rewrite wrong value
         }
 
-        System.out.println("Logged "+value+" ["+id+"@"+samplesPerHour+"]");
+        //System.out.println("Logged "+value+" ["+id+"@"+samplesPerHour+"]");
 
         data[sampleNumber] = value;
         if(sampleNumber > lastLog){
@@ -50,5 +52,22 @@ public class DataVariable implements Serializable {
         }
 
         return true;
+    }
+
+    public int calculateDataCheck(){
+        int result = 0;
+        for(double val:data){
+            if(val != DataManager.VALUE_EMPTY && val != DataManager.VALUE_NOT_MEASURED){
+                result++;
+            }
+        }
+
+        lastDataCheck = System.currentTimeMillis();
+
+        return result;
+    }
+
+    public long getLastDataCheck() {
+        return lastDataCheck;
     }
 }

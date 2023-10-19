@@ -14,7 +14,6 @@ import java.awt.event.ActionListener;
 
 public class ZejfFrame extends JFrame {
 
-    private final SocketManager socketManager;
     private final JLabel lblStatus;
     private JPanel realtimePanel;
 
@@ -34,8 +33,6 @@ public class ZejfFrame extends JFrame {
 
         pack();
         setLocationRelativeTo(null);
-
-        socketManager = new SocketManager();
     }
 
     public void setStatus(String status){
@@ -51,7 +48,7 @@ public class ZejfFrame extends JFrame {
 
         JMenuItem socketItem = new JMenuItem("Socket");
         socketItem.addActionListener(actionEvent -> {
-            if(socketManager.isSocketRunning()){
+            if(ZejfMeteo.getSocketManager().isSocketRunning()){
                 int result = JOptionPane.showConfirmDialog(ZejfFrame.this,
                         "Disconnect from " + Settings.ADDRESS + ":" + Settings.PORT + "?", "Server",
                         JOptionPane.YES_NO_OPTION);
@@ -60,7 +57,7 @@ public class ZejfFrame extends JFrame {
                 }
 
                 try {
-                    socketManager.close();
+                    ZejfMeteo.getSocketManager().close();
                 } catch(RuntimeApplicationException e){
                     ZejfMeteo.handleException(e);
                 }
@@ -68,7 +65,7 @@ public class ZejfFrame extends JFrame {
 
             if(selectAddress()){
                 try {
-                    socketManager.connect();
+                    ZejfMeteo.getSocketManager().connect();
                 }catch(RuntimeApplicationException e){
                     ZejfMeteo.handleException(e);
                 }

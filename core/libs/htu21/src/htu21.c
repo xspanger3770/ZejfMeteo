@@ -84,6 +84,13 @@ htu_measurement htu21_measure() {
     result.valid = true;
     result.temperature = -46.85 + (175.72 * htu_get(HTU_COMMAND_GET_TEMPERATURE, &result.valid));
     result.humidity = -6.0 + (125.0 * htu_get(HTU_COMMAND_GET_HUMIDITY, &result.valid));
+
+    if(result.humidity > 100.0){
+        result.humidity = 100.0;
+    } else if (result.humidity < 0){
+        result.humidity = 0;
+    }
+
     result.dewpoint = htu_calculate_dewpoint(result.temperature, result.humidity);
     
     return result;
