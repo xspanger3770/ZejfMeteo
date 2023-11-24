@@ -81,9 +81,11 @@ zejf_err network_send_via(char *msg, int length, Interface *interface, TIME_TYPE
         char msg2[PACKET_MAX_LENGTH];
         snprintf(msg2, PACKET_MAX_LENGTH, "%s\n", msg);
 
-        if (!write(interface->handle, msg2, strlen(msg2))) {
+        if (write(interface->handle, msg2, strlen(msg2)) <= 0) {
             perror("write");
+            return ZEJF_ERR_IO;
         }
+        
         return ZEJF_OK;
     }
     default:
