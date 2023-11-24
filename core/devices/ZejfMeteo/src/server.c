@@ -167,19 +167,12 @@ void read_client(int fd) {
             if (client->buffer[client->buffer_parse_ptr] == '\n') {
                 client->buffer[client->buffer_parse_ptr] = '\0';
 
-                pthread_mutex_lock(&zejf_lock);
-                printf("A\n");
-                zejf_err rv = network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
-                printf("B\n");
-                pthread_mutex_unlock(&zejf_lock);
-
-                if(rv != ZEJF_OK) {
-                    ZEJF_LOG(2, "Some failure.\n");
-                    break;
-                }
-
                 ZEJF_LOG(0, "ACCEPTING [%s]: %d\n", client->buffer, rv);
 
+                pthread_mutex_lock(&zejf_lock);
+                network_accept(client->buffer, client->buffer_parse_ptr, &client->interface, millis);
+                pthread_mutex_unlock(&zejf_lock);
+                
                 if (client->buffer_parse_ptr < CLIENT_BUFFER_SIZE) {
                     memcpy(client->buffer, &client->buffer[client->buffer_parse_ptr + 1], client->buffer_ptr - client->buffer_parse_ptr - 1);
                 }

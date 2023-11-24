@@ -6,7 +6,7 @@
 #include "zejf_defs.h"
 #include "zejf_meteo.h"
 
-#define CLIENT_BUFFER_SIZE 256
+#define CLIENT_BUFFER_SIZE 512
 
 extern LinkedList *clients;
 extern volatile bool server_running;

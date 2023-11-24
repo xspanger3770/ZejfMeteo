@@ -9,7 +9,7 @@ set(CMAKE_C_CPPCHECK "cppcheck")
 
 project(zejfmeteo)
 
-set(EXECUTABLE zejfmeteo_beta_1.5.0)
+set(EXECUTABLE zejfmeteo_beta_1.5.1)
 
 add_subdirectory(src)
 
