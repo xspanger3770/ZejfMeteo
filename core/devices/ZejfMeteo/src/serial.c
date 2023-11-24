@@ -81,9 +81,11 @@ zejf_err network_send_via(char *msg, int length, Interface *interface, TIME_TYPE
         char msg2[PACKET_MAX_LENGTH];
         snprintf(msg2, PACKET_MAX_LENGTH, "%s\n", msg);
 
-        if (!write(interface->handle, msg2, strlen(msg2))) {
-            perror("write");
+        if (write(interface->handle, msg2, strlen(msg2)) <= 0) {
+            perror("write failed");
+            return ZEJF_ERR_IO;
         }
+        
         return ZEJF_OK;
     }
     default:
@@ -183,7 +185,7 @@ void run_reader(int port_fd, char *serial) {
     ZEJF_LOG(0, "Waiting for serial device\n");
     sleep(2);
 
-    ZEJF_LOG(0, "Serial port running fd %d\n", port_fd);
+    ZEJF_LOG(2, "Serial port running fd %d\n", port_fd);
 
     char buffer[BUFFER_SIZE] = { 0 };
     char line_buffer[LINE_BUFFER_SIZE] = { 0 };
@@ -235,7 +237,7 @@ void open_serial(char *serial) {
 
     // Open the serial port. Change device path as needed (currently set to an
     // standard FTDI USB-UART cable type device)
-    int port_fd = open(serial, O_RDWR);
+    int port_fd = open(serial, O_RDWR | O_NONBLOCK);
 
     if (port_fd == -1) {
         ZEJF_LOG(1, "Cannot open %s: %s\n", serial, strerror(errno));
